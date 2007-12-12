@@ -1,0 +1,14 @@
+Name:		idris
+Version:	0.0.1
+Author:		Edwin Brady
+License:	BSD3
+License-file:	LICENSE
+Maintainer:	eb@dcs.st-and.ac.uk
+Homepage:	http://www.dcs.st-and.ac.uk/~eb/Ivor/
+Stability:	experimental
+Build-depends:	base, haskell98, parsec, mtl, ivor
+Synopsis:	Dependently Typed Functional Programming Language
+
+Executable:	idris
+Main-is:	Main.lhs
+
