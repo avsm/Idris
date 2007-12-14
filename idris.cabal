@@ -11,4 +11,4 @@ Synopsis:	Dependently Typed Functional Programming Language
 
 Executable:	idris
 Main-is:	Main.lhs
-
+Other-modules:  Idris.Parser, Idris.Lexer, Idris.AbsSyntax

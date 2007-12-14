@@ -166,6 +166,7 @@
 >       ("Float",rest) -> cont TokenFloatType rest
 >       ("String",rest) -> cont TokenStringType rest
 >       ("Data",rest) -> cont TokenDataType rest
+>       ("TYPE",rest) -> cont TokenType rest
 > -- values
 > -- expressions
 >       (var,rest)   -> cont (mkname var) rest

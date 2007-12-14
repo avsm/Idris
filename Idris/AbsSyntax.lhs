@@ -21,7 +21,11 @@
 > 
 
 > data Id = UN String | MN String Int
->    deriving (Show, Eq)
+>    deriving Eq
+
+> instance Show Id where
+>     show (UN s) = s
+>     show (MN s i) = "__" ++ s ++ "_" ++ show i
 
 A program is a collection of datatype and function definitions.
 We store everything directly as a 'ViewTerm' from Ivor.
@@ -48,7 +52,8 @@ can add placeholders for Ivor
 
 > data Function = Function {
 >                           funId :: Id,
->                           funClauses :: [PClause]
+>                           funType :: ViewTerm,
+>                           funClauses :: [(Id, PClause)]
 >                          }
 
 
