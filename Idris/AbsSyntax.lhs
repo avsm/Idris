@@ -31,6 +31,7 @@ A program is a collection of datatype and function definitions.
 We store everything directly as a 'ViewTerm' from Ivor.
 
 > data Decl = DataDecl Datatype | Fun Function
+>    deriving Show
 
 We also keep track of all functions and their implicit arguments, so that we 
 can add placeholders for Ivor
@@ -49,11 +50,12 @@ can add placeholders for Ivor
 >                           tyType :: ViewTerm,
 >                           tyConstructors :: [(Id, ViewTerm)]
 >                          }
+>   deriving Show
 
 > data Function = Function {
 >                           funId :: Id,
 >                           funType :: ViewTerm,
 >                           funClauses :: [(Id, PClause)]
 >                          }
-
+>   deriving Show
 

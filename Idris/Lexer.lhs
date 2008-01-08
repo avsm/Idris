@@ -55,6 +55,7 @@
 >       | TokenFloatType
 >       | TokenStringType
 >       | TokenDataType
+>       | TokenWhere
 >       | TokenType
 >       | TokenOB
 >       | TokenCB
@@ -165,7 +166,8 @@
 >       ("Char",rest) -> cont TokenCharType rest
 >       ("Float",rest) -> cont TokenFloatType rest
 >       ("String",rest) -> cont TokenStringType rest
->       ("Data",rest) -> cont TokenDataType rest
+>       ("data",rest) -> cont TokenDataType rest
+>       ("where",rest) -> cont TokenWhere rest
 >       ("TYPE",rest) -> cont TokenType rest
 > -- values
 > -- expressions
