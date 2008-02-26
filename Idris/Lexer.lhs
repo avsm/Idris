@@ -76,6 +76,8 @@
 >       | TokenSemi
 >       | TokenComma
 >       | TokenBar
+>       | TokenDot
+>       | TokenLambda
 >       | TokenEOF
 >  deriving (Show, Eq)
 > 
@@ -110,7 +112,9 @@
 > lexer cont (':':cs) = cont TokenColon cs
 > lexer cont (';':cs) = cont TokenSemi cs
 > lexer cont (',':cs) = cont TokenComma cs
+> lexer cont ('\\':cs) = cont TokenLambda cs
 > lexer cont ('|':cs) = cont TokenBar cs
+> lexer cont ('.':cs) = cont TokenDot cs
 > lexer cont ('%':cs) = lexSpecial cont cs
 > lexer cont (c:cs) = lexError c cs
  

@@ -1,0 +1,33 @@
+> module Idris.Context(Ctxt, Id(..), addEntry, ctxtLookup) where
+
+> import List
+> import qualified Data.Map as Map
+
+> data Id = UN String | MN String Int
+>    deriving (Eq, Ord)
+
+> instance Show Id where
+>     show (UN s) = s
+>     show (MN s i) = "__" ++ s ++ "_" ++ show i
+
+> type Dict k v = Map.Map k v
+
+> dictInsert :: Ord k => k -> v -> Dict k v -> Dict k v
+> dictInsert = Map.insert
+> dictElems = Map.elems
+> dictEmpty = Map.empty
+
+> dictLookup :: Ord k => k -> Dict k v -> Maybe v
+> dictLookup = Map.lookup
+
+Contexts containing names and type information A context is just a map
+from a to b, but we'll keep it abstract in case we need or want
+something better later
+
+> type Ctxt a = Dict Id a
+
+> addEntry :: Ctxt a -> Id -> a -> Ctxt a
+> addEntry ctxt k v = dictInsert k v ctxt
+
+> ctxtLookup :: Ctxt a -> Id -> Maybe a
+> ctxtLookup ctxt k = dictLookup k ctxt

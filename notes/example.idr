@@ -5,6 +5,10 @@ plus : Nat -> Nat -> Nat {
   plus (S k) y = S (plus k y);
 }
 
+testLam : Nat -> Nat {
+   testLam = \x . plus x (S (S x));
+}
+
 data List A = Nil | Cons A (List A);
 
 data Vect : (A:TYPE)->(n:Nat)->TYPE where

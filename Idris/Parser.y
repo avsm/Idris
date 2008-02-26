@@ -19,9 +19,15 @@ import Idris.Lexer
 
 %token 
       name            { TokenName $$ }
+      string          { TokenString $$ }
+      int             { TokenInt $$ }
+      float           { TokenFloat $$ }
+      char            { TokenChar $$ }
+      bool            { TokenBool $$ }
       ':'             { TokenColon }
       ';'             { TokenSemi }
       '|'             { TokenBar }
+      '\\'            { TokenLambda }
       '('             { TokenOB }
       ')'             { TokenCB }
       '{'             { TokenOCB }
@@ -33,6 +39,7 @@ import Idris.Lexer
       '='             { TokenEquals }
       '<'             { TokenLT }
       '>'             { TokenGT }
+      '.'             { TokenDot }
       eq              { TokenEQ }
       ge              { TokenGE }
       le              { TokenLE }
@@ -46,8 +53,10 @@ import Idris.Lexer
       where           { TokenWhere }
 
 %left APP
-%left '('
+%left '(' '{'
+%left '\\'
 %right arrow
+%right IMP
 
 %%
 
@@ -69,35 +78,52 @@ Datatype : data Name DType Where Constructors ';'
 Name :: { Id }
 Name : name { $1 }
 
-Term :: { ViewTerm }
+Term :: { RawTerm }
 Term : NoAppTerm { $1 }
-     | Term NoAppTerm %prec APP { App $1 $2 }
+     | Term NoAppTerm %prec APP { RApp Ex $1 $2 }
+     | Term '{' NoAppTerm '}' %prec APP { RApp Im $1 $3 }
+     | '\\' Name MaybeType '.' NoAppTerm
+                { RBind $2 (Lam $3) $5 }
 
-NoAppTerm :: { ViewTerm }
-NoAppTerm : Name { Name Unknown (name (show $1)) }
+MaybeType :: { RawTerm }
+MaybeType : { RPlaceholder}
+          | ':' NoAppTerm { $2 }
+
+NoAppTerm :: { RawTerm }
+NoAppTerm : Name { RVar $1 }
           | '(' Term ')' { $2 }
-          | NoAppTerm arrow NoAppTerm { Forall (name "X") $1 $3 }
+          | NoAppTerm arrow NoAppTerm { RBind (UN "X")
+                                        (Pi Ex $1) $3 }
           | '(' Name ':' Term ')' arrow NoAppTerm 
-                { Forall (name (show $2)) $4 $7 }
-          | type { Star }
+                { RBind $2 (Pi Ex $4) $7 }
+          | '{' Name ':' Term '}' arrow NoAppTerm %prec IMP
+                { RBind $2 (Pi Im $4) $7 }
+          | Constant { RConst $1 }
+
+Constant :: { Constant }
+Constant : type { TYPE }
+         | int { Num $1 }
+         | string { Str $1 }
+         | bool { Bo $1 }
+         | float { Fl $1 }
 
 -- Whitespace separated term sequences; must be NoAppTerms since obviously
 -- application is space separated...
 
-Terms :: { [ViewTerm] }
-Terms : NoAppTerm { [$1] }
+Terms :: { [RawTerm] }
+Terms : { [] }
       | NoAppTerm Terms { $1:$2 }
 
-Clauses :: { [(Id, PClause)] }
+Clauses :: { [(Id, RawClause)] }
 Clauses : Clause ';' { [$1] }
         | Clause ';' Clauses { $1:$3 }
 
-Clause :: { (Id, PClause) }
-Clause : Name Terms '=' Term { ($1, PClause $2 $4) }
+Clause :: { (Id, RawClause) }
+Clause : Name Terms '=' Term { ($1, RawClause $2 $4) }
 
-DType :: { ViewTerm }
+DType :: { RawTerm }
 DType : ':' Term { $2 }
-      | { Star }
+      | { RConst TYPE }
       | VarList { mkTyParams $1 }
 
 VarList :: { [Id] }
@@ -115,33 +141,33 @@ Constructors : { [] } -- None
 Constructor :: { ConParse }
 Constructor : Name CType { Full $1 $2 }
             | Name Terms { Simple $1 $2 }
-            | Name { Simple $1 [] }
+--            | Name { Simple $1 [] }
 
-CType :: { ViewTerm }
+CType :: { RawTerm }
 CType : ':' Term { $2 }
 
 {
 
-data ConParse = Full Id ViewTerm
-              | Simple Id [ViewTerm]
+data ConParse = Full Id RawTerm
+              | Simple Id [RawTerm]
 
 parse :: String -> FilePath -> Result [Decl]
 parse s fn = mkparse s fn 1
 
-mkCon :: ViewTerm -> ConParse -> (Id,ViewTerm)
+mkCon :: RawTerm -> ConParse -> (Id,RawTerm)
 mkCon _ (Full n t) = (n,t)
 mkCon ty (Simple n args) = (n, mkConTy args ty)
    where mkConTy [] ty = ty
-         mkConTy (a:as) ty = Forall (name "X") a (mkConTy as ty)
+         mkConTy (a:as) ty = RBind (UN "X") (Pi Ex a) (mkConTy as ty)
 
-mkTyApp :: Id -> ViewTerm -> ViewTerm
-mkTyApp n ty = apply (Name Unknown (name (show n))) (getTyArgs ty)
-   where getTyArgs (Forall n _ t) = (Name Unknown n):(getTyArgs t)
+mkTyApp :: Id -> RawTerm -> RawTerm
+mkTyApp n ty = mkApp (RVar n) (getTyArgs ty)
+   where getTyArgs (RBind n _ t) = (RVar n):(getTyArgs t)
          getTyArgs x = []
 
-mkTyParams :: [Id] -> ViewTerm
-mkTyParams [] = Star
-mkTyParams (x:xs) = Forall (name (show x)) Star (mkTyParams xs)
+mkTyParams :: [Id] -> RawTerm
+mkTyParams [] = RConst TYPE
+mkTyParams (x:xs) = RBind x (Pi Ex (RConst TYPE)) (mkTyParams xs)
 
 }
 
