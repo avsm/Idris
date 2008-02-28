@@ -46,7 +46,7 @@
 >       = TokenName Id
 >       | TokenString String
 >       | TokenInt Int
->       | TokenFloat Float
+>       | TokenFloat Double
 >       | TokenChar Char
 >       | TokenBool Bool
 >       | TokenIntType

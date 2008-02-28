@@ -1,4 +1,5 @@
-> module Idris.Context(Ctxt, Id(..), addEntry, ctxtLookup) where
+> module Idris.Context(Ctxt, Id(..), addEntry, ctxtLookup,
+>                      ctxtAlist, newCtxt) where
 
 > import List
 > import qualified Data.Map as Map
@@ -31,3 +32,8 @@ something better later
 
 > ctxtLookup :: Ctxt a -> Id -> Maybe a
 > ctxtLookup ctxt k = dictLookup k ctxt
+
+> ctxtAlist :: Ctxt a -> [(Id,a)]
+> ctxtAlist = Map.assocs
+
+> newCtxt = dictEmpty
