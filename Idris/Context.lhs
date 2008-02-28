@@ -25,15 +25,15 @@ Contexts containing names and type information A context is just a map
 from a to b, but we'll keep it abstract in case we need or want
 something better later
 
-> type Ctxt a = Dict Id a
+> type Ctxt a = [(Id, a)]
 
 > addEntry :: Ctxt a -> Id -> a -> Ctxt a
-> addEntry ctxt k v = dictInsert k v ctxt
+> addEntry ctxt k v = (k,v):ctxt
 
 > ctxtLookup :: Ctxt a -> Id -> Maybe a
-> ctxtLookup ctxt k = dictLookup k ctxt
+> ctxtLookup ctxt k = lookup k ctxt
 
 > ctxtAlist :: Ctxt a -> [(Id,a)]
-> ctxtAlist = Map.assocs
+> ctxtAlist = id
 
-> newCtxt = dictEmpty
+> newCtxt = []

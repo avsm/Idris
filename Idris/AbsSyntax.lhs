@@ -30,7 +30,7 @@
 A program is a collection of datatype and function definitions.
 We store everything directly as a 'ViewTerm' from Ivor.
 
-> data Decl = DataDecl Datatype | Fun Function
+> data Decl = DataDecl Datatype | Fun Function | TermDef Id RawTerm
 >    deriving Show
 
 > data Datatype = Datatype {
@@ -50,6 +50,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 > getId :: Decl -> Id
 > getId (Fun f) = funId f
 > getId (DataDecl d) = tyId d
+> getId (TermDef n tm) = n
 
 Raw terms, as written by the programmer with no implicit arguments added.
 
@@ -99,7 +100,7 @@ implicit arguments each function has.
 
 > data IvorFun = IvorFun {
 >       ivorFName :: Name,
->       ivorFType :: ViewTerm,
+>       ivorFType :: Maybe ViewTerm,
 >       implicitArgs :: Int,
 >       ivorDef :: IvorDef
 >     }
@@ -164,16 +165,36 @@ ready for typechecking
 > toIvorName i = name (show i)
 
 > toIvor :: RawTerm -> ViewTerm
-> toIvor (RVar n) = Name Unknown (toIvorName n)
-> toIvor (RApp _ f a) = App (toIvor f) (toIvor a)
-> toIvor (RBind n (Pi _ ty) sc) = Forall (toIvorName n) (toIvor ty) (toIvor sc)
-> toIvor (RBind n (Lam ty) sc) = Lambda (toIvorName n) (toIvor ty) (toIvor sc)
-> toIvor (RBind n (RLet val ty) sc) 
->           = Let (toIvorName n) (toIvor ty) (toIvor val) (toIvor sc)
-> toIvor (RConst c) = toIvorConst c
-> toIvor RPlaceholder = Placeholder
-> toIvor (RMetavar n) = Metavar (toIvorName n)
-> toIvor (RInfix op l r) = error "Infix not implemented"
+> toIvor tm = evalState (toIvorS tm) 0
+
+> toIvorS :: RawTerm -> State Int ViewTerm
+> toIvorS (RVar n) = return $ Name Unknown (toIvorName n)
+> toIvorS (RApp _ f a) = do f' <- toIvorS f
+>                           a' <- toIvorS a
+>                           return (App f' a')
+> toIvorS (RBind (MN "X" 0) (Pi _ ty) sc) 
+>            = do ty' <- toIvorS ty
+>                 sc' <- toIvorS sc
+>                 i <- get
+>                 put (i+1)
+>                 return $ Forall (toIvorName (MN "X" i)) ty' sc'
+> toIvorS (RBind n (Pi _ ty) sc) 
+>            = do ty' <- toIvorS ty
+>                 sc' <- toIvorS sc
+>                 return $ Forall (toIvorName n) ty' sc'
+> toIvorS (RBind n (Lam ty) sc) 
+>            = do ty' <- toIvorS ty
+>                 sc' <- toIvorS sc
+>                 return $ Lambda (toIvorName n) ty' sc'
+> toIvorS (RBind n (RLet val ty) sc) 
+>            = do ty' <- toIvorS ty
+>                 val' <- toIvorS val
+>                 sc' <- toIvorS sc
+>                 return $ Let (toIvorName n) ty' val' sc'
+> toIvorS (RConst c) = return $ toIvorConst c
+> toIvorS RPlaceholder = return Placeholder
+> toIvorS (RMetavar n) = return $ Metavar (toIvorName n)
+> toIvorS (RInfix op l r) = fail "Infix not implemented"
 
 > toIvorConst (Num x) = Constant x
 > toIvorConst (Str str) = Constant str

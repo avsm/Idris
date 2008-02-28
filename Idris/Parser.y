@@ -13,6 +13,7 @@ import Idris.Lexer
 }
 
 %name mkparse Program
+%name mkparseTerm Term
 %tokentype { Token }
 %monad { P } { thenP } { returnP }
 %lexer { lexer } { TokenEOF }
@@ -65,11 +66,12 @@ Program: Declaration { [$1] }
        | Declaration Program { $1:$2 }
 
 Declaration :: { Decl }
-Declaration: Function { Fun $1 }
+Declaration: Function { $1 }
            | Datatype { DataDecl $1 }
 
-Function :: { Function }
-Function : Name ':' Term '{' Clauses '}' { Function $1 $3 $5 }
+Function :: { Decl }
+Function : Name ':' Term '{' Clauses '}' { Fun (Function $1 $3 $5) }
+         | Name '=' Term ';' { TermDef $1 $3 }
 
 Datatype :: { Datatype }
 Datatype : data Name DType Where Constructors ';' 
@@ -92,11 +94,11 @@ MaybeType : { RPlaceholder}
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name { RVar $1 }
           | '(' Term ')' { $2 }
-          | NoAppTerm arrow NoAppTerm { RBind (UN "X")
+          | NoAppTerm arrow NoAppTerm { RBind (MN "X" 0)
                                         (Pi Ex $1) $3 }
           | '(' Name ':' Term ')' arrow NoAppTerm 
                 { RBind $2 (Pi Ex $4) $7 }
-          | '{' Name ':' Term '}' arrow NoAppTerm %prec IMP
+          | '{' Name ':' Term '}' arrow NoAppTerm
                 { RBind $2 (Pi Im $4) $7 }
           | Constant { RConst $1 }
 
@@ -153,6 +155,9 @@ data ConParse = Full Id RawTerm
 
 parse :: String -> FilePath -> Result [Decl]
 parse s fn = mkparse s fn 1
+
+parseTerm :: String -> Result RawTerm
+parseTerm s = mkparseTerm s "(input)" 0
 
 mkCon :: RawTerm -> ConParse -> (Id,RawTerm)
 mkCon _ (Full n t) = (n,t)
