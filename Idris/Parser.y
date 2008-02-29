@@ -163,7 +163,7 @@ mkCon :: RawTerm -> ConParse -> (Id,RawTerm)
 mkCon _ (Full n t) = (n,t)
 mkCon ty (Simple n args) = (n, mkConTy args ty)
    where mkConTy [] ty = ty
-         mkConTy (a:as) ty = RBind (UN "X") (Pi Ex a) (mkConTy as ty)
+         mkConTy (a:as) ty = RBind (MN "X" 0) (Pi Ex a) (mkConTy as ty)
 
 mkTyApp :: Id -> RawTerm -> RawTerm
 mkTyApp n ty = mkApp (RVar n) (getTyArgs ty)
