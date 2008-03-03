@@ -115,6 +115,7 @@
 > lexer cont ('\\':cs) = cont TokenLambda cs
 > lexer cont ('|':cs) = cont TokenBar cs
 > lexer cont ('.':cs) = cont TokenDot cs
+> lexer cont ('#':cs) = cont TokenType cs
 > lexer cont ('%':cs) = lexSpecial cont cs
 > lexer cont (c:cs) = lexError c cs
  
@@ -172,7 +173,6 @@
 >       ("String",rest) -> cont TokenStringType rest
 >       ("data",rest) -> cont TokenDataType rest
 >       ("where",rest) -> cont TokenWhere rest
->       ("TYPE",rest) -> cont TokenType rest
 > -- values
 > -- expressions
 >       (var,rest)   -> cont (mkname var) rest

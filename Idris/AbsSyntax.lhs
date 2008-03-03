@@ -33,6 +33,28 @@ We store everything directly as a 'ViewTerm' from Ivor.
 > data Decl = DataDecl Datatype | Fun Function | TermDef Id RawTerm
 >    deriving Show
 
+Function types and clauses are given separately, so we'll parse them
+separately then collect them together into a list of Decls
+
+> data ParseDecl = RealDecl Decl
+>                | FunType Id RawTerm
+>                | FunClause Id [RawTerm] RawTerm
+
+> collectDecls :: [ParseDecl] -> Result [Decl]
+> collectDecls pds = cds [] pds
+>   where cds rds ((RealDecl d):ds) = cds (d:rds) ds
+>         cds rds ((FunType n t):ds) = getClauses rds n t [] ds
+>         cds rds ((FunClause n [] ret):ds) = cds ((TermDef n ret):rds) ds
+>         cds rds ((FunClause n _ ret):ds) 
+>                 = fail $ "No type declaration for " ++ show n
+>         cds rds [] = return (reverse rds)
+
+>         getClauses rds n t clauses ((FunClause n' args ret):ds)
+>             | n == n'
+>                 = getClauses rds n t ((n, RawClause args ret):clauses) ds
+>         getClauses rds n t clauses ds =
+>             cds ((Fun (Function n t (reverse clauses))):rds) ds
+
 > data Datatype = Datatype {
 >                           tyId :: Id,
 >                           tyType :: RawTerm,
@@ -55,7 +77,8 @@ We store everything directly as a 'ViewTerm' from Ivor.
 Raw terms, as written by the programmer with no implicit arguments added.
 
 > data RawTerm = RVar Id
->              | RApp Plicit RawTerm RawTerm
+>              | RApp RawTerm RawTerm
+>              | RAppImp Id RawTerm RawTerm -- Name the argument we make explicit
 >              | RBind Id RBinder RawTerm
 >              | RConst Constant
 >              | RPlaceholder
@@ -92,7 +115,7 @@ Pattern clauses
 
 > mkApp :: RawTerm -> [RawTerm] -> RawTerm
 > mkApp f [] = f
-> mkApp f (a:as) = mkApp (RApp Ex f a) as
+> mkApp f (a:as) = mkApp (RApp f a) as
 
 For each raw definition, we'll translate it into something Ivor will understand
 with all the placeholders added. For this we'll need to know how many
@@ -132,7 +155,10 @@ type has.
 >               | otherwise = do (nms, tot) <- get
 >                                if (i `elem` nms) then return ()
 >                                   else put (i:nms, tot+1)
->           addImplB env (RApp _ f a)
+>           addImplB env (RApp f a)
+>                    = do addImplB env f
+>                         addImplB env a
+>           addImplB env (RAppImp _ f a)
 >                    = do addImplB env f
 >                         addImplB env a
 >           addImplB env (RBind n (Pi Im ty) sc)
@@ -169,9 +195,9 @@ ready for typechecking
 
 > toIvorS :: RawTerm -> State Int ViewTerm
 > toIvorS (RVar n) = return $ Name Unknown (toIvorName n)
-> toIvorS (RApp _ f a) = do f' <- toIvorS f
->                           a' <- toIvorS a
->                           return (App f' a')
+> toIvorS (RApp f a) = do f' <- toIvorS f
+>                         a' <- toIvorS a
+>                         return (App f' a')
 > toIvorS (RBind (MN "X" 0) (Pi _ ty) sc) 
 >            = do ty' <- toIvorS ty
 >                 sc' <- toIvorS sc

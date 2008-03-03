@@ -61,17 +61,19 @@ import Idris.Lexer
 
 %%
 
-Program :: { [Decl] }
+Program :: { [ParseDecl] }
 Program: Declaration { [$1] }
        | Declaration Program { $1:$2 }
 
-Declaration :: { Decl }
+Declaration :: { ParseDecl }
 Declaration: Function { $1 }
-           | Datatype { DataDecl $1 }
+           | Datatype { RealDecl (DataDecl $1) }
 
-Function :: { Decl }
-Function : Name ':' Term '{' Clauses '}' { Fun (Function $1 $3 $5) }
-         | Name '=' Term ';' { TermDef $1 $3 }
+Function :: { ParseDecl }
+Function : Name ':' Term ';' { FunType $1 $3 }
+         | Name Terms '=' Term ';' { FunClause $1 $2 $4 }
+
+--         | Name '=' Term ';' { RealDecl (TermDef $1 $3) }
 
 Datatype :: { Datatype }
 Datatype : data Name DType Where Constructors ';' 
@@ -82,10 +84,14 @@ Name : name { $1 }
 
 Term :: { RawTerm }
 Term : NoAppTerm { $1 }
-     | Term NoAppTerm %prec APP { RApp Ex $1 $2 }
-     | Term '{' NoAppTerm '}' %prec APP { RApp Im $1 $3 }
+     | Term NoAppTerm %prec APP { RApp $1 $2 }
+     | Term '{' ImplicitTerm '}' %prec APP { RAppImp (fst $3) $1 (snd $3) }
      | '\\' Name MaybeType '.' NoAppTerm
                 { RBind $2 (Lam $3) $5 }
+
+ImplicitTerm :: { (Id, RawTerm) }
+ImplicitTerm : Name { ($1, RVar $1) }
+             | Name '=' Term { ($1, $3) }
 
 MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}
@@ -154,7 +160,8 @@ data ConParse = Full Id RawTerm
               | Simple Id [RawTerm]
 
 parse :: String -> FilePath -> Result [Decl]
-parse s fn = mkparse s fn 1
+parse s fn = do ds <- mkparse s fn 1
+                collectDecls ds
 
 parseTerm :: String -> Result RawTerm
 parseTerm s = mkparseTerm s "(input)" 0

@@ -12,9 +12,11 @@ into an ivor definition, with all the necessary placeholders added.
 > makeIvorFun ::  Ctxt IvorFun -> Function -> IvorFun
 > makeIvorFun ctxt (Function n ty clauses) 
 >     = let (rty, imp) = addImpl ctxt ty
->           extCtxt = addEntry ctxt n (IvorFun undefined undefined imp undefined)
+>           ity = makeIvorTerm ctxt rty
+>           extCtxt = addEntry ctxt n (IvorFun undefined (Just ity) 
+>                                              imp undefined)
 >           pclauses = map (mkPat extCtxt imp) clauses in
->       IvorFun (toIvorName n) (Just (makeIvorTerm ctxt rty)) imp 
+>       IvorFun (toIvorName n) (Just ity) imp 
 >                   (PattDef (Patterns pclauses))
 >   where mkPat ectx imp (id,(RawClause pats rhs)) 
 >                 = let vpats = map (makeIvorTerm ectx) pats
@@ -29,25 +31,37 @@ Convert a raw term to an ivor term, adding placeholders
 >                            toIvor expraw
 
 > addPlaceholders :: Ctxt IvorFun -> RawTerm -> RawTerm
-> addPlaceholders ctxt tm = ap 0 tm
+> addPlaceholders ctxt tm = ap [] tm
 >     -- Count the number of args we've made explicit in an application
 >     -- and don't add placeholders for them. Reset the counter if we get
 >     -- out of an application
 >     where ap ex (RVar n)
 >               = case ctxtLookup ctxt n of
->                   Just (IvorFun _ _ imp _) -> 
->                     mkApp (RVar n) (take (imp-ex) (repeat RPlaceholder))
+>                   Just (IvorFun _ (Just ty) imp _) -> 
+>                     mkApp (RVar n) 
+>                               (mkImplicitArgs 
+>                                (map fst (fst (getBinders ty []))) imp ex)
 >                   _ -> RVar n
->           ap ex (RApp Im f a) = (RApp Im (ap (ex+1) f)
->                                               (ap 0 a))
->           ap ex (RApp Ex f a) = (RApp Ex (ap ex f) (ap 0 a))
+>           ap ex (RAppImp n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
+>           ap ex (RApp f a) = (RApp (ap ex f) (ap [] a))
 >           ap ex (RBind n (Pi p ty) sc)
->               = RBind n (Pi p (ap 0 ty)) (ap 0 sc)
+>               = RBind n (Pi p (ap [] ty)) (ap [] sc)
 >           ap ex (RBind n (Lam ty) sc)
->               = RBind n (Lam (ap 0 ty)) (ap 0 sc)
+>               = RBind n (Lam (ap [] ty)) (ap [] sc)
 >           ap ex (RBind n (RLet val ty) sc)
->               = RBind n (RLet (ap 0 val) (ap 0 ty)) (ap 0 sc)
+>               = RBind n (RLet (ap [] val) (ap [] ty)) (ap [] sc)
 >           ap ex r = r
+
+Go through the arguments; if an implicit argument has the same name as one
+in our list of explicit names to add, add it.
+
+> mkImplicitArgs :: [Name] -> Int -> [(Name, RawTerm)] -> [RawTerm]
+> mkImplicitArgs _ 0 _ = [] -- No more implicit
+> mkImplicitArgs [] i ns = [] -- No more args
+> mkImplicitArgs (n:ns) i imps
+>      = case lookup n imps of
+>          Nothing -> RPlaceholder:(mkImplicitArgs ns (i-1) imps)
+>          Just v -> v:(mkImplicitArgs ns (i-1) imps)
 
 > makeIvorFuns :: [Decl] -> Ctxt IvorFun
 > makeIvorFuns defs = mif newCtxt defs
