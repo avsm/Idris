@@ -73,7 +73,7 @@ Declaration: Function { $1 }
 
 Function :: { ParseDecl }
 Function : Name ':' Term ';' { FunType $1 $3 }
-         | Name Terms '=' Term ';' { FunClause $1 $2 $4 }
+         | Term '=' Term ';' { FunClause $1 $3 }
 
 --         | Name '=' Term ';' { RealDecl (TermDef $1 $3) }
 
@@ -128,13 +128,6 @@ Constant : type { TYPE }
 Terms :: { [RawTerm] }
 Terms : { [] }
       | NoAppTerm Terms { $1:$2 }
-
-Clauses :: { [(Id, RawClause)] }
-Clauses : Clause ';' { [$1] }
-        | Clause ';' Clauses { $1:$3 }
-
-Clause :: { (Id, RawClause) }
-Clause : Name Terms '=' Term { ($1, RawClause $2 $4) }
 
 DType :: { RawTerm }
 DType : ':' Term { $2 }

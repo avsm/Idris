@@ -18,11 +18,13 @@ into an ivor definition, with all the necessary placeholders added.
 >           pclauses = map (mkPat extCtxt imp) clauses in
 >       IvorFun (toIvorName n) (Just ity) imp 
 >                   (PattDef (Patterns pclauses))
->   where mkPat ectx imp (id,(RawClause pats rhs)) 
->                 = let vpats = map (makeIvorTerm ectx) pats
->                       vrhs = makeIvorTerm ectx rhs in
->                   PClause ((take imp (repeat Placeholder))++vpats)
->                           vrhs
+>   where mkPat ectx imp (id,(RawClause lhs rhs)) 
+>               = let lhs' = addPlaceholders ectx lhs in
+>                     case (getFn lhs', getRawArgs lhs') of
+>                          (fid, pats) ->
+>                            let vpats = map toIvor pats
+>                                vrhs = makeIvorTerm ectx rhs in
+>                                PClause vpats vrhs
 
 Convert a raw term to an ivor term, adding placeholders
 
@@ -120,7 +122,7 @@ Add an entry for the type id and for each of the constructors.
 > addIvorDef :: Monad m =>
 >                Context -> (Id, IvorFun) -> m Context
 > addIvorDef ctxt (n,IvorFun name tyin _ def) 
->     = case def of
+>     = trace (show (tyin,def)) $ case def of
 >         PattDef ps -> addPatternDef ctxt name (unjust tyin) ps [Partial,GenRec] -- just allow general recursion for now
 >         SimpleDef tm -> case tyin of
 >                           Nothing -> addDef ctxt name tm

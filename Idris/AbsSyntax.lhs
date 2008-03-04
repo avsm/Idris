@@ -38,20 +38,22 @@ separately then collect them together into a list of Decls
 
 > data ParseDecl = RealDecl Decl
 >                | FunType Id RawTerm
->                | FunClause Id [RawTerm] RawTerm
+>                | FunClause RawTerm RawTerm
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
 > collectDecls pds = cds [] pds
 >   where cds rds ((RealDecl d):ds) = cds (d:rds) ds
 >         cds rds ((FunType n t):ds) = getClauses rds n t [] ds
->         cds rds ((FunClause n [] ret):ds) = cds ((TermDef n ret):rds) ds
->         cds rds ((FunClause n _ ret):ds) 
->                 = fail $ "No type declaration for " ++ show n
+>         cds rds ((FunClause (RVar n) ret):ds) = cds ((TermDef n ret):rds) ds
+>         cds rds ((FunClause app ret):ds) 
+>             = case getFnName app of
+>                 Just n -> fail $ "No type declaration for " ++ show n
+>                 _ -> fail $ "Invalid pattern clause"
 >         cds rds [] = return (reverse rds)
 
->         getClauses rds n t clauses ((FunClause n' args ret):ds)
->             | n == n'
->                 = getClauses rds n t ((n, RawClause args ret):clauses) ds
+>         getClauses rds n t clauses ((FunClause pat ret):ds)
+>             | (RVar n) == getFn pat
+>                 = getClauses rds n t ((n, RawClause pat ret):clauses) ds
 >         getClauses rds n t clauses ds =
 >             cds ((Fun (Function n t (reverse clauses))):rds) ds
 
@@ -85,7 +87,22 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RMetavar Id
 >              | RInfix Op RawTerm RawTerm
 >              | RRefl
->    deriving Show
+>    deriving (Show, Eq)
+
+> getFn :: RawTerm -> RawTerm
+> getFn (RApp f a) = getFn f
+> getFn (RAppImp _ f a) = getFn f
+> getFn f = f
+
+> getFnName f = case getFn f of
+>                 (RVar n) -> Just n
+>                 _ -> Nothing
+
+> getRawArgs :: RawTerm -> [RawTerm]
+> getRawArgs x = args [] x
+>    where args acc (RApp f a) = args (a:acc) f
+>          args acc (RAppImp _ f a) = args (a:acc) f
+>          args acc f = acc
 
 Binders; Pi (either implicit or explicitly written), Lambda and Let with
 value.
@@ -93,24 +110,24 @@ value.
 > data RBinder = Pi Plicit RawTerm
 >              | Lam RawTerm
 >              | RLet RawTerm RawTerm
->    deriving Show
+>    deriving (Show, Eq)
 
 > data Plicit = Im | Ex
->    deriving Show
+>    deriving (Show, Eq)
 
 > data Constant = Num Int
 >               | Str String
 >               | Bo Bool
 >               | Fl Double
 >               | TYPE
->    deriving Show
+>    deriving (Show, Eq)
 
 > data Op = Plus | Minus | Times | Divide | JMEq
->    deriving Show
+>    deriving (Show, Eq)
 
 Pattern clauses
 
-> data RawClause = RawClause { patts :: [RawTerm],
+> data RawClause = RawClause { lhs :: RawTerm,
 >                              rhs :: RawTerm }
 >    deriving Show
 
