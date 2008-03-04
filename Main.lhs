@@ -1,6 +1,8 @@
 > module Main where
 
 > import Ivor.TT
+> import Ivor.Shell
+
 > import System
 > import IO
 
@@ -16,7 +18,8 @@
 >           case ptree of
 >             Success ds -> do
 >                  let defs = makeIvorFuns ds
->                  ctxt <- addIvor defs emptyContext
+>                  ctxt <- addEquality emptyContext (name "Eq") (name "refl")
+>                  ctxt <- addIvor defs ctxt
 >                  repl defs ctxt
 >             Failure err f ln -> putStrLn $ f ++ ":" ++ show ln ++ ":" ++ err
 

@@ -52,12 +52,14 @@ import Idris.Lexer
       type            { TokenType }
       data            { TokenDataType }
       where           { TokenWhere }
+      refl            { TokenRefl }
 
 %left APP
 %left '(' '{'
 %left '\\'
 %right arrow
 %right IMP
+%left JMEQ
 
 %%
 
@@ -88,10 +90,15 @@ Term : NoAppTerm { $1 }
      | Term '{' ImplicitTerm '}' %prec APP { RAppImp (fst $3) $1 (snd $3) }
      | '\\' Name MaybeType '.' NoAppTerm
                 { RBind $2 (Lam $3) $5 }
+     | InfixTerm { $1 }
+     | refl { RRefl }
 
 ImplicitTerm :: { (Id, RawTerm) }
 ImplicitTerm : Name { ($1, RVar $1) }
              | Name '=' Term { ($1, $3) }
+
+InfixTerm :: { RawTerm }
+InfixTerm : NoAppTerm eq NoAppTerm %prec JMEQ { RInfix JMEq $1 $3 }
 
 MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}

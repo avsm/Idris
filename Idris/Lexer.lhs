@@ -56,6 +56,7 @@
 >       | TokenStringType
 >       | TokenDataType
 >       | TokenWhere
+>       | TokenRefl
 >       | TokenType
 >       | TokenOB
 >       | TokenCB
@@ -173,6 +174,7 @@
 >       ("String",rest) -> cont TokenStringType rest
 >       ("data",rest) -> cont TokenDataType rest
 >       ("where",rest) -> cont TokenWhere rest
+>       ("refl",rest) -> cont TokenRefl rest
 > -- values
 > -- expressions
 >       (var,rest)   -> cont (mkname var) rest

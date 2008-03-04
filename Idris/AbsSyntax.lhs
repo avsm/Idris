@@ -84,6 +84,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RPlaceholder
 >              | RMetavar Id
 >              | RInfix Op RawTerm RawTerm
+>              | RRefl
 >    deriving Show
 
 Binders; Pi (either implicit or explicitly written), Lambda and Let with
@@ -220,7 +221,12 @@ ready for typechecking
 > toIvorS (RConst c) = return $ toIvorConst c
 > toIvorS RPlaceholder = return Placeholder
 > toIvorS (RMetavar n) = return $ Metavar (toIvorName n)
+> toIvorS (RInfix JMEq l r) = do l' <- toIvorS l
+>                                r' <- toIvorS r
+>                                return $ apply (Name Unknown (name "Eq")) 
+>                                           [Placeholder, Placeholder,l',r']
 > toIvorS (RInfix op l r) = fail "Infix not implemented"
+> toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
 
 > toIvorConst (Num x) = Constant x
 > toIvorConst (Str str) = Constant str
