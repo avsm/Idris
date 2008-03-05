@@ -5,7 +5,7 @@ module Idris.Parser where
 
 import Char
 import Ivor.TT
-
+import System.IO.Unsafe
 import Idris.AbsSyntax
 import Idris.Lexer
 
@@ -53,6 +53,7 @@ import Idris.Lexer
       data            { TokenDataType }
       where           { TokenWhere }
       refl            { TokenRefl }
+      include         { TokenInclude }
 
 %left APP
 %left '(' '{'
@@ -66,6 +67,13 @@ import Idris.Lexer
 Program :: { [ParseDecl] }
 Program: Declaration { [$1] }
        | Declaration Program { $1:$2 }
+       | include string ';' Program {%
+	     let rest = $4 in
+	     let pt = unsafePerformIO (readFile $2) in
+		case (mkparse pt $2 0) of
+		   Success x -> returnP (x ++ rest)
+		   Failure err file ln -> failP err
+	  }
 
 Declaration :: { ParseDecl }
 Declaration: Function { $1 }

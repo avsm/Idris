@@ -79,6 +79,7 @@
 >       | TokenBar
 >       | TokenDot
 >       | TokenLambda
+>       | TokenInclude
 >       | TokenEOF
 >  deriving (Show, Eq)
 > 
@@ -175,6 +176,7 @@
 >       ("data",rest) -> cont TokenDataType rest
 >       ("where",rest) -> cont TokenWhere rest
 >       ("refl",rest) -> cont TokenRefl rest
+>       ("include",rest) -> cont TokenInclude rest
 > -- values
 > -- expressions
 >       (var,rest)   -> cont (mkname var) rest
