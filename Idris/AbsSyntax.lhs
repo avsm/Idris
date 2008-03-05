@@ -30,7 +30,8 @@
 A program is a collection of datatype and function definitions.
 We store everything directly as a 'ViewTerm' from Ivor.
 
-> data Decl = DataDecl Datatype | Fun Function | TermDef Id RawTerm
+> data Decl = DataDecl Datatype | Fwd Id RawTerm
+>           | Fun Function | TermDef Id RawTerm
 >    deriving Show
 
 Function types and clauses are given separately, so we'll parse them
@@ -41,21 +42,26 @@ separately then collect them together into a list of Decls
 >                | FunClause RawTerm RawTerm
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
-> collectDecls pds = cds [] pds
->   where cds rds ((RealDecl d):ds) = cds (d:rds) ds
->         cds rds ((FunType n t):ds) = getClauses rds n t [] ds
->         cds rds ((FunClause (RVar n) ret):ds) = cds ((TermDef n ret):rds) ds
->         cds rds ((FunClause app ret):ds) 
+> collectDecls pds = cds [] [] pds
+>   where cds rds fwds ((RealDecl d):ds) = cds (d:rds) fwds ds
+>         cds rds fwds ((FunType n t):ds) = getClauses rds fwds n t [] ds
+>         cds rds fwds ((FunClause (RVar n) ret):ds) 
+>                 = cds ((TermDef n ret):rds) fwds ds
+>         cds rds fwds ds@((FunClause app ret):_) 
 >             = case getFnName app of
->                 Just n -> fail $ "No type declaration for " ++ show n
+>                 Just n -> case (lookup n fwds) of
+>                             Nothing ->
+>                                  fail $ "No type declaration for " ++ show n
+>                             Just ty -> getClauses rds fwds n ty [] ds
 >                 _ -> fail $ "Invalid pattern clause"
->         cds rds [] = return (reverse rds)
+>         cds rds fwds [] = return (reverse rds)
 
->         getClauses rds n t clauses ((FunClause pat ret):ds)
+>         getClauses rds fwds n t clauses ((FunClause pat ret):ds)
 >             | (RVar n) == getFn pat
->                 = getClauses rds n t ((n, RawClause pat ret):clauses) ds
->         getClauses rds n t clauses ds =
->             cds ((Fun (Function n t (reverse clauses))):rds) ds
+>                 = getClauses rds fwds n t ((n, RawClause pat ret):clauses) ds
+>         getClauses rds fwds n t [] ds = cds ((Fwd n t):rds) ((n,t):fwds) ds
+>         getClauses rds fwds n t clauses ds =
+>             cds ((Fun (Function n t (reverse clauses))):rds) fwds ds
 
 > data Datatype = Datatype {
 >                           tyId :: Id,
@@ -154,6 +160,7 @@ Name definitions Ivor-side.
 >              | IDataCon -- Data constructor
 >              | SimpleDef ViewTerm -- simple function definition
 >              | DataDef Inductive -- data type definition
+>              | Later -- forward declaration
 >    deriving Show
 
 > type Definitions = Ctxt IvorFun

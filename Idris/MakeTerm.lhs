@@ -72,6 +72,11 @@ in our list of explicit names to add, add it.
 > mif acc [] = acc
 > mif acc ((Fun f):ds) = let fn = makeIvorFun acc f in
 >                            mif (addEntry acc (funId f) fn) ds
+> mif acc ((Fwd n ty):ds) 
+>         = let (rty, imp) = addImpl acc ty
+>               ity = makeIvorTerm acc rty in
+>               mif (addEntry acc n (IvorFun (toIvorName n) (Just ity) 
+>                                             imp Later)) ds
 > mif acc ((DataDecl d):ds) = addDataEntries acc d ds -- will call mif on ds
 > mif acc ((TermDef n tm):ds) 
 >         = let (itmraw, imp) = addImpl acc tm
@@ -128,5 +133,8 @@ Add an entry for the type id and for each of the constructors.
 >                           Nothing -> addDef ctxt name tm
 >                           Just ty -> addTypedDef ctxt name tm ty
 >         DataDef ind -> addData ctxt ind
+>         Later -> case tyin of
+>                    Just ty -> declare ctxt name ty
+>                    Nothing -> fail $ "No type given for forward declared " ++ show n
 >         _ -> return ctxt
 >    where unjust (Just x) = x
