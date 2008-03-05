@@ -44,14 +44,14 @@ mkPartitionR {l} {r} x left right
 
 partAux : (lt:A->A->Bool) -> (pivot:A) -> (val:A) ->
 	  (p:Partition A n) -> (Partition A (S n));
-partAux lt pivot val (mkPartition {l} {r} left right)
+partAux lt pivot val (mkPartition left right)
    = if_then_else (lt val pivot)
           (mkPartition (VCons val left) right)
           (mkPartitionR val left right);
 
 partition : (lt:A->A->Bool)->(pivot:A)->
 	    (xs:Vect A n)->(Partition A n);
-partition {A} lt pivot VNil = mkPartition {A} VNil VNil;
+partition lt pivot VNil = mkPartition VNil VNil;
 partition lt pivot (VCons x xs)
     = partAux lt pivot x (partition lt pivot xs);
 
