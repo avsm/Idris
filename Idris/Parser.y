@@ -45,6 +45,7 @@ import Idris.Lexer
       ge              { TokenGE }
       le              { TokenLE }
       arrow           { TokenArrow }
+      leftarrow       { TokenLeftArrow }
       inttype         { TokenIntType }
       chartype        { TokenCharType }
       floattype       { TokenFloatType }
@@ -53,7 +54,10 @@ import Idris.Lexer
       data            { TokenDataType }
       where           { TokenWhere }
       refl            { TokenRefl }
+      empty           { TokenEmptyType }
+      unit            { TokenUnitType }
       include         { TokenInclude }
+      do              { TokenDo }
 
 %left APP
 %left '(' '{'
@@ -99,7 +103,6 @@ Term : NoAppTerm { $1 }
      | '\\' Name MaybeType '.' NoAppTerm
                 { RBind $2 (Lam $3) $5 }
      | InfixTerm { $1 }
-     | refl { RRefl }
 
 ImplicitTerm :: { (Id, RawTerm) }
 ImplicitTerm : Name { ($1, RVar $1) }
@@ -122,9 +125,27 @@ NoAppTerm : Name { RVar $1 }
           | '{' Name ':' Term '}' arrow NoAppTerm
                 { RBind $2 (Pi Im $4) $7 }
           | Constant { RConst $1 }
+          | refl { RRefl }
+          | empty { RVar (UN "__Empty") }
+          | unit { RVar (UN "__Unit") }
+          | DoBlock { RDo $1 }
+
+DoBlock :: { [Do] }
+DoBlock : do '{' DoBindings '}' { $3 }
+
+DoBindings :: { [Do] }
+DoBindings : DoBind DoBindings { $1:$2}
+           | DoBind { [$1] }
+
+DoBind :: { Do }
+DoBind : Name leftarrow Term ';' { DoBinding $1 $3 }
+       | Term ';' { DoExp $1 }
 
 Constant :: { Constant }
 Constant : type { TYPE }
+         | stringtype { StringType }
+         | inttype { IntType }
+         | floattype { FloatType }
          | int { Num $1 }
          | string { Str $1 }
          | bool { Bo $1 }

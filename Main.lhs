@@ -10,6 +10,8 @@
 > import Idris.AbsSyntax
 > import Idris.MakeTerm
 
+> import RunIO
+
 > main :: IO ()
 > main = do args <- getArgs
 >           let infile = args!!0
@@ -18,7 +20,8 @@
 >           case ptree of
 >             Success ds -> do
 >                  let defs = makeIvorFuns ds
->                  ctxt <- addEquality emptyContext (name "Eq") (name "refl")
+>                  ctxt <- prims emptyContext
+>                  ctxt <- addEquality ctxt (name "Eq") (name "refl")
 >                  ctxt <- addIvor defs ctxt
 >                  repl defs ctxt
 >             Failure err f ln -> putStrLn $ f ++ ":" ++ show ln ++ ":" ++ err
@@ -30,7 +33,20 @@
 >                    case parseTerm inp of
 >                      Success tm -> do let itm = makeIvorTerm raw tm
 >                                       gtm <- check ctxt itm
->                                       putStrLn $ show (eval ctxt gtm)
+>                                       execEval ctxt (gtm, viewType gtm)
 >                      Failure err f ln -> putStrLn err
 >                    repl raw ctxt
 >                
+
+If it is an IO type, execute it, otherwise just eval it.
+
+> execEval :: Context -> (Term, ViewTerm) -> IO ()
+> execEval ctxt (tm, (App (Name _ io) _))
+>          | io == name "IO" = do putStrLn $ show (eval ctxt tm)
+>                                 exec ctxt tm
+> execEval ctxt (tm, _) = putStrLn $ show (eval ctxt tm)
+
+> prims c = do c <- addPrimitive c (name "Int")
+>              c <- addPrimitive c (name "Float")
+>              c <- addPrimitive c (name "String")
+>              return c

@@ -48,7 +48,7 @@ envLookup (fS i) (Extend t env) = envLookup i env;
 interp : {G:Vect Ty n} -> 
          (Env G) -> (Term G t) -> (interpTy t);
 interp env (Var i) = envLookup i env;
-interp env (Lam {s} sc) = \ x:(interpTy s) . (interp (Extend x env) sc);
+interp env (Lam {s} sc) = \ v:(interpTy s) . (interp (Extend v env) sc);
 interp env (App f a) = (interp env f) (interp env a);
 interp env (NatVal n) = n;
 interp env (BoolVal b) = b;

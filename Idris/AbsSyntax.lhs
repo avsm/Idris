@@ -92,8 +92,13 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RPlaceholder
 >              | RMetavar Id
 >              | RInfix Op RawTerm RawTerm
+>              | RDo [Do]
 >              | RRefl
 >    deriving (Show, Eq)
+
+> data Do = DoBinding Id RawTerm
+>         | DoExp RawTerm
+>     deriving (Show, Eq)
 
 > getFn :: RawTerm -> RawTerm
 > getFn (RApp f a) = getFn f
@@ -126,6 +131,9 @@ value.
 >               | Bo Bool
 >               | Fl Double
 >               | TYPE
+>               | StringType
+>               | IntType
+>               | FloatType
 >    deriving (Show, Eq)
 
 > data Op = Plus | Minus | Times | Divide | JMEq
@@ -250,6 +258,8 @@ ready for typechecking
 >                                return $ apply (Name Unknown (name "Eq")) 
 >                                           [Placeholder, Placeholder,l',r']
 > toIvorS (RInfix op l r) = fail "Infix not implemented"
+> toIvorS (RDo dos) = do tm <- undo dos
+>                        toIvorS tm
 > toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
 
 > toIvorConst (Num x) = Constant x
@@ -258,6 +268,27 @@ ready for typechecking
 > toIvorConst (Bo False) = Name Unknown (name "false")
 > toIvorConst (Fl f) = Constant f
 > toIvorConst TYPE = Star
+> toIvorConst StringType = Name Unknown (name "String")
+> toIvorConst IntType = Name Unknown (name "Int")
+> toIvorConst FloatType = Name Unknown (name "Float")
+
+> undo :: [Do] -> State Int RawTerm
+> undo [] = fail "The last statement in a 'do' block must be an expression"
+> undo [DoExp last] = return last
+> undo ((DoBinding v' exp):ds)
+>          = -- bind exp (\v' . [[ds]])
+>            do ds' <- undo ds
+>               let k = RBind v' (Lam RPlaceholder) ds'
+>               return $ mkApp (RVar (UN "bind")) [RPlaceholder, RPlaceholder,
+>                                                  exp, k]
+> undo ((DoExp exp):ds)
+>          = -- bind exp (\_ . [[ds]])
+>            do ds' <- undo ds
+>               i <- get
+>               put (i+1)
+>               let k = RBind (MN "x" i) (Lam RPlaceholder) ds'
+>               return $ mkApp (RVar (UN "bind")) [RPlaceholder, RPlaceholder,
+>                                                  exp, k]
 
 > testCtxt = addEntry newCtxt (UN "Vect") undefined
 

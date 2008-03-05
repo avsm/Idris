@@ -56,7 +56,6 @@
 >       | TokenStringType
 >       | TokenDataType
 >       | TokenWhere
->       | TokenRefl
 >       | TokenType
 >       | TokenOB
 >       | TokenCB
@@ -73,6 +72,7 @@
 >       | TokenGT
 >       | TokenLT
 >       | TokenArrow
+>       | TokenLeftArrow
 >       | TokenColon
 >       | TokenSemi
 >       | TokenComma
@@ -80,6 +80,10 @@
 >       | TokenDot
 >       | TokenLambda
 >       | TokenInclude
+>       | TokenDo
+>       | TokenRefl
+>       | TokenEmptyType
+>       | TokenUnitType
 >       | TokenEOF
 >  deriving (Show, Eq)
 > 
@@ -87,16 +91,21 @@
 > lexer :: (Token -> P a) -> P a
 > lexer cont [] = cont TokenEOF []
 > lexer cont ('\n':cs) = \fn line -> lexer cont cs fn (line+1)
+> -- empty type
+> lexer cont ('_':'|':'_':cs) = cont TokenEmptyType cs
 > lexer cont (c:cs)
 >       | isSpace c = \fn line -> lexer cont cs fn line
 >       | isAlpha c = lexVar cont (c:cs)
 >       | isDigit c = lexNum cont (c:cs)
 >       | c == '_' = lexVar cont (c:cs)
+> -- unit type
+> lexer cont ('(':')':cs) = cont TokenUnitType cs
 > lexer cont ('"':cs) = lexString cont cs
 > lexer cont ('\'':cs) = lexChar cont cs
 > lexer cont ('{':'-':cs) = lexerEatComment 0 cont cs
 > lexer cont ('-':'-':cs) = lexerEatToNewline cont cs
 > lexer cont ('-':'>':cs) = cont TokenArrow cs
+> lexer cont ('<':'-':cs) = cont TokenLeftArrow cs
 > lexer cont ('(':cs) = cont TokenOB cs
 > lexer cont (')':cs) = cont TokenCB cs
 > lexer cont ('{':cs) = cont TokenOCB cs
@@ -177,9 +186,10 @@
 >       ("where",rest) -> cont TokenWhere rest
 >       ("refl",rest) -> cont TokenRefl rest
 >       ("include",rest) -> cont TokenInclude rest
+>       ("do",rest) -> cont TokenDo rest
 > -- values
 > -- expressions
->       (var,rest)   -> cont (mkname var) rest
+>       (var,rest) -> cont (mkname var) rest
  
 > lexSpecial cont cs =
 >     case span isAllowed cs of
