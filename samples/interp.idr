@@ -54,9 +54,10 @@ interp env (NatVal n) = n;
 interp env (BoolVal b) = b;
 interp env (Op f l r) = f (interp env l) (interp env r);
 
-{-
-fPlus = Lam {s=TyNat} 
-        (Lam {s=SyNat} 
+fPlus = Lam  
+        (Lam  
 	 (Op {a=TyNat} {b=TyNat} {c=TyNat} 
-              plus (Var fO) (Var (fS fO))));
--}
+             plus (Var {G=VCons TyNat (VCons TyNat VNil)} fO) 
+		  (Var {G=VCons TyNat (VCons TyNat VNil)} (fS fO))));
+
+test = interp Empty fPlus;
