@@ -49,5 +49,14 @@ If it is an IO type, execute it, otherwise just eval it.
 > prims c = do c <- addPrimitive c (name "Int")
 >              c <- addPrimitive c (name "Float")
 >              c <- addPrimitive c (name "String")
+>              c <- addBinOp c (opFn Plus) ((+)::Int->Int->Int) "Int->Int->Int"
+>              c <- addBinOp c (opFn Minus) ((-)::Int->Int->Int) 
+>                                "Int->Int->Int"
+>              c <- addBinOp c (opFn Times) ((*)::Int->Int->Int) 
+>                                "Int->Int->Int"
+>              c <- addBinOp c (opFn Divide) (div::Int->Int->Int)
+>                                "Int->Int->Int"
+>              c <- addBinOp c (opFn Concat) ((++)::String->String->String)
+>                                "String->String->String"
 >              return c
 

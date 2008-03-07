@@ -41,6 +41,7 @@ import Idris.Lexer
       '<'             { TokenLT }
       '>'             { TokenGT }
       '.'             { TokenDot }
+      concat          { TokenConcat }
       eq              { TokenEQ }
       ge              { TokenGE }
       le              { TokenLE }
@@ -61,10 +62,14 @@ import Idris.Lexer
 
 %left APP
 %left '(' '{'
+%left '*' '/'
+%left '+' '-'
+%left concat
+%left '=' eq
 %left '\\'
 %right arrow
 %right IMP
-%left JMEQ
+
 
 %%
 
@@ -85,13 +90,22 @@ Declaration: Function { $1 }
 
 Function :: { ParseDecl }
 Function : Name ':' Term ';' { FunType $1 $3 }
-         | Term '=' Term ';' { FunClause $1 $3 }
+         | DefTerm '=' Term ';' { FunClause (mkDef $1) $3 }
 
 --         | Name '=' Term ';' { RealDecl (TermDef $1 $3) }
 
+DefTerm :: { (Id, [(RawTerm, Maybe Id)]) }
+DefTerm : Name ArgTerms { ($1, $2) }
+
+ArgTerms :: { [(RawTerm,Maybe Id)] }
+ArgTerms : { [] }
+      | NoAppTerm ArgTerms { ($1,Nothing):$2 }
+      | '{' Name '}' ArgTerms { (RVar $2, Just $2):$4 }
+      | '{' Name '=' Term '}' ArgTerms { ($4, Just $2):$6 }
+
 Datatype :: { Datatype }
-Datatype : data Name DType Where Constructors ';' 
-             { Datatype $2 $3 (map (mkCon (mkTyApp $2 $3)) $5) }
+Datatype : data Name DType Constructors ';' 
+             { Datatype $2 $3 (map (mkCon (mkTyApp $2 $3)) $4) }
 
 Name :: { Id }
 Name : name { $1 }
@@ -109,7 +123,17 @@ ImplicitTerm : Name { ($1, RVar $1) }
              | Name '=' Term { ($1, $3) }
 
 InfixTerm :: { RawTerm }
-InfixTerm : NoAppTerm eq NoAppTerm %prec JMEQ { RInfix JMEq $1 $3 }
+InfixTerm : NoAppTerm '=' NoAppTerm { RInfix JMEq $1 $3 }
+          | NoAppTerm '+' NoAppTerm { RInfix Plus $1 $3 }
+          | NoAppTerm '-' NoAppTerm { RInfix Minus $1 $3 }
+          | NoAppTerm '*' NoAppTerm { RInfix Times $1 $3 }
+          | NoAppTerm '/' NoAppTerm { RInfix Divide $1 $3 }
+          | NoAppTerm eq NoAppTerm { RInfix OpEq $1 $3 }
+          | NoAppTerm '<' NoAppTerm { RInfix OpLT $1 $3 }
+          | NoAppTerm le NoAppTerm { RInfix OpLEq $1 $3 }
+          | NoAppTerm '>' NoAppTerm { RInfix OpGT $1 $3 }
+          | NoAppTerm ge NoAppTerm { RInfix OpGEq $1 $3 }
+          | NoAppTerm concat NoAppTerm { RInfix Concat $1 $3 }
 
 MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}
@@ -159,9 +183,9 @@ Terms : { [] }
       | NoAppTerm Terms { $1:$2 }
 
 DType :: { RawTerm }
-DType : ':' Term { $2 }
-      | { RConst TYPE }
-      | VarList { mkTyParams $1 }
+DType : ':' Term where { $2 }
+      | '=' { RConst TYPE }
+      | VarList '=' { mkTyParams $1 }
 
 VarList :: { [Id] }
 VarList : Name { [$1] }
@@ -200,6 +224,11 @@ mkCon _ (Full n t) = (n,t)
 mkCon ty (Simple n args) = (n, mkConTy args ty)
    where mkConTy [] ty = ty
          mkConTy (a:as) ty = RBind (MN "X" 0) (Pi Ex a) (mkConTy as ty)
+
+mkDef (n, tms) = mkImpApp (RVar n) tms
+   where mkImpApp f [] = f
+         mkImpApp f ((tm,Just n):ts) = mkImpApp (RAppImp n f tm) ts
+         mkImpApp f ((tm, Nothing):ts) = mkImpApp (RApp f tm) ts
 
 mkTyApp :: Id -> RawTerm -> RawTerm
 mkTyApp n ty = mkApp (RVar n) (getTyArgs ty)

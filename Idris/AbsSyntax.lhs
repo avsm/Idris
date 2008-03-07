@@ -136,8 +136,20 @@ value.
 >               | FloatType
 >    deriving (Show, Eq)
 
-> data Op = Plus | Minus | Times | Divide | JMEq
+> data Op = Plus | Minus | Times | Divide | Concat | JMEq
+>         | OpEq | OpLT | OpLEq | OpGT | OpGEq
 >    deriving (Show, Eq)
+
+> opFn Plus = (name "__addInt")
+> opFn Minus = (name "__subInt")
+> opFn Times = (name "__mulInt")
+> opFn Divide = (name "__divInt")
+> opFn Concat = (name "__concat")
+> opFn OpEq = (name "__inteq")
+> opFn OpLT = (name "__intlt")
+> opFn OpLEq = (name "__intleq")
+> opFn OpGT = (name "__intgt")
+> opFn OpGEq = (name "__intgeq")
 
 Pattern clauses
 
@@ -257,7 +269,9 @@ ready for typechecking
 >                                r' <- toIvorS r
 >                                return $ apply (Name Unknown (name "Eq")) 
 >                                           [Placeholder, Placeholder,l',r']
-> toIvorS (RInfix op l r) = fail "Infix not implemented"
+> toIvorS (RInfix op l r) = do l' <- toIvorS l
+>                              r' <- toIvorS r
+>                              return $ apply (Name Unknown (opFn op)) [l',r']
 > toIvorS (RDo dos) = do tm <- undo dos
 >                        toIvorS tm
 > toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
