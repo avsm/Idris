@@ -15,7 +15,7 @@ import Control.Monad.Error
 import Debug.Trace
 
 exec :: Context -> Term -> IO ()
-exec ctxt wurzel = do res <- runIO ctxt (view (eval ctxt wurzel))
+exec ctxt wurzel = do res <- runIO ctxt (view (whnf ctxt wurzel))
                       putStr $ show res
 
 runIO :: Context -> ViewTerm -> IO ViewTerm
@@ -42,8 +42,10 @@ getAction n [Constant str]
 getAction n args = CantReduce (apply (Name Unknown n) args)
 
 continue ctxt k arg = case check ctxt (App k arg) of
-                          Right t -> runIO ctxt (view (eval ctxt t))
+                          Right t -> let next = whnf ctxt t in
+                                         runIO ctxt (view next)
                           Left err -> fail $ "Can't happen - continue " ++ err
+                                             
 
 unit = Name Unknown (name "II")
 

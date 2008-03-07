@@ -42,11 +42,12 @@ If it is an IO type, execute it, otherwise just eval it.
 
 > execEval :: Context -> (Term, ViewTerm) -> IO ()
 > execEval ctxt (tm, (App (Name _ io) _))
->          | io == name "IO" = do putStrLn $ show (eval ctxt tm)
->                                 exec ctxt tm
-> execEval ctxt (tm, _) = putStrLn $ show (eval ctxt tm)
+>          | io == name "IO" = do exec ctxt tm
+>                                 putStrLn $ show (whnf ctxt tm)
+> execEval ctxt (tm, _) = putStrLn $ show (whnf ctxt tm)
 
 > prims c = do c <- addPrimitive c (name "Int")
 >              c <- addPrimitive c (name "Float")
 >              c <- addPrimitive c (name "String")
 >              return c
+
