@@ -77,6 +77,10 @@ If it is an IO type, execute it, otherwise just eval it.
 >              c <- addBinOp c (opFn Concat) ((++)::String->String->String)
 >                                "String->String->String"
 >              c <- addExternalFn c (opFn OpEq) 3 constEq "(A:*)A->A->Bool"
+>              c <- addExternalFn c (opFn OpLT) 2 intlt "Int->Int->Bool"
+>              c <- addExternalFn c (opFn OpLEq) 2 intle "Int->Int->Bool"
+>              c <- addExternalFn c (opFn OpGT) 2 intgt "Int->Int->Bool"
+>              c <- addExternalFn c (opFn OpGEq) 2 intge "Int->Int->Bool"
 >              return c
 
 > constEq :: [ViewTerm] -> Maybe ViewTerm
@@ -89,3 +93,39 @@ If it is an IO type, execute it, otherwise just eval it.
 > constEq [_, x, y] = if (x == y) then Just $ Name DataCon (name "True")
 >                        else Just $ Name DataCon (name "False")
 > constEq _ = Nothing
+
+> intlt :: [ViewTerm] -> Maybe ViewTerm
+> intlt [Constant x, Constant y]
+>       = case (cast x, cast y) of
+>           (Just x', Just y') -> if (x'<(y'::Int))
+>                            then Just $ Name DataCon (name "True")
+>                            else Just $ Name DataCon (name "False")   
+>           _ -> Just $ Name DataCon (name "False")
+> intlt _ = Nothing
+
+> intle :: [ViewTerm] -> Maybe ViewTerm
+> intle [Constant x, Constant y]
+>       = case (cast x, cast y) of
+>           (Just x', Just y') -> if (x'<=(y'::Int))
+>                        then Just $ Name DataCon (name "True")
+>                        else Just $ Name DataCon (name "False")   
+>           _ -> Just $ Name DataCon (name "False")
+> intle _ = Nothing
+
+> intgt :: [ViewTerm] -> Maybe ViewTerm
+> intgt [Constant x, Constant y]
+>       = case (cast x, cast y) of
+>           (Just x', Just y') -> if (x'>(y'::Int))
+>                        then Just $ Name DataCon (name "True")
+>                        else Just $ Name DataCon (name "False")   
+>           _ -> Just $ Name DataCon (name "False")
+> intgt _ = Nothing
+
+> intge :: [ViewTerm] -> Maybe ViewTerm
+> intge [Constant x, Constant y]
+>       = case (cast x, cast y) of
+>           (Just x', Just y') -> if (x'>=(y'::Int))
+>                        then Just $ Name DataCon (name "True")
+>                        else Just $ Name DataCon (name "False")   
+>           _ -> Just $ Name DataCon (name "False")
+> intge _ = Nothing
