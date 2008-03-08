@@ -145,7 +145,8 @@ value.
 > opFn Times = (name "__mulInt")
 > opFn Divide = (name "__divInt")
 > opFn Concat = (name "__concat")
-> opFn OpEq = (name "__inteq")
+> opFn JMEq = (name "Eq")
+> opFn OpEq = (name "__eq")
 > opFn OpLT = (name "__intlt")
 > opFn OpLEq = (name "__intleq")
 > opFn OpGT = (name "__intgt")
@@ -267,8 +268,12 @@ ready for typechecking
 > toIvorS (RMetavar n) = return $ Metavar (toIvorName n)
 > toIvorS (RInfix JMEq l r) = do l' <- toIvorS l
 >                                r' <- toIvorS r
->                                return $ apply (Name Unknown (name "Eq")) 
+>                                return $ apply (Name Unknown (opFn JMEq)) 
 >                                           [Placeholder, Placeholder,l',r']
+> toIvorS (RInfix OpEq l r) = do l' <- toIvorS l
+>                                r' <- toIvorS r
+>                                return $ apply (Name Unknown (opFn OpEq))
+>                                           [Placeholder,l',r']
 > toIvorS (RInfix op l r) = do l' <- toIvorS l
 >                              r' <- toIvorS r
 >                              return $ apply (Name Unknown (opFn op)) [l',r']

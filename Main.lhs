@@ -5,6 +5,7 @@
 
 > import System
 > import IO
+> import Data.Typeable
 
 > import Idris.Parser
 > import Idris.AbsSyntax
@@ -75,5 +76,16 @@ If it is an IO type, execute it, otherwise just eval it.
 >                                "Int->Int->Int"
 >              c <- addBinOp c (opFn Concat) ((++)::String->String->String)
 >                                "String->String->String"
+>              c <- addExternalFn c (opFn OpEq) 3 constEq "(A:*)A->A->Bool"
 >              return c
 
+> constEq :: [ViewTerm] -> Maybe ViewTerm
+> constEq [_, Constant x, Constant y]
+>       = case cast x of
+>           Just x' -> if (x'==y)
+>                        then Just $ Name DataCon (name "True")
+>                        else Just $ Name DataCon (name "False")   
+>           _ -> Just $ Name DataCon (name "False")
+> constEq [_, x, y] = if (x == y) then Just $ Name DataCon (name "True")
+>                        else Just $ Name DataCon (name "False")
+> constEq _ = Nothing
