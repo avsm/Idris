@@ -60,6 +60,7 @@ import Idris.Lib
       include         { TokenInclude }
       do              { TokenDo }
 
+%nonassoc LAM
 %left APP
 %left '(' '{'
 %left '*' '/'
@@ -68,7 +69,12 @@ import Idris.Lib
 %left '=' eq
 %left '\\'
 %right arrow
+%nonassoc '.'
 %right IMP
+%nonassoc CONST
+-- All the things I don't want to cause a reduction inside a lam...
+%nonassoc name inttype floattype stringtype int string float bool refl do type
+          empty unit
 
 
 %%
@@ -114,9 +120,13 @@ Term :: { RawTerm }
 Term : NoAppTerm { $1 }
      | Term NoAppTerm %prec APP { RApp $1 $2 }
      | Term '{' ImplicitTerm '}' %prec APP { RAppImp (fst $3) $1 (snd $3) }
-     | '\\' Name MaybeType '.' NoAppTerm
-                { RBind $2 (Lam $3) $5 }
+     | '\\' LamBinds '.' Term %prec LAM
+                { doBind $2 $4 }
      | InfixTerm { $1 }
+
+LamBinds :: { [(Id, RawTerm)] }
+LamBinds : Name MaybeType { [($1,$2)] }
+         | Name MaybeType LamBinds { ($1,$2):$3 }
 
 ImplicitTerm :: { (Id, RawTerm) }
 ImplicitTerm : Name { ($1, RVar $1) }
@@ -229,6 +239,10 @@ mkDef (n, tms) = mkImpApp (RVar n) tms
    where mkImpApp f [] = f
          mkImpApp f ((tm,Just n):ts) = mkImpApp (RAppImp n f tm) ts
          mkImpApp f ((tm, Nothing):ts) = mkImpApp (RApp f tm) ts
+
+doBind :: [(Id,RawTerm)] -> RawTerm -> RawTerm
+doBind [] t = t
+doBind ((x,ty):ts) tm = RBind x (Lam ty) (doBind ts tm)
 
 mkTyApp :: Id -> RawTerm -> RawTerm
 mkTyApp n ty = mkApp (RVar n) (getTyArgs ty)
