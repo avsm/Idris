@@ -9,22 +9,39 @@
 > import Idris.Parser
 > import Idris.AbsSyntax
 > import Idris.MakeTerm
+> import Idris.Lib
 
 > import RunIO
+
+Load things in this order:
+
+* Introduce equality
+* Load builtins (which don't rely on primitive types)
+* Add primitives
+* Load prelude
+* Load users program
 
 > main :: IO ()
 > main = do args <- getArgs
 >           let infile = args!!0
->           input <- readFile infile
->           let ptree = parse input infile
->           case ptree of
->             Success ds -> do
->                  let defs = makeIvorFuns ds
->                  ctxt <- prims emptyContext
->                  ctxt <- addEquality ctxt (name "Eq") (name "refl")
->                  ctxt <- addIvor defs ctxt
->                  repl defs ctxt
->             Failure err f ln -> putStrLn $ f ++ ":" ++ show ln ++ ":" ++ err
+>           ctxt <- addEquality emptyContext (name "Eq") (name "refl")
+>           (ctxt, defs) <- processInput ctxt newCtxt "builtins.idr"
+>           ctxt <- prims ctxt
+>           (ctxt, defs) <- processInput ctxt defs "prelude.idr"
+>           (ctxt, defs) <- processInput ctxt defs infile
+>           repl defs ctxt
+
+> processInput :: Context -> Ctxt IvorFun -> FilePath -> 
+>                 IO (Context, Ctxt IvorFun)
+> processInput ctxt defs file = do
+>     prelude <- readLib defaultLibPath file
+>     let ptree = parse prelude file
+>     case ptree of
+>       Success ds -> do let defs' = makeIvorFuns defs ds
+>                        let alldefs = defs++defs'
+>                        ctxt <- addIvor defs' ctxt
+>                        return (ctxt, alldefs)
+>       Failure err f ln -> fail err
 
 > repl :: Ctxt IvorFun -> Context -> IO ()
 > repl raw ctxt = do putStr "Idris> "

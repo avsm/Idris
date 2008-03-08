@@ -1,5 +1,4 @@
 include "nat.idr";
-include "bool.idr";
 
 data Vect : (A:#)->(n:Nat)-># where
    VNil : Vect A O

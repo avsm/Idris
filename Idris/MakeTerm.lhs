@@ -65,37 +65,42 @@ in our list of explicit names to add, add it.
 >          Nothing -> RPlaceholder:(mkImplicitArgs ns (i-1) imps)
 >          Just v -> v:(mkImplicitArgs ns (i-1) imps)
 
-> makeIvorFuns :: [Decl] -> Ctxt IvorFun
-> makeIvorFuns defs = mif newCtxt defs
+> makeIvorFuns :: Ctxt IvorFun -> [Decl] -> Ctxt IvorFun
+> makeIvorFuns is defs = mif is [] defs
 
-> mif :: Ctxt IvorFun -> [Decl] -> Ctxt IvorFun
-> mif acc [] = acc
-> mif acc ((Fun f):ds) = let fn = makeIvorFun acc f in
->                            mif (addEntry acc (funId f) fn) ds
-> mif acc ((Fwd n ty):ds) 
->         = let (rty, imp) = addImpl acc ty
->               ity = makeIvorTerm acc rty in
->               mif (addEntry acc n (IvorFun (toIvorName n) (Just ity) 
+> mif :: Ctxt IvorFun -> -- init
+>        Ctxt IvorFun -> -- new
+>        [Decl] -> Ctxt IvorFun
+> mif ctxt acc [] = acc
+> mif ctxt acc ((Fun f):ds) 
+>         = let fn = makeIvorFun (ctxt++acc) f in
+>               mif ctxt (addEntry acc (funId f) fn) ds
+> mif ctxt acc ((Fwd n ty):ds) 
+>         = let (rty, imp) = addImpl (ctxt++acc) ty
+>               ity = makeIvorTerm (ctxt++acc) rty in
+>               mif ctxt (addEntry acc n (IvorFun (toIvorName n) (Just ity) 
 >                                             imp Later)) ds
-> mif acc ((DataDecl d):ds) = addDataEntries acc d ds -- will call mif on ds
-> mif acc ((TermDef n tm):ds) 
->         = let (itmraw, imp) = addImpl acc tm
->               itm = makeIvorTerm acc itmraw in
->               mif (addEntry acc n 
+> mif ctxt acc ((DataDecl d):ds) 
+>         = addDataEntries ctxt acc d ds -- will call mif on ds
+> mif ctxt acc ((TermDef n tm):ds) 
+>         = let (itmraw, imp) = addImpl (ctxt++acc) tm
+>               itm = makeIvorTerm (ctxt++acc) itmraw in
+>               mif ctxt (addEntry acc n 
 >                      (IvorFun (toIvorName n) Nothing imp (SimpleDef itm))) ds
 
 Add an entry for the type id and for each of the constructors.
 
-> addDataEntries :: Ctxt IvorFun -> Datatype -> [Decl] -> Ctxt IvorFun
-> addDataEntries acc (Datatype tid tty cons) ds = 
->     let (tyraw, imp) = addImpl acc tty
->         tytm = makeIvorTerm acc tyraw
->         acctmp = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
+> addDataEntries :: Ctxt IvorFun -> Ctxt IvorFun -> Datatype -> [Decl] -> 
+>                   Ctxt IvorFun
+> addDataEntries ctxt acc (Datatype tid tty cons) ds = 
+>     let (tyraw, imp) = addImpl (ctxt++acc) tty
+>         tytm = makeIvorTerm (ctxt++acc) tyraw
+>         acctmp = addEntry (ctxt++acc) tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                   undefined)
 >         ddef = makeInductive acctmp tid (getBinders tytm []) cons []
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                  (DataDef ddef)) in
->         addConEntries acc' cons ds
+>         addConEntries ctxt acc' cons ds
 
 > getBinders (Forall n ty sc) acc = (getBinders sc ((n,ty):acc))
 > getBinders sc acc = (reverse acc, sc)
@@ -112,22 +117,24 @@ Add an entry for the type id and for each of the constructors.
 >              makeInductive ctxt cdec
 >                            indices cs (((toIvorName cid),tytm):acc)
 
-> addConEntries :: Ctxt IvorFun -> [(Id,RawTerm)] -> [Decl] -> Ctxt IvorFun
-> addConEntries acc [] ds = mif acc ds
-> addConEntries acc ((cid, ty):cs) ds 
->     = let (tyraw, imp) = addImpl acc ty
->           tytm = makeIvorTerm acc tyraw
+> addConEntries :: Ctxt IvorFun -> Ctxt IvorFun -> [(Id,RawTerm)] -> [Decl] -> 
+>                  Ctxt IvorFun
+> addConEntries ctxt acc [] ds = mif ctxt acc ds
+> addConEntries ctxt acc ((cid, ty):cs) ds 
+>     = let (tyraw, imp) = addImpl (ctxt++acc) ty
+>           tytm = makeIvorTerm (ctxt++acc) tyraw
 >           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon) in
->           addConEntries acc' cs ds
+>           addConEntries ctxt acc' cs ds
 
 > addIvor :: Monad m => 
->             Ctxt IvorFun -> Context -> m Context
+>            Ctxt IvorFun -> -- just the ones we haven't added to Ivor
+>           Context -> m Context
 > addIvor defs ctxt = foldM addIvorDef ctxt (reverse (ctxtAlist defs))
 
 > addIvorDef :: Monad m =>
 >                Context -> (Id, IvorFun) -> m Context
 > addIvorDef ctxt (n,IvorFun name tyin _ def) 
->     = trace (show (tyin,def)) $ case def of
+>     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> addPatternDef ctxt name (unjust tyin) ps [Partial,GenRec] -- just allow general recursion for now
 >         SimpleDef tm -> case tyin of
 >                           Nothing -> addDef ctxt name tm

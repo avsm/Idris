@@ -8,7 +8,7 @@ import Ivor.TT
 import System.IO.Unsafe
 import Idris.AbsSyntax
 import Idris.Lexer
-
+import Idris.Lib
 
 }
 
@@ -74,11 +74,11 @@ import Idris.Lexer
 %%
 
 Program :: { [ParseDecl] }
-Program: Declaration { [$1] }
+Program: { [] }
        | Declaration Program { $1:$2 }
        | include string ';' Program {%
 	     let rest = $4 in
-	     let pt = unsafePerformIO (readFile $2) in
+	     let pt = unsafePerformIO (readLib defaultLibPath $2) in
 		case (mkparse pt $2 0) of
 		   Success x -> returnP (x ++ rest)
 		   Failure err file ln -> failP err

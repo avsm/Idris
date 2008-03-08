@@ -1,5 +1,3 @@
-include "bool.idr";
-
 data __Unit = II;
 data __Empty = ;
 

@@ -1,5 +1,3 @@
-include "builtins.idr";
-
 data Command = PutStr String | GetStr;
 
 Response : Command -> #;
