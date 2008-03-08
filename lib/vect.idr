@@ -1,4 +1,4 @@
-data Nat = O | S Nat;
+include "nat.idr";
 
 data Vect : (A:#)->(n:Nat)-># where
    VNil : Vect A O
@@ -11,10 +11,3 @@ data Fin : (n:Nat)-># where
 vlookup : (Fin k) -> (Vect A k) -> A;
 vlookup fO (VCons x xs) = x;
 vlookup (fS k) (VCons x xs) = vlookup k xs;
-
-testVec = VCons O (VCons (S O) (VCons (S (S O)) VNil));
-
-data Env : (xs:Vect # n)-># where
-   Empty : Env VNil
- | Extend : {xs:Vect # n} -> A -> (Env xs) -> (Env (VCons A xs));
-

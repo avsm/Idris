@@ -1,21 +1,4 @@
-data Nat = O | S Nat;
-data Bool = True | False;
-
-plus : Nat -> Nat -> Nat;
-plus O y = y;
-plus (S k) y = S (plus k y);
-
-data Vect : (A:#)->(n:Nat)-># where
-   VNil : Vect A O
- | VCons : A -> (Vect A k) -> (Vect A (S k));
-
-data Fin : (n:Nat)-># where
-   fO : Fin (S k)
- | fS : (Fin k) -> (Fin (S k));
-
-vlookup : (Fin k) -> (Vect A k) -> A;
-vlookup fO (VCons x xs) = x;
-vlookup (fS k) (VCons x xs) = vlookup k xs;
+include "vect.idr";
 
 data Ty = TyNat | TyFun Ty Ty | TyBool;
 
@@ -54,9 +37,11 @@ interp env (NatVal n) = n;
 interp env (BoolVal b) = b;
 interp env (Op f l r) = f (interp env l) (interp env r);
 
+plusOp = Op {a=TyNat} {b=TyNat} {c=TyNat};
+
 fPlus = Lam  
         (Lam  
-	 (Op {a=TyNat} {b=TyNat} {c=TyNat} 
+	 (plusOp
              plus (Var {G=VCons TyNat (VCons TyNat VNil)} fO) 
 		  (Var {G=VCons TyNat (VCons TyNat VNil)} (fS fO))));
 
