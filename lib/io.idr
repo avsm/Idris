@@ -12,7 +12,8 @@ bind : (IO A) -> (A -> (IO B)) -> (IO B);
 bind (IOReturn a) k = k a;
 bind (IODo c p) k = IODo c (\x . (bind (p x) k));
 
-return = IOReturn;
+return : A -> (IO A);
+return x = IOReturn x;
 
 putStr : String -> (IO ());
 putStr str = IODo (PutStr str) (\a . (IOReturn a));

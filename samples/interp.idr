@@ -41,8 +41,8 @@ plusOp : {G:Vect Ty n} ->
          (Term G TyNat) -> (Term G TyNat) -> (Term G TyNat);
 plusOp = Op {a=TyNat} {b=TyNat} {c=TyNat} plus;
 
-thing : Term VNil (TyFun TyNat TyNat);
-thing = Lam (Var fO);
+fId : Term VNil (TyFun TyNat TyNat);
+fId = Lam (Var fO);
 
 fPlus2 : Term VNil TyNat;
 fPlus2 = (plusOp
@@ -54,5 +54,7 @@ fSnd = Lam (Lam (Var fO));
 
 fPlus : Term VNil (TyFun TyNat (TyFun TyNat TyNat));
 fPlus = Lam (Lam (plusOp (Var fO) (Var (fS fO))));
+
+fPlusInf = Lam {G=VNil} (Lam (plusOp (Var fO) (Var (fS fO))));
 
 test = interp Empty fPlus;
