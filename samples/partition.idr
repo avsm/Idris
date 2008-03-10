@@ -31,18 +31,6 @@ partition lt pivot VNil = mkPartition VNil VNil;
 partition lt pivot (VCons x xs)
     = partAux lt pivot x (partition lt pivot xs);
 
-ltNat : Nat -> Nat -> Bool;
-ltNat O k = True;
-ltNat (S x) O = False;
-ltNat (S x) (S y) = ltNat x y;
-
-testVect = VCons (S (S (S (S O))))
-	   (VCons (S (S O))
-	   (VCons O
-	   (VCons (S (S (S (S (S (S O))))))
-	   (VCons (S (S (S O)))
-	   VNil))));
-
 qsort : (lt:a->a->Bool)->(Vect a n)->(Vect a n);
 
 glue : (lt:a->a->Bool)-> a -> (Partition a n) -> (Vect a (S n));
@@ -52,3 +40,13 @@ glue lt val (mkPartition {l} {r} left right)
 
 qsort lt VNil = VNil;
 qsort lt (VCons x xs) = glue lt x (partition lt x xs);
+
+testVect = VCons 5
+	   (VCons 12
+	   (VCons 42
+	   (VCons 9
+	   (VCons 3
+	   VNil))));
+
+qsortInt : (Vect Int n) -> (Vect Int n);
+qsortInt = qsort (\x y . x<y);
