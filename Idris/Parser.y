@@ -60,6 +60,9 @@ import Idris.Lib
       unit            { TokenUnitType }
       include         { TokenInclude }
       do              { TokenDo }
+      if              { TokenIf }
+      then            { TokenThen }
+      else            { TokenElse }
 
 %nonassoc LAM
 %left APP
@@ -75,7 +78,7 @@ import Idris.Lib
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype floattype stringtype int string float bool refl do type
-          empty unit '_'
+          empty unit '_' if then else
 
 
 %%
@@ -124,6 +127,8 @@ Term : NoAppTerm { $1 }
      | '\\' LamBinds '.' Term %prec LAM
                 { doBind $2 $4 }
      | InfixTerm { $1 }
+     | if Term then Term else Term 
+       { mkApp (RVar (UN "if_then_else")) [$2,$4,$6] }
 
 LamBinds :: { [(Id, RawTerm)] }
 LamBinds : Name MaybeType { [($1,$2)] }

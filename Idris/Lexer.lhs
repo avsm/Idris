@@ -82,6 +82,9 @@
 >       | TokenLambda
 >       | TokenInclude
 >       | TokenDo
+>       | TokenIf
+>       | TokenThen
+>       | TokenElse
 >       | TokenRefl
 >       | TokenEmptyType
 >       | TokenUnitType
@@ -191,6 +194,9 @@
 >       ("refl",rest) -> cont TokenRefl rest
 >       ("include",rest) -> cont TokenInclude rest
 >       ("do",rest) -> cont TokenDo rest
+>       ("if",rest) -> cont TokenIf rest
+>       ("then",rest) -> cont TokenThen rest
+>       ("else",rest) -> cont TokenElse rest
 > -- values
 > -- expressions
 >       (var,rest) -> cont (mkname var) rest

@@ -16,14 +16,14 @@ data Partition : # -> Nat -> # where
 mkPartitionR : (x:A) -> (Vect A l) -> (Vect A r) ->
  	       (Partition A (plus (S l) r));
 mkPartitionR {l} {r} x left right 
-    = rewrite (mkPartition left (VCons x right)) (plus_nSm l r);
+    = rewrite (mkPartition left (VCons x right)) (plus_nSm _ _);
 
 partAux : (lt:A->A->Bool) -> (pivot:A) -> (val:A) ->
 	  (p:Partition A n) -> (Partition A (S n));
 partAux lt pivot val (mkPartition left right)
-   = if_then_else (lt val pivot)
-          (mkPartition (VCons val left) right)
-          (mkPartitionR val left right);
+   = if lt val pivot
+          then mkPartition (VCons val left) right
+          else (mkPartitionR val left right);
 
 partition : (lt:A->A->Bool)->(pivot:A)->
 	    (xs:Vect A n)->(Partition A n);
