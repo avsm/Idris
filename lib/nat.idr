@@ -15,9 +15,9 @@ plus_nO : (n:Nat) -> ((plus n O) = n);
 plus_nO O = (refl O);
 plus_nO (S n) = eq_resp_S (plus_nO n);
 
-plus_nSm : (n:Nat) -> (m:Nat) -> ((plus n (S m)) = (S (plus n m)));
-plus_nSm O m = (refl (S m));
-plus_nSm (S k) m = eq_resp_S (plus_nSm k m);
+plus_nSm : ((plus n (S m)) = (S (plus n m)));
+plus_nSm {n=O} {m} = (refl (S m));
+plus_nSm {n=S k} {m} = eq_resp_S plus_nSm;
 
 rewrite : {A:B->#} -> (A m) -> (m=n) -> (A n);
 rewrite t (refl m) = t;

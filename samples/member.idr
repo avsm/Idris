@@ -9,17 +9,17 @@ mMap f Nothing = Nothing;
 mMap f (Just a) = Just (f a);
 
 data Elem : A -> (List A) -> # where
-   first : (x:A) -> (xs:List A) -> (Elem x (Cons x xs))
+   first : {x:A} -> {xs:List A} -> (Elem x (Cons x xs))
  | later : {x:A} -> {ys:List A} -> 
-           (y:A) -> (Elem x ys) -> (Elem x (Cons y ys));
+           {y:A} -> (Elem x ys) -> (Elem x (Cons y ys));
 
 isElemAux : {xs: List A} -> 
 	    (y:A) ->
 	    (eq: (Maybe (x=y))) ->
 	    (Maybe (Elem x xs)) ->
 	    (Maybe (Elem x (Cons y xs)));
-isElemAux {x=y} {xs} y (Just (refl _)) v = Just (first y xs);
-isElemAux y Nothing (Just p) = Just (later y p);
+isElemAux {x=y} y (Just (refl _)) v = Just first;
+isElemAux y Nothing (Just p) = Just (later p);
 isElemAux y Nothing Nothing = Nothing;
 
 isElem : (eq:(a:A)->(b:A)->(Maybe (a=b)))->
