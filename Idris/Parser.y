@@ -41,6 +41,7 @@ import Idris.Lib
       '<'             { TokenLT }
       '>'             { TokenGT }
       '.'             { TokenDot }
+      '_'             { TokenUnderscore }
       concat          { TokenConcat }
       eq              { TokenEQ }
       ge              { TokenGE }
@@ -74,7 +75,7 @@ import Idris.Lib
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype floattype stringtype int string float bool refl do type
-          empty unit
+          empty unit '_'
 
 
 %%
@@ -162,6 +163,7 @@ NoAppTerm : Name { RVar $1 }
           | refl { RRefl }
           | empty { RVar (UN "__Empty") }
           | unit { RVar (UN "__Unit") }
+          | '_' { RPlaceholder }
           | DoBlock { RDo $1 }
 
 DoBlock :: { [Do] }

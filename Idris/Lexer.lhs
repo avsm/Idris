@@ -85,6 +85,7 @@
 >       | TokenRefl
 >       | TokenEmptyType
 >       | TokenUnitType
+>       | TokenUnderscore
 >       | TokenEOF
 >  deriving (Show, Eq)
 > 
@@ -94,6 +95,7 @@
 > lexer cont ('\n':cs) = \fn line -> lexer cont cs fn (line+1)
 > -- empty type
 > lexer cont ('_':'|':'_':cs) = cont TokenEmptyType cs
+> lexer cont ('_':c:cs) | not (isAlpha c) && c/='_' = cont TokenUnderscore (c:cs)
 > lexer cont (c:cs)
 >       | isSpace c = \fn line -> lexer cont cs fn line
 >       | isAlpha c = lexVar cont (c:cs)
