@@ -85,6 +85,8 @@
 >       | TokenIf
 >       | TokenThen
 >       | TokenElse
+>       | TokenLet
+>       | TokenIn
 >       | TokenRefl
 >       | TokenEmptyType
 >       | TokenUnitType
@@ -197,6 +199,8 @@
 >       ("if",rest) -> cont TokenIf rest
 >       ("then",rest) -> cont TokenThen rest
 >       ("else",rest) -> cont TokenElse rest
+>       ("let",rest) -> cont TokenLet rest
+>       ("in",rest) -> cont TokenIn rest
 > -- values
 > -- expressions
 >       (var,rest) -> cont (mkname var) rest

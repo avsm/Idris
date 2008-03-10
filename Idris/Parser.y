@@ -42,6 +42,7 @@ import Idris.Lib
       '>'             { TokenGT }
       '.'             { TokenDot }
       '_'             { TokenUnderscore }
+      ','             { TokenComma }
       concat          { TokenConcat }
       eq              { TokenEQ }
       ge              { TokenGE }
@@ -63,8 +64,11 @@ import Idris.Lib
       if              { TokenIf }
       then            { TokenThen }
       else            { TokenElse }
+      let             { TokenLet }
+      in              { TokenIn }
 
 %nonassoc LAM
+%nonassoc let in
 %left APP
 %left '(' '{'
 %left '*' '/'
@@ -126,6 +130,8 @@ Term : NoAppTerm { $1 }
      | Term '{' ImplicitTerm '}' %prec APP { RAppImp (fst $3) $1 (snd $3) }
      | '\\' LamBinds '.' Term %prec LAM
                 { doBind $2 $4 }
+     | let LetBinds in Term
+                { doLetBind $2 $4 }
      | InfixTerm { $1 }
      | if Term then Term else Term 
        { mkApp (RVar (UN "if_then_else")) [$2,$4,$6] }
@@ -133,6 +139,10 @@ Term : NoAppTerm { $1 }
 LamBinds :: { [(Id, RawTerm)] }
 LamBinds : Name MaybeType { [($1,$2)] }
          | Name MaybeType LamBinds { ($1,$2):$3 }
+
+LetBinds :: { [(Id, RawTerm, RawTerm)] }
+LetBinds : Name MaybeType '=' Term { [($1,$2,$4)] }
+         | Name MaybeType '=' Term ',' LetBinds { ($1,$2,$4):$6 }
 
 ImplicitTerm :: { (Id, RawTerm) }
 ImplicitTerm : Name { ($1, RVar $1) }
@@ -250,6 +260,10 @@ mkDef (n, tms) = mkImpApp (RVar n) tms
 doBind :: [(Id,RawTerm)] -> RawTerm -> RawTerm
 doBind [] t = t
 doBind ((x,ty):ts) tm = RBind x (Lam ty) (doBind ts tm)
+
+doLetBind :: [(Id,RawTerm,RawTerm)] -> RawTerm -> RawTerm
+doLetBind [] t = t
+doLetBind ((x,ty,val):ts) tm = RBind x (RLet val ty) (doLetBind ts tm)
 
 mkTyApp :: Id -> RawTerm -> RawTerm
 mkTyApp n ty = mkApp (RVar n) (getTyArgs ty)
