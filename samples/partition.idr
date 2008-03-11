@@ -15,7 +15,7 @@ data Partition : # -> Nat -> # where
 
 mkPartitionR : a -> (Vect a l) -> (Vect a r) ->
  	       (Partition a (plus (S l) r));
-mkPartitionR {l} {r} x left right 
+mkPartitionR x left right 
     = rewrite (mkPartition left (VCons x right)) plus_nSm;
 
 partAux : (lt:a->a->Bool) -> (pivot:a) -> (val:a) ->
@@ -34,9 +34,10 @@ partition lt pivot (VCons x xs)
 qsort : (lt:a->a->Bool)->(Vect a n)->(Vect a n);
 
 glue : (lt:a->a->Bool)-> a -> (Partition a n) -> (Vect a (S n));
-glue lt val (mkPartition {l} {r} left right) 
-   = rewrite 
-       (append (qsort lt left) (VCons val (qsort lt right))) plus_nSm;
+glue lt val (mkPartition left right) 
+   = let lsort = qsort lt left,
+         rsort = qsort lt right in
+     rewrite (append lsort (VCons val rsort)) plus_nSm;
 
 qsort lt VNil = VNil;
 qsort lt (VCons x xs) = glue lt x (partition lt x xs);

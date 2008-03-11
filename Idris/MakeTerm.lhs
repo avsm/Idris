@@ -52,7 +52,11 @@ Convert a raw term to an ivor term, adding placeholders
 >               = RBind n (Lam (ap [] ty)) (ap [] sc)
 >           ap ex (RBind n (RLet val ty) sc)
 >               = RBind n (RLet (ap [] val) (ap [] ty)) (ap [] sc)
+>           ap ex (RDo ds) = RDo (map apdo ds)
 >           ap ex r = r
+
+>           apdo (DoExp r) = DoExp (ap [] r)
+>           apdo (DoBinding x r) = DoBinding x (ap [] r)
 
 Go through the arguments; if an implicit argument has the same name as one
 in our list of explicit names to add, add it.

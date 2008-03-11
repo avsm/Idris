@@ -6,6 +6,8 @@
 > import Control.Monad
 > import Control.Monad.State
 > import qualified Data.Map as Map
+> import Debug.Trace
+
 > import Ivor.TT
 > import Ivor.Primitives
 
