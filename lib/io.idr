@@ -1,8 +1,18 @@
-data Command = PutStr String | GetStr;
+data Command 
+     = PutStr String
+     | GetStr
+     | Fork A -- not sure I can forward declare types. Must check. 
+     | NewLock
+     | DoLock Lock
+     | DoUnlock Lock;
 
 Response : Command -> #;
 Response (PutStr s) = ();
 Response GetStr = String;
+Response (Fork proc) = ();
+Response NewLock = Lock;
+Response (DoLock l) = ();
+Response (DoUnlock l) = ();
 
 data IO : # -> # where
    IOReturn : A -> (IO A)
@@ -24,4 +34,17 @@ getStr = IODo GetStr (\b . (IOReturn b));
 putStrLn : String -> (IO ());
 putStrLn str = do { putStr str;
 		    putStr "\n"; };
+
+fork : (IO ()) -> (IO ());
+fork proc = IODo (Fork proc) (\a . (IOReturn a));
+
+newLock : IO Lock;
+newLock = IODo NewLock (\l . (IOReturn l));
+
+lock : Lock -> (IO ());
+lock l = IODo (DoLock l) (\a . (IOReturn a));
+
+unlock : Lock -> (IO ());
+unlock l = IODo (DoUnlock l) (\a . (IOReturn a));
+
 

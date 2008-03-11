@@ -54,6 +54,8 @@
 >       | TokenBoolType
 >       | TokenFloatType
 >       | TokenStringType
+>       | TokenHandleType
+>       | TokenLockType
 >       | TokenDataType
 >       | TokenWhere
 >       | TokenType
@@ -191,6 +193,8 @@
 >       ("Char",rest) -> cont TokenCharType rest
 >       ("Float",rest) -> cont TokenFloatType rest
 >       ("String",rest) -> cont TokenStringType rest
+>       ("Lock",rest) -> cont TokenLockType rest
+>       ("Handle",rest) -> cont TokenHandleType rest
 >       ("data",rest) -> cont TokenDataType rest
 >       ("where",rest) -> cont TokenWhere rest
 >       ("refl",rest) -> cont TokenRefl rest

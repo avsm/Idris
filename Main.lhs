@@ -67,6 +67,8 @@ If it is an IO type, execute it, otherwise just eval it.
 > prims c = do c <- addPrimitive c (name "Int")
 >              c <- addPrimitive c (name "Float")
 >              c <- addPrimitive c (name "String")
+>              c <- addPrimitive c (name "Lock")
+>              c <- addPrimitive c (name "Handle")
 >              c <- addBinOp c (opFn Plus) ((+)::Int->Int->Int) "Int->Int->Int"
 >              c <- addBinOp c (opFn Minus) ((-)::Int->Int->Int) 
 >                                "Int->Int->Int"

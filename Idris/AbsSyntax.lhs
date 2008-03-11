@@ -136,6 +136,7 @@ value.
 >               | StringType
 >               | IntType
 >               | FloatType
+>               | Builtin String -- builtin type, eg Handle or Lock
 >    deriving (Show, Eq)
 
 > data Op = Plus | Minus | Times | Divide | Concat | JMEq
@@ -292,6 +293,7 @@ ready for typechecking
 > toIvorConst StringType = Name Unknown (name "String")
 > toIvorConst IntType = Name Unknown (name "Int")
 > toIvorConst FloatType = Name Unknown (name "Float")
+> toIvorConst (Builtin ty) = Name Unknown (name ty)
 
 > undo :: [Do] -> State Int RawTerm
 > undo [] = fail "The last statement in a 'do' block must be an expression"

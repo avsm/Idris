@@ -53,6 +53,8 @@ import Idris.Lib
       chartype        { TokenCharType }
       floattype       { TokenFloatType }
       stringtype      { TokenStringType }
+      handletype      { TokenHandleType }
+      locktype        { TokenLockType }
       type            { TokenType }
       data            { TokenDataType }
       where           { TokenWhere }
@@ -82,7 +84,7 @@ import Idris.Lib
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype floattype stringtype int string float bool refl do type
-          empty unit '_' if then else
+          empty unit '_' if then else handletype locktype
 
 
 %%
@@ -197,6 +199,8 @@ Constant : type { TYPE }
          | stringtype { StringType }
          | inttype { IntType }
          | floattype { FloatType }
+         | handletype { Builtin "Handle" }
+         | locktype { Builtin "Lock" }
          | int { Num $1 }
          | string { Str $1 }
          | bool { Bo $1 }
