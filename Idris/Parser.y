@@ -3,7 +3,7 @@
 
 module Idris.Parser where
 
-import Char
+import Data.Char
 import Ivor.TT
 import System.IO.Unsafe
 import Idris.AbsSyntax
@@ -18,7 +18,7 @@ import Idris.Lib
 %monad { P } { thenP } { returnP }
 %lexer { lexer } { TokenEOF }
 
-%token 
+%token
       name            { TokenName $$ }
       string          { TokenString $$ }
       int             { TokenInt $$ }
@@ -120,7 +120,7 @@ ArgTerms : { [] }
       | '{' Name '=' Term '}' ArgTerms { ($4, Just $2):$6 }
 
 Datatype :: { Datatype }
-Datatype : data Name DType Constructors ';' 
+Datatype : data Name DType Constructors ';'
              { Datatype $2 $3 (map (mkCon (mkTyApp $2 $3)) $4) }
 
 Name :: { Id }
@@ -135,7 +135,7 @@ Term : NoAppTerm { $1 }
      | let LetBinds in Term
                 { doLetBind $2 $4 }
      | InfixTerm { $1 }
-     | if Term then Term else Term 
+     | if Term then Term else Term
        { mkApp (RVar (UN "if_then_else")) [$2,$4,$6] }
 
 LamBinds :: { [(Id, RawTerm)] }
@@ -172,7 +172,7 @@ NoAppTerm : Name { RVar $1 }
           | '(' Term ')' { $2 }
           | NoAppTerm arrow NoAppTerm { RBind (MN "X" 0)
                                         (Pi Ex $1) $3 }
-          | '(' Name ':' Term ')' arrow NoAppTerm 
+          | '(' Name ':' Term ')' arrow NoAppTerm
                 { RBind $2 (Pi Ex $4) $7 }
           | '{' Name ':' Term '}' arrow NoAppTerm
                 { RBind $2 (Pi Im $4) $7 }
@@ -224,7 +224,7 @@ VarList : Name { [$1] }
 
 Where : where { $1 }
       | '=' { $1 }
-      
+
 Constructors :: { [ConParse] }
 Constructors : { [] } -- None
              | Constructor { [$1] }

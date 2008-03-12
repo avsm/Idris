@@ -6,7 +6,7 @@ License-file:	LICENSE
 Maintainer:	eb@dcs.st-and.ac.uk
 Homepage:	http://www.dcs.st-and.ac.uk/~eb/Ivor/
 Stability:	experimental
-Build-depends:	base, haskell98, parsec, mtl, ivor
+Build-depends:	base, containers, array, parsec, mtl, ivor
 Synopsis:	Dependently Typed Functional Programming Language
 
 Executable:	idris

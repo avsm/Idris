@@ -9,8 +9,7 @@ import Ivor.Shell
 import Ivor.Construction
 
 import Data.Typeable
-import Data.IORef
-import System.IO.Unsafe
+import GHC.Prim(unsafeCoerce#)
 import IO
 import Control.Monad.Error
 import Control.Concurrent
@@ -59,10 +58,10 @@ parseAction x = parseAction' x [] where
   parseAction' (App f a) args = parseAction' f (a:args)
   parseAction' (Name _ n) args = (getAction n args)
 
-getAction n [] 
+getAction n []
     | n == name "GetStr" = ReadStr
-getAction n [Constant str] 
-    | n == name "PutStr" 
+getAction n [Constant str]
+    | n == name "PutStr"
         = case cast str of
              Just str' -> WriteStr str'
 getAction n [_,t]
@@ -99,7 +98,7 @@ continue ctxt k arg = case check ctxt (App k arg) of
                           Right t -> let next = whnf ctxt t in
                                          runIO ctxt (view next)
                           Left err -> fail $ "Can't happen - continue " ++ err
-                                             
+
 
 unit = Name Unknown (name "II")
 
