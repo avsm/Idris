@@ -13,3 +13,4 @@ Executable:	idris
 Main-is:	Main.lhs
 Other-modules:  Idris.Parser, Idris.Lexer, Idris.AbsSyntax, Idris.Context,
 	        Idris.MakeTerm RunIO
+Extensions:     MagicHash, UndecidableInstances, OverlappingInstances
