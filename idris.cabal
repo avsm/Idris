@@ -1,9 +1,9 @@
 Name:           idris
 Version:        0.0.1
-Author:         Edwin Brady
 License:        BSD3
 License-file:   LICENSE
-Maintainer:     eb@dcs.st-and.ac.uk
+Author:         Edwin Brady
+Maintainer:     Edwin Brady <eb@dcs.st-and.ac.uk>
 
 Stability:      Alpha
 Category:       Compilers/Interpreters
