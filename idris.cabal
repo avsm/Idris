@@ -1,16 +1,16 @@
-Name:		idris
-Version:	0.0.1
-Author:		Edwin Brady
-License:	BSD3
-License-file:	LICENSE
-Maintainer:	eb@dcs.st-and.ac.uk
-Homepage:	http://www.dcs.st-and.ac.uk/~eb/Ivor/
-Stability:	experimental
-Build-depends:	base, containers, array, parsec, mtl, ivor
-Synopsis:	Dependently Typed Functional Programming Language
+Name:           idris
+Version:        0.0.1
+Author:         Edwin Brady
+License:        BSD3
+License-file:   LICENSE
+Maintainer:     eb@dcs.st-and.ac.uk
+Homepage:       http://www.dcs.st-and.ac.uk/~eb/Ivor/
+Stability:      experimental
+Build-depends:  base, containers, array, parsec, mtl, ivor
+Synopsis:       Dependently Typed Functional Programming Language
 
-Executable:	idris
-Main-is:	Main.lhs
-Other-modules:  Idris.Parser, Idris.Lexer, Idris.AbsSyntax, Idris.Context,
-	        Idris.MakeTerm RunIO
+Executable:     idris
+Main-is:        Main.lhs
+Other-modules:  Idris.Parser, Idris.Lexer, Idris.Lib, Idris.AbsSyntax, Idris.Context,
+                Idris.MakeTerm, Idris.Prefix, RunIO
 Extensions:     MagicHash, UndecidableInstances, OverlappingInstances
