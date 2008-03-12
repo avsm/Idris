@@ -4,13 +4,41 @@ Author:         Edwin Brady
 License:        BSD3
 License-file:   LICENSE
 Maintainer:     eb@dcs.st-and.ac.uk
-Homepage:       http://www.dcs.st-and.ac.uk/~eb/Ivor/
-Stability:      experimental
-Build-depends:  base, containers, array, parsec, mtl, ivor
-Synopsis:       Dependently Typed Functional Programming Language
 
-Executable:     idris
-Main-is:        Main.lhs
-Other-modules:  Idris.Parser, Idris.Lexer, Idris.Lib, Idris.AbsSyntax, Idris.Context,
-                Idris.MakeTerm, Idris.Prefix, RunIO
-Extensions:     MagicHash, UndecidableInstances, OverlappingInstances
+Stability:      Alpha
+Category:       Compilers/Interpreters
+Synopsis:       Dependently Typed Functional Programming Language
+Description:    Idris is an experimental language with full dependent types.
+                Dependent types allow types to be predicated on values,
+                meaning that some aspects of a program's behaviour can be
+                specified precisely in the type. The language is closely related
+                to Epigram and Agda.
+                .
+                The aims of the project are:
+                .
+                * To provide a platform for realistic programming with dependent types.
+                By realistic, we mean the ability to interact with the outside world
+                and use primitive types and operations. This includes networking,
+                file handling, concurrency, etc.
+                .
+                * To show that full dependent types do not mean we have to abandon
+                the functional style we have come to know and love with languages
+                like Haskell and OCaml. We aim to show that lightweight dependently typed
+                programming means allowing the programmer full access to values in types,
+                and letting the type checker do the hard work so you don't have to!
+                .
+                The Darcs repository can be found at <http://www-fp.dcs.st-and.ac.uk/~eb/darcs/Idris>.
+Homepage:       http://www.dcs.st-and.ac.uk/~eb/Ivor/
+
+Cabal-Version:  >= 1.2
+Build-type:     Simple
+
+Library
+        Exposed-modules: Idris.Parser, Idris.Lexer, Idris.Lib, Idris.AbsSyntax, Idris.Context,
+                         Idris.MakeTerm, Idris.Prefix, RunIO
+
+        Build-depends:   base>3, containers, array, parsec, mtl, ivor
+        Extensions:      MagicHash, UndecidableInstances, OverlappingInstances
+
+Executable     idris
+               Main-is: Main.lhs
