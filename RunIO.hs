@@ -9,7 +9,8 @@ import Ivor.Shell
 import Ivor.Construction
 
 import Data.Typeable
-import GHC.Prim(unsafeCoerce#)
+import Data.IORef
+import System.IO.Unsafe
 import IO
 import Control.Monad.Error
 import Control.Concurrent
@@ -49,6 +50,9 @@ data Action = ReadStr
             | NewLock
             | DoLock Lock
             | DoUnlock Lock
+            | NewRef
+            | ReadRef Int
+            | WriteRef Int ViewTerm
             | CantReduce ViewTerm
 
 parseAction x = parseAction' x [] where
@@ -71,6 +75,17 @@ getAction n [lock]
         = DoLock (getLock lock)
     | n == name "DoUnlock"
         = DoUnlock (getLock lock)
+getAction n []
+    | n == name "NewRef" = NewRef
+getAction n [_,Constant i]
+    | n == name "ReadRef" 
+        = case cast i of
+             Just i' -> ReadRef i'
+getAction n [_,Constant i,val]
+    | n == name "WriteRef"
+        = case cast i of
+             Just i' -> WriteRef i' val
+       
 getAction n args = CantReduce (apply (Name Unknown n) args)
 
 getHandle  (App _ (Constant h)) = case cast h of
@@ -110,6 +125,15 @@ runAction ctxt (DoLock l) k
 runAction ctxt (DoUnlock l) k
       = do primUnlock l
            continue ctxt k unit
+runAction ctxt NewRef k
+      = do i <- newRef
+           continue ctxt k (Constant i)
+runAction ctxt (ReadRef i) k
+      = do v <- getMem i
+           continue ctxt k v
+runAction ctxt (WriteRef i val) k
+      = do putMem i val
+           continue ctxt k unit
 runAction ctxt (CantReduce t) k
       = do fail $ "Stuck at: " ++ show t
            -- hFlush stdout
@@ -119,3 +143,37 @@ primLock (Lock lock) = waitQSem lock
 
 primUnlock :: Lock -> IO ()
 primUnlock (Lock lock) = signalQSem lock
+
+
+-- Some mutable memory, for implementing IORefs idris side.
+
+type Value = ViewTerm
+defaultVal = (Constant (0xDEADBEEF::Int))
+
+data MemState = MemState (IORef (Int, [Value]))
+
+memory :: MemState
+memory = unsafePerformIO 
+               (do mem <- newIORef (0, (take 100 (repeat defaultVal)))
+                   return (MemState mem))
+
+newRef :: IO Int
+newRef = do let (MemState mem) = memory
+            (p,ref) <- readIORef mem
+            writeIORef mem (p+1, ref)
+            return p
+
+putMem :: Int -> Value -> IO ()
+putMem loc val = do let (MemState mem) = memory
+                    (p,content) <- readIORef mem
+                    writeIORef mem (p, update content loc val)
+
+getMem :: Int -> IO Value
+getMem loc = do let (MemState mem) = memory
+                (p, content) <- readIORef mem
+                return (content!!loc)
+
+update :: [a] -> Int -> a -> [a]
+update [] _ _ = []
+update (x:xs) 0 v = (v:xs)
+update (x:xs) n v = x:(update xs (n-1) v)
