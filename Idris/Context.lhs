@@ -1,7 +1,7 @@
 > module Idris.Context(Ctxt, Id(..), addEntry, ctxtLookup,
 >                      ctxtAlist, newCtxt) where
 
-> import List
+> import Data.List
 > import qualified Data.Map as Map
 
 > data Id = UN String | MN String Int
