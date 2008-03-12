@@ -10,8 +10,9 @@ import Ivor.Shell
 import Ivor.Construction
 
 import Data.Typeable
-import GHC.Prim(unsafeCoerce#)
-import IO
+import Data.IORef
+import System.IO.Unsafe
+import System.IO
 import Control.Monad.Error
 import Control.Concurrent
 import Debug.Trace
