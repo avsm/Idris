@@ -7,10 +7,10 @@
 > import System.IO
 > import Data.Typeable
 
-> import Idris.Parser
 > import Idris.AbsSyntax
 > import Idris.MakeTerm
 > import Idris.Lib
+> import Idris.Parser
 
 > import RunIO
 

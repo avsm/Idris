@@ -42,3 +42,6 @@ Library
 
 Executable     idris
                Main-is: Main.lhs
+               Other-modules: Idris.Parser, Idris.Lexer, Idris.Lib, 
+                              Idris.AbsSyntax, Idris.Context,
+                              Idris.MakeTerm, Idris.Prefix, RunIO
