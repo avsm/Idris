@@ -49,6 +49,7 @@ data Token
       | TokenFloat Double
       | TokenChar Char
       | TokenBool Bool
+      | TokenMetavar Id
       | TokenIntType
       | TokenCharType
       | TokenBoolType
@@ -139,6 +140,7 @@ lexer cont ('|':cs) = cont TokenBar cs
 lexer cont ('.':cs) = cont TokenDot cs
 lexer cont ('#':cs) = cont TokenType cs
 lexer cont ('%':cs) = lexSpecial cont cs
+lexer cont ('?':cs) = lexMeta cont cs
 lexer cont (c:cs) = lexError c cs
 
 lexError c s l = failP (show l ++ ": Unrecognised token '" ++ [c] ++ "'\n") s l
@@ -212,6 +214,10 @@ lexVar cont cs =
 lexSpecial cont cs =
     case span isAllowed cs of
       (thing,rest) -> lexError '%' rest
+
+lexMeta cont cs =
+    case span isAllowed cs of
+      (thing,rest) -> cont (TokenMetavar (UN thing)) rest
 
 mkname :: String -> Token
 mkname c = TokenName (UN c)

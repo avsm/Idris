@@ -25,6 +25,7 @@ import Idris.Lib
       float           { TokenFloat $$ }
       char            { TokenChar $$ }
       bool            { TokenBool $$ }
+      metavar         { TokenMetavar $$ }
       ':'             { TokenColon }
       ';'             { TokenSemi }
       '|'             { TokenBar }
@@ -84,7 +85,7 @@ import Idris.Lib
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype floattype stringtype int string float bool refl do type
-          empty unit '_' if then else handletype locktype
+          empty unit '_' if then else handletype locktype metavar
 
 
 %%
@@ -170,6 +171,7 @@ MaybeType : { RPlaceholder}
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name { RVar $1 }
           | '(' Term ')' { $2 }
+          | metavar { RMetavar $1 }
           | NoAppTerm arrow NoAppTerm { RBind (MN "X" 0)
                                         (Pi Ex $1) $3 }
           | '(' Name ':' Term ')' arrow NoAppTerm

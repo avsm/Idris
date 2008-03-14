@@ -34,7 +34,7 @@ partition lt pivot (VCons x xs)
 qsort : (lt:a->a->Bool)->(Vect a n)->(Vect a n);
 
 glue : (lt:a->a->Bool)-> a -> (Partition a n) -> (Vect a (S n));
-glue lt val (mkPartition left right) 
+glue lt val (mkPartition {l} {r} left right) 
    = let lsort = qsort lt left,
          rsort = qsort lt right in
      rewrite (append lsort (VCons val rsort)) plus_nSm;
