@@ -139,7 +139,9 @@ Add an entry for the type id and for each of the constructors.
 >                Context -> (Id, IvorFun) -> m Context
 > addIvorDef ctxt (n,IvorFun name tyin _ def) 
 >     = trace ("Processing "++ show n) $ case def of
->         PattDef ps -> addPatternDef ctxt name (unjust tyin) ps [Partial,GenRec] -- just allow general recursion for now
+>         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
+>                          if (null newdefs) then return ctxt
+>                            else fail $ "Need to define: " ++ (show newdefs)
 >         SimpleDef tm -> case tyin of
 >                           Nothing -> addDef ctxt name tm
 >                           Just ty -> addTypedDef ctxt name tm ty
