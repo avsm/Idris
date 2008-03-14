@@ -36,7 +36,7 @@ instance ViewConst Lock where
 
 exec :: Context -> Term -> IO ()
 exec ctxt wurzel = do res <- runIO ctxt (view (whnf ctxt wurzel))
-                      putStr $ show res
+                      putStrLn $ show res
 
 runIO :: Context -> ViewTerm -> IO ViewTerm
 runIO ctxt (App (App (App (Name _ d) _) act) k)

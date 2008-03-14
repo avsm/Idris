@@ -141,7 +141,7 @@ Add an entry for the type id and for each of the constructors.
 >     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ctxt
->                            else fail $ "Need to define:\n" ++ 
+>                            else fail $ "Metavariables are:\n" ++ 
 >                                        concat (map showDef newdefs)
 >         SimpleDef tm -> case tyin of
 >                           Nothing -> addDef ctxt name tm
@@ -152,5 +152,12 @@ Add an entry for the type id and for each of the constructors.
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
 >         _ -> return ctxt
 >    where unjust (Just x) = x
->          showDef (n,ty) = "  " ++ show n ++ " : " ++
->                           showImp False (unIvor raw ty)
+>          showDef (n,ty) = "  " ++ show n ++ " : " ++ dumpMeta (unIvor raw ty)
+
+>          dumpMeta tm = showImp False (getRetType tm) ++ 
+>                        "\n  in environment\n" ++ 
+>                        dumpArgs (getArgTypes tm)
+>          dumpArgs [] = ""
+>          dumpArgs ((n,ty):xs) = "    " ++ show n ++ " : " ++showImp False ty
+>                                 ++ "\n" ++ dumpArgs xs
+

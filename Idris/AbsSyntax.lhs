@@ -109,6 +109,15 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > getFn (RAppImp _ f a) = getFn f
 > getFn f = f
 
+> getArgTypes :: RawTerm -> [(Id,RawTerm)]
+> getArgTypes tm = gat tm [] where
+>     gat (RBind n (Pi _ ty) sc) acc = gat sc ((n,ty):acc)
+>     gat sc acc = acc
+
+> getRetType :: RawTerm -> RawTerm
+> getRetType (RBind n (Pi _ ty) sc) = getRetType sc
+> getRetType x = x
+
 > getFnName f = case getFn f of
 >                 (RVar n) -> Just n
 >                 _ -> Nothing
@@ -426,13 +435,18 @@ boolean flag (true for showing them)
 >           = bracket p 2 $ 
 >             "\\ " ++ show n ++ " : " ++ showP 10 ty ++ " . " ++ showP 10 sc
 >     showP p (RBind n (Pi im ty) sc)
->           = bracket p 2 $
->             ob im ++ show n ++ " : " ++ showP 10 ty ++ cb im ++ " -> " ++
->             showP 1 sc
+>           | internal n && not imp -- hack for spotting unused names quickly!
+>              = bracket p 2 $ showP 1 ty ++ " -> " ++ showP 10 sc
+>           | otherwise
+>              = bracket p 2 $
+>                ob im ++ show n ++ " : " ++ showP 10 ty ++ cb im ++ " -> " ++
+>                showP 1 sc
 >        where ob Im = "{"
 >              ob Ex = "("
 >              cb Im = "}"
 >              cb Ex = ")"
+>              internal (UN ('_':'_':_)) = True
+>              internal _ = False
 >     showP p (RBind n (RLet val ty) sc)
 >           = bracket p 2 $
 >             "let " ++ show n ++ " : " ++ showP 10 ty ++ " = " ++ showP 10 val

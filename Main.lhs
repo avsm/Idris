@@ -40,7 +40,10 @@ Load things in this order:
 >     case ptree of
 >       Success ds -> do let defs' = makeIvorFuns defs ds
 >                        let alldefs = defs++defs'
->                        ctxt <- addIvor defs' ctxt
+>                        ctxt <- case (addIvor defs' ctxt) of
+>                             Success x -> return x
+>                             Failure err _ _ -> do putStrLn err
+>                                                   return ctxt
 >                        return (ctxt, alldefs)
 >       Failure err f ln -> fail err
 
