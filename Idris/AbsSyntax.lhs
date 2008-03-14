@@ -7,6 +7,8 @@
 > import Control.Monad.State
 > import qualified Data.Map as Map
 > import Debug.Trace
+> import Data.Typeable
+> import Data.Maybe
 
 > import Ivor.TT
 > import Ivor.Primitives
@@ -137,11 +139,36 @@ value.
 >               | IntType
 >               | FloatType
 >               | Builtin String -- builtin type, eg Handle or Lock
->    deriving (Show, Eq)
+>    deriving Eq
+
+> instance Show Constant where
+>     show (Num i) = show i
+>     show (Str s) = show s
+>     show (Bo b) = show b
+>     show (Fl d) = show d
+>     show TYPE = "#"
+>     show IntType = "Int"
+>     show FloatType = "Float"
+>     show (Builtin s) = s
 
 > data Op = Plus | Minus | Times | Divide | Concat | JMEq
 >         | OpEq | OpLT | OpLEq | OpGT | OpGEq
->    deriving (Show, Eq)
+>    deriving Eq
+
+> allOps = [Plus,Minus,Times,Divide,Concat,JMEq,OpEq,OpLT,OpLEq,OpGT,OpGEq]
+
+> instance Show Op where
+>     show Plus = "+"
+>     show Minus = "-"
+>     show Times = "*"
+>     show Divide = "/"
+>     show Concat = "++"
+>     show JMEq = "="
+>     show OpEq = "=="
+>     show OpLT = "<"
+>     show OpLEq = "<="
+>     show OpGT = ">"
+>     show OpGEq = ">="
 
 > opFn Plus = (name "__addInt")
 > opFn Minus = (name "__subInt")
@@ -321,3 +348,98 @@ ready for typechecking
 >             show n ++ " : " ++ show ty ++ "\n" ++
 >             "   " ++ show imp ++ " implicit\n" ++
 >             show def ++ "\n\n"
+
+> mkRName n = UN (show n)
+
+Convert an ivor term back to a raw term, for pretty printing purposes.
+Use the context to decide which arguments to make implicit
+
+FIXME: If a name is bound locally, don't add implicit args.
+
+> unIvor :: Ctxt IvorFun -> ViewTerm -> RawTerm
+> unIvor ctxt tm = unI tm [] where
+
+Built-in constants firsts
+
+>     unI (Name _ v) []
+>         | v == name "Int" = RConst IntType
+>         | v == name "String" = RConst StringType
+
+Now built-in operators
+
+>     unI (Name _ v) [_,_,x,y]
+>         | v == opFn JMEq = RInfix JMEq x y
+>     unI (Name _ v) [_,x,y]
+>         | v == opFn OpEq = RInfix JMEq x y
+>     unI (Name _ v) [x,y]
+>         | Just op <- getOp v allOps = RInfix op x y
+>        where getOp v allops 
+>                  = let ops = mapMaybe (\x -> if opFn x == v 
+>                                                 then Just x 
+>                                                 else Nothing) allops
+>                        in if null ops then Nothing
+>                                       else Just (head ops)
+
+>     unI (Name _ v) args 
+>        = case ctxtLookup ctxt (mkRName v) of
+>            Just fdata -> mkImpApp (implicitArgs fdata) 
+>                                   (argNames (ivorFType fdata)) (RVar (mkRName v)) args
+>            Nothing -> unwind (RVar (mkRName v)) args
+>     unI (App f a) args = unI f ((unI a []):args)
+>     unI (Lambda v ty sc) args = unwind (RBind (mkRName v) (Lam (unI ty [])) (unI sc [])) args
+>     unI (Forall v ty sc) args = unwind (RBind (mkRName v) (Pi Ex (unI ty [])) (unI sc [])) args
+>     unI (Let v ty val sc) args = unwind (RBind (mkRName v) 
+>                                          (RLet (unI val []) (unI ty [])) 
+>                                          (unI sc [])) args
+>     unI Star [] = RConst TYPE
+>     unI (Constant c) [] = case (cast c)::Maybe Int of
+>                             Just i -> RConst (Num i)
+>                             Nothing -> case (cast c)::Maybe String of
+>                                           Just s -> RConst (Str s)
+>     unwind = mkImpApp 0 []
+
+> argNames :: Maybe ViewTerm -> [Id]
+> argNames Nothing = []
+> argNames (Just ty) = an ty where
+>     an (Forall n ty sc) = (mkRName n):(an sc)
+>     an x = []
+
+> mkImpApp :: Int -> [Id] -> RawTerm -> [RawTerm] -> RawTerm
+> mkImpApp i (n:ns) tm (a:as) 
+>      | i>0 = mkImpApp (i-1) ns (RAppImp n tm a) as
+>      | otherwise = mkImpApp 0 ns (RApp tm a) as
+> mkImpApp _ _ tm (a:as) = mkImpApp 0 [] (RApp tm a) as
+> mkImpApp _ _ tm _ = tm
+
+
+Show a raw term; either show or hide implicit arguments according to
+boolean flag (true for showing them)
+
+> showImp :: Bool -> RawTerm -> String
+> showImp imp tm = showP 10 tm where
+>     showP p (RVar i) = show i
+>     showP p (RApp f a) = bracket p 1 $ showP 1 f ++ " " ++ showP 0 a
+>     showP p (RAppImp n f a)
+>           | imp = bracket p 1 $ showP 1 f ++ " {"++show n ++ " = " ++ showP 0 a ++ "} "
+>           | otherwise = showP 1 f
+>     showP p (RBind n (Lam ty) sc)
+>           = bracket p 2 $ 
+>             "\\ " ++ show n ++ " : " ++ showP 10 ty ++ " . " ++ showP 10 sc
+>     showP p (RBind n (Pi im ty) sc)
+>           = bracket p 2 $
+>             ob im ++ show n ++ " : " ++ showP 10 ty ++ cb im ++ " -> " ++
+>             showP 1 sc
+>        where ob Im = "{"
+>              ob Ex = "("
+>              cb Im = "}"
+>              cb Ex = ")"
+>     showP p (RBind n (RLet val ty) sc)
+>           = bracket p 2 $
+>             "let " ++ show n ++ " : " ++ showP 10 ty ++ " = " ++ showP 10 val
+>                    ++ " in " ++ showP 10 sc
+>     showP p (RConst c) = show c
+>     showP p (RInfix op l r) = bracket p 5 $
+>                               showP 4 l ++ show op ++ showP 4 r
+>     showP _ x = show x
+>     bracket outer inner str | inner>outer = "("++str++")"
+>                             | otherwise = str

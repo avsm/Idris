@@ -133,15 +133,16 @@ Add an entry for the type id and for each of the constructors.
 > addIvor :: Monad m => 
 >            Ctxt IvorFun -> -- just the ones we haven't added to Ivor
 >           Context -> m Context
-> addIvor defs ctxt = foldM addIvorDef ctxt (reverse (ctxtAlist defs))
+> addIvor defs ctxt = foldM (addIvorDef defs) ctxt (reverse (ctxtAlist defs))
 
 > addIvorDef :: Monad m =>
->                Context -> (Id, IvorFun) -> m Context
-> addIvorDef ctxt (n,IvorFun name tyin _ def) 
+>                Ctxt IvorFun -> Context -> (Id, IvorFun) -> m Context
+> addIvorDef raw ctxt (n,IvorFun name tyin _ def) 
 >     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ctxt
->                            else fail $ "Need to define: " ++ (show newdefs)
+>                            else fail $ "Need to define:\n" ++ 
+>                                        concat (map showDef newdefs)
 >         SimpleDef tm -> case tyin of
 >                           Nothing -> addDef ctxt name tm
 >                           Just ty -> addTypedDef ctxt name tm ty
@@ -151,3 +152,5 @@ Add an entry for the type id and for each of the constructors.
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
 >         _ -> return ctxt
 >    where unjust (Just x) = x
+>          showDef (n,ty) = "  " ++ show n ++ " : " ++
+>                           showImp False (unIvor raw ty)

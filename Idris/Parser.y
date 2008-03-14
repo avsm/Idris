@@ -72,13 +72,13 @@ import Idris.Lib
 
 %nonassoc LAM
 %nonassoc let in
-%left APP
 %left '(' '{'
-%left '*' '/'
 %left '+' '-'
+%left '*' '/'
 %left concat
 %left '=' eq
 %left '\\'
+%left APP
 %right arrow
 %nonassoc '.'
 %right IMP
@@ -153,10 +153,10 @@ ImplicitTerm : Name { ($1, RVar $1) }
 
 InfixTerm :: { RawTerm }
 InfixTerm : NoAppTerm '=' NoAppTerm { RInfix JMEq $1 $3 }
-          | NoAppTerm '+' NoAppTerm { RInfix Plus $1 $3 }
-          | NoAppTerm '-' NoAppTerm { RInfix Minus $1 $3 }
-          | NoAppTerm '*' NoAppTerm { RInfix Times $1 $3 }
-          | NoAppTerm '/' NoAppTerm { RInfix Divide $1 $3 }
+          | Term '+' Term { RInfix Plus $1 $3 }
+          | Term '-' Term { RInfix Minus $1 $3 }
+          | Term '*' Term { RInfix Times $1 $3 }
+          | Term '/' Term { RInfix Divide $1 $3 }
           | NoAppTerm eq NoAppTerm { RInfix OpEq $1 $3 }
           | NoAppTerm '<' NoAppTerm { RInfix OpLT $1 $3 }
           | NoAppTerm le NoAppTerm { RInfix OpLEq $1 $3 }

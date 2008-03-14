@@ -51,18 +51,22 @@ Load things in this order:
 >                    case parseTerm inp of
 >                      Success tm -> do let itm = makeIvorTerm raw tm
 >                                       gtm <- check ctxt itm
->                                       execEval ctxt (gtm, viewType gtm)
+>                                       execEval raw ctxt (gtm, viewType gtm)
 >                      Failure err f ln -> putStrLn err
 >                    repl raw ctxt
 >
 
 If it is an IO type, execute it, otherwise just eval it.
 
-> execEval :: Context -> (Term, ViewTerm) -> IO ()
-> execEval ctxt (tm, (App (Name _ io) _))
+> execEval :: Ctxt IvorFun -> Context -> (Term, ViewTerm) -> IO ()
+> execEval ivs ctxt (tm, (App (Name _ io) _))
 >          | io == name "IO" = do exec ctxt tm
->                                 putStrLn $ show (whnf ctxt tm)
-> execEval ctxt (tm, _) = putStrLn $ show (whnf ctxt tm)
+>                                 -- putStrLn $ show (whnf ctxt tm)
+> execEval ivs ctxt (tm, _) = do let res = (whnf ctxt tm)
+>                                -- print res
+>                                -- putStrLn (showImp True (unIvor ivs (view res)))
+>                                putStr (showImp False (unIvor ivs (view res)))
+>                                putStrLn $ " : " ++ showImp False (unIvor ivs (viewType res))
 
 > prims c = do c <- addPrimitive c (name "Int")
 >              c <- addPrimitive c (name "Float")
