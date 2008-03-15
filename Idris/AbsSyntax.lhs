@@ -112,7 +112,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > getArgTypes :: RawTerm -> [(Id,RawTerm)]
 > getArgTypes tm = gat tm [] where
 >     gat (RBind n (Pi _ ty) sc) acc = gat sc ((n,ty):acc)
->     gat sc acc = acc
+>     gat sc acc = reverse acc
 
 > getRetType :: RawTerm -> RawTerm
 > getRetType (RBind n (Pi _ ty) sc) = getRetType sc
