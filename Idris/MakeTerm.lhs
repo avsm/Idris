@@ -146,7 +146,7 @@ Add an entry for the type id and for each of the constructors.
 >         SimpleDef tm -> case tyin of
 >                           Nothing -> addDef ctxt name tm
 >                           Just ty -> addTypedDef ctxt name tm ty
->         DataDef ind -> addData ctxt ind
+>         DataDef ind -> addDataNoElim ctxt ind
 >         Later -> case tyin of
 >                    Just ty -> declare ctxt name ty
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
