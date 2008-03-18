@@ -96,11 +96,13 @@ getLock (Constant h) = case cast h of
                          Nothing -> error ("Lock error in constant " ++ show h)
 getLock x = error ("Lock error " ++ show x)
 
-continue ctxt k arg = case check ctxt (App k arg) of
-                          Right t -> let next = whnf ctxt t in
+continue ctxt k arg = case fastCheck ctxt (App k arg) of
+                        t -> let next = whnf ctxt t in
+                             runIO ctxt (view next)
+{-                          Right t -> let next = whnf ctxt t in
                                          runIO ctxt (view next)
-                          Left err -> fail $ "Can't happen - continue " ++ err
-
+                          Left err -> fail $ "Can't happen - continue " ++ err ++ "\n" ++ show k ++ "\n" ++ show arg
+-}
 
 unit = Name Unknown (name "II")
 
