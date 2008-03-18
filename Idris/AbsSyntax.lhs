@@ -158,6 +158,7 @@ value.
 >     show TYPE = "#"
 >     show IntType = "Int"
 >     show FloatType = "Float"
+>     show StringType = "String"
 >     show (Builtin s) = s
 
 > data Op = Plus | Minus | Times | Divide | Concat | JMEq

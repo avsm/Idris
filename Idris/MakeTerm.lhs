@@ -153,6 +153,7 @@ Add an entry for the type id and for each of the constructors.
 >         _ -> return ctxt
 >    where unjust (Just x) = x
 >          showDef (n,ty) = "  " ++ show n ++ " : " ++ dumpMeta (unIvor raw ty)
+>                           ++ "\n"
 
 >          dumpMeta tm = showImp False (getRetType tm) ++ 
 >                        "\n  in environment\n" ++ 
