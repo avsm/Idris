@@ -132,7 +132,7 @@ Add an entry for the type id and for each of the constructors.
 
 > addIvor :: Monad m => 
 >            Ctxt IvorFun -> -- just the ones we haven't added to Ivor
->           Context -> m Context
+>            Context -> m Context
 > addIvor defs ctxt = foldM (addIvorDef defs) ctxt (reverse (ctxtAlist defs))
 
 > addIvorDef :: Monad m =>
