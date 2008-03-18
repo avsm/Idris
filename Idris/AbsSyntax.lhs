@@ -426,6 +426,8 @@ boolean flag (true for showing them)
 
 > showImp :: Bool -> RawTerm -> String
 > showImp imp tm = showP 10 tm where
+>     showP p (RVar (UN "__Unit")) = "()"
+>     showP p (RVar (UN "__Empty")) = "_|_"
 >     showP p (RVar i) = show i
 >     showP p (RApp f a) = bracket p 1 $ showP 1 f ++ " " ++ showP 0 a
 >     showP p (RAppImp n f a)

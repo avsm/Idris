@@ -157,12 +157,12 @@ InfixTerm : NoAppTerm '=' NoAppTerm { RInfix JMEq $1 $3 }
           | Term '-' Term { RInfix Minus $1 $3 }
           | Term '*' Term { RInfix Times $1 $3 }
           | Term '/' Term { RInfix Divide $1 $3 }
+          | Term concat Term { RInfix Concat $1 $3 }
           | NoAppTerm eq NoAppTerm { RInfix OpEq $1 $3 }
           | NoAppTerm '<' NoAppTerm { RInfix OpLT $1 $3 }
           | NoAppTerm le NoAppTerm { RInfix OpLEq $1 $3 }
           | NoAppTerm '>' NoAppTerm { RInfix OpGT $1 $3 }
           | NoAppTerm ge NoAppTerm { RInfix OpGEq $1 $3 }
-          | NoAppTerm concat NoAppTerm { RInfix Concat $1 $3 }
 
 MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}
