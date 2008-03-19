@@ -2,7 +2,7 @@ data Command : # where
     PutStr : String -> Command
   | GetStr : Command
   | Fork : A -> Command -- not sure I can forward declare types. Must check. 
-  | NewLock : Command
+  | NewLock : Int -> Command
   | DoLock : Lock -> Command
   | DoUnlock : Lock -> Command
   | NewRef : Command
@@ -13,7 +13,7 @@ Response : Command -> #;
 Response (PutStr s) = ();
 Response GetStr = String;
 Response (Fork proc) = ();
-Response NewLock = Lock;
+Response (NewLock i) = Lock;
 Response (DoLock l) = ();
 Response (DoUnlock l) = ();
 Response NewRef = Int;
@@ -33,8 +33,6 @@ bind (IODo c p) k = IODo c (\x . (bind (p x) k));
 return : A -> (IO A);
 return x = IOReturn x;
 
-
-
 putStr : String -> (IO ());
 putStr str = IODo (PutStr str) (\a . (IOReturn a));
 
@@ -48,8 +46,8 @@ putStrLn str = do { putStr str;
 fork : (IO ()) -> (IO ());
 fork proc = IODo (Fork proc) (\a . (IOReturn a));
 
-newLock : IO Lock;
-newLock = IODo NewLock (\l . (IOReturn l));
+newLock : Int -> (IO Lock);
+newLock i = IODo (NewLock i) (\l . (IOReturn l));
 
 lock : Lock -> (IO ());
 lock l = IODo (DoLock l) (\a . (IOReturn a));

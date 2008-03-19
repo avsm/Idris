@@ -14,7 +14,7 @@ count l ref tid = do { lock l;
 
 main : IO ();
 main = do { ref <- newIORef O;
-	    lock <- newLock;
+	    lock <- newLock 1;
 	    fork (count lock ref "Thread");
 	    count lock ref "Main__";
 	  };

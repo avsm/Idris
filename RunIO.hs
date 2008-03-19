@@ -48,7 +48,7 @@ runIO _ x = fail $ "Not an IO action: " ++ show x
 data Action = ReadStr
             | WriteStr String
             | Fork ViewTerm
-            | NewLock
+            | NewLock Int
             | DoLock Lock
             | DoUnlock Lock
             | NewRef
@@ -69,8 +69,10 @@ getAction n [Constant str]
 getAction n [_,t]
     | n == name "Fork"
         = Fork t
-getAction n []
-    | n == name "NewLock" = NewLock
+getAction n [Constant i]
+    | n == name "NewLock" 
+        = case cast i of
+             Just i' -> NewLock i'
 getAction n [lock]
     | n == name "DoLock"
         = DoLock (getLock lock)
@@ -119,8 +121,8 @@ runAction ctxt (Fork t) k
       = do forkIO (do x <- runIO ctxt t
                       return ())
            continue ctxt k unit
-runAction ctxt NewLock k
-      = do mv <- newQSem 1
+runAction ctxt (NewLock n) k
+      = do mv <- newQSem n
            continue ctxt k (Constant (Lock mv))
 runAction ctxt (DoLock l) k
       = do primLock l
