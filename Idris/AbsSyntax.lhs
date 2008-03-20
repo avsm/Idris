@@ -208,7 +208,7 @@ implicit arguments each function has.
 
 > data IvorFun = IvorFun {
 >       ivorFName :: Name,
->       ivorFType :: Maybe ViewTerm,
+>       ivorFType :: (Maybe ViewTerm),
 >       implicitArgs :: Int,
 >       ivorDef :: IvorDef
 >     }
@@ -216,11 +216,11 @@ implicit arguments each function has.
 
 Name definitions Ivor-side.
 
-> data IvorDef = PattDef Patterns -- pattern matching function
+> data IvorDef = PattDef !Patterns -- pattern matching function
 >              | ITyCon -- Type constructor
 >              | IDataCon -- Data constructor
->              | SimpleDef ViewTerm -- simple function definition
->              | DataDef Inductive -- data type definition
+>              | SimpleDef !ViewTerm -- simple function definition
+>              | DataDef !Inductive -- data type definition
 >              | Later -- forward declaration
 >    deriving Show
 

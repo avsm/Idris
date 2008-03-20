@@ -1,9 +1,12 @@
 DB = --user
 PREFIX = $(HOME)
 
+PROFILE = 
+# -p --enable-executable-profiling
+
 all: .PHONY
 	echo "module Idris.Prefix where prefix = \"$(PREFIX)\"" > Idris/Prefix.hs
-	runhaskell Setup.lhs configure $(DB) --ghc --prefix=$(PREFIX)
+	runhaskell Setup.lhs configure $(DB) --ghc --prefix=$(PREFIX) $(PROFILE)
 	runhaskell Setup.lhs build
 
 install: .PHONY

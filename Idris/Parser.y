@@ -131,17 +131,25 @@ Term :: { RawTerm }
 Term : NoAppTerm { $1 }
      | Term NoAppTerm %prec APP { RApp $1 $2 }
      | Term '{' ImplicitTerm '}' %prec APP { RAppImp (fst $3) $1 (snd $3) }
-     | '\\' LamBinds '.' Term %prec LAM
-                { doBind $2 $4 }
+     | '\\' Binds '.' Term %prec LAM
+                { doBind Lam $2 $4 }
      | let LetBinds in Term
                 { doLetBind $2 $4 }
      | InfixTerm { $1 }
      | if Term then Term else Term
        { mkApp (RVar (UN "if_then_else")) [$2,$4,$6] }
 
-LamBinds :: { [(Id, RawTerm)] }
-LamBinds : Name MaybeType { [($1,$2)] }
-         | Name MaybeType LamBinds { ($1,$2):$3 }
+Binds :: { [(Id, RawTerm)] }
+Binds : Name MaybeType { [($1,$2)] }
+      | Name MaybeType ',' Binds { ($1,$2):$4 }
+
+TypedBinds :: { [(Id, RawTerm)] }
+TypedBinds : Names ':' Term { map ( \x -> (x,$3)) $1 }
+           | Names ':' Term ',' TypedBinds { (map ( \x -> (x,$3)) $1) ++ $5 }
+
+Names :: { [Id] }
+Names : Name { [$1] }
+      | Name ',' Names { $1:$3 }
 
 LetBinds :: { [(Id, RawTerm, RawTerm)] }
 LetBinds : Name MaybeType '=' Term { [($1,$2,$4)] }
@@ -174,10 +182,10 @@ NoAppTerm : Name { RVar $1 }
           | metavar { RMetavar $1 }
           | NoAppTerm arrow NoAppTerm { RBind (MN "X" 0)
                                         (Pi Ex $1) $3 }
-          | '(' Name ':' Term ')' arrow NoAppTerm
-                { RBind $2 (Pi Ex $4) $7 }
-          | '{' Name ':' Term '}' arrow NoAppTerm
-                { RBind $2 (Pi Im $4) $7 }
+          | '(' TypedBinds ')' arrow NoAppTerm
+                { doBind (Pi Ex) $2 $5 }
+          | '{' TypedBinds '}' arrow NoAppTerm
+                { doBind (Pi Im) $2 $5 }
           | Constant { RConst $1 }
           | refl { RRefl }
           | empty { RVar (UN "__Empty") }
@@ -263,9 +271,9 @@ mkDef (n, tms) = mkImpApp (RVar n) tms
          mkImpApp f ((tm,Just n):ts) = mkImpApp (RAppImp n f tm) ts
          mkImpApp f ((tm, Nothing):ts) = mkImpApp (RApp f tm) ts
 
-doBind :: [(Id,RawTerm)] -> RawTerm -> RawTerm
-doBind [] t = t
-doBind ((x,ty):ts) tm = RBind x (Lam ty) (doBind ts tm)
+doBind :: (RawTerm -> RBinder) -> [(Id,RawTerm)] -> RawTerm -> RawTerm
+doBind b [] t = t
+doBind b ((x,ty):ts) tm = RBind x (b ty) (doBind b ts tm)
 
 doLetBind :: [(Id,RawTerm,RawTerm)] -> RawTerm -> RawTerm
 doLetBind [] t = t
