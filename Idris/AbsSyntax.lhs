@@ -374,6 +374,8 @@ Built-in constants firsts
 >     unI (Name _ v) []
 >         | v == name "Int" = RConst IntType
 >         | v == name "String" = RConst StringType
+>     unI (Name _ v) [x,y]
+>         | v == name "refl" = RApp RRefl y
 
 Now built-in operators
 
@@ -430,6 +432,7 @@ boolean flag (true for showing them)
 >     showP p (RVar (UN "__Unit")) = "()"
 >     showP p (RVar (UN "__Empty")) = "_|_"
 >     showP p (RVar i) = show i
+>     showP p RRefl = "refl"
 >     showP p (RApp f a) = bracket p 1 $ showP 1 f ++ " " ++ showP 0 a
 >     showP p (RAppImp n f a)
 >           | imp = bracket p 1 $ showP 1 f ++ " {"++show n ++ " = " ++ showP 0 a ++ "} "
