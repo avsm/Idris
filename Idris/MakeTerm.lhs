@@ -52,6 +52,7 @@ Convert a raw term to an ivor term, adding placeholders
 >               = RBind n (Lam (ap [] ty)) (ap [] sc)
 >           ap ex (RBind n (RLet val ty) sc)
 >               = RBind n (RLet (ap [] val) (ap [] ty)) (ap [] sc)
+>           ap ex (RInfix op l r) = RInfix op (ap [] l) (ap [] r)
 >           ap ex (RDo ds) = RDo (map apdo ds)
 >           ap ex r = r
 
