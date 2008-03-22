@@ -100,7 +100,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RRefl
 >    deriving (Show, Eq)
 
-> data Do = DoBinding Id RawTerm
+> data Do = DoBinding Id RawTerm RawTerm
 >         | DoExp RawTerm
 >     deriving (Show, Eq)
 
@@ -335,10 +335,10 @@ ready for typechecking
 > undo :: [Do] -> State Int RawTerm
 > undo [] = fail "The last statement in a 'do' block must be an expression"
 > undo [DoExp last] = return last
-> undo ((DoBinding v' exp):ds)
+> undo ((DoBinding v' ty exp):ds)
 >          = -- bind exp (\v' . [[ds]])
 >            do ds' <- undo ds
->               let k = RBind v' (Lam RPlaceholder) ds'
+>               let k = RBind v' (Lam ty) ds'
 >               return $ mkApp (RVar (UN "bind")) [RPlaceholder, RPlaceholder,
 >                                                  exp, k]
 > undo ((DoExp exp):ds)

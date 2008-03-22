@@ -57,7 +57,7 @@ Convert a raw term to an ivor term, adding placeholders
 >           ap ex r = r
 
 >           apdo (DoExp r) = DoExp (ap [] r)
->           apdo (DoBinding x r) = DoBinding x (ap [] r)
+>           apdo (DoBinding x t r) = DoBinding x (ap [] t) (ap [] r)
 
 Go through the arguments; if an implicit argument has the same name as one
 in our list of explicit names to add, add it.
@@ -140,7 +140,8 @@ Add an entry for the type id and for each of the constructors.
 >                Ctxt IvorFun -> Context -> (Id, IvorFun) -> m Context
 > addIvorDef raw ctxt (n,IvorFun name tyin _ def) 
 >     = trace ("Processing "++ show n) $ case def of
->         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
+>         PattDef ps -> trace (show ps) $ 
+>                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ctxt
 >                            else fail $ "Metavariables are:\n" ++ 
 >                                        concat (map showDef newdefs)

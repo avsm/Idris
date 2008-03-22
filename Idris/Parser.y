@@ -201,7 +201,7 @@ DoBindings : DoBind DoBindings { $1:$2}
            | DoBind { [$1] }
 
 DoBind :: { Do }
-DoBind : Name leftarrow Term ';' { DoBinding $1 $3 }
+DoBind : Name MaybeType leftarrow Term ';' { DoBinding $1 $2 $4 }
        | Term ';' { DoExp $1 }
 
 Constant :: { Constant }
