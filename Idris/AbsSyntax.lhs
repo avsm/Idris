@@ -35,7 +35,7 @@ A program is a collection of datatype and function definitions.
 We store everything directly as a 'ViewTerm' from Ivor.
 
 > data Decl = DataDecl Datatype | Fwd Id RawTerm
->           | Fun Function | TermDef Id RawTerm
+>           | Fun Function | TermDef Id RawTerm | Constructor
 >    deriving Show
 
 Function types and clauses are given separately, so we'll parse them
@@ -210,7 +210,8 @@ implicit arguments each function has.
 >       ivorFName :: Name,
 >       ivorFType :: (Maybe ViewTerm),
 >       implicitArgs :: Int,
->       ivorDef :: IvorDef
+>       ivorDef :: IvorDef,
+>       rawDecl :: Decl -- handy to keep around for display
 >     }
 >    deriving Show
 
@@ -354,7 +355,7 @@ ready for typechecking
 
 > dump :: Ctxt IvorFun -> String
 > dump ctxt = concat $ map dumpFn (ctxtAlist ctxt)
->   where dumpFn (_,IvorFun n ty imp def) =
+>   where dumpFn (_,IvorFun n ty imp def _) =
 >             show n ++ " : " ++ show ty ++ "\n" ++
 >             "   " ++ show imp ++ " implicit\n" ++
 >             show def ++ "\n\n"

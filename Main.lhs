@@ -5,6 +5,7 @@
 
 > import System.Environment
 > import System.IO
+> import System.Console.Readline
 > import Data.Typeable
 
 > import Idris.AbsSyntax
@@ -21,6 +22,8 @@ Load things in this order:
 * Add primitives
 * Load prelude
 * Load users program
+
+> version = "0.1.0"
 
 > main :: IO ()
 > main = do args <- getArgs
@@ -47,17 +50,56 @@ Load things in this order:
 >                        return (ctxt, alldefs)
 >       Failure err f ln -> fail err
 
+> data REPLRes = Quit | Continue
+
+Command; minimal abbreviation; function to run it; description
+
+> commands
+>    = [("quit", "q", quit, "Exits the top level"),
+>       ("help", "h", help, "Show help text"),
+>       ("?", "?", help, "Show help text")]
+
+> quit _ _ = do return Quit
+> help _ _ 
+>    = do putStrLn $ "\nIdris version " ++ version
+>         putStrLn $ "----------------" ++ take (length version) (repeat '-')
+>         putStrLn "Commands available:\n"
+>         putStrLn "\t<expression>     Execute the given expression"
+>         mapM_ (\ (com, _, _, desc) -> 
+>                       putStrLn $ "\t:" ++ com ++ (take (16-length com) (repeat ' ')) ++ desc) commands
+>         putStrLn "\nCommands may be given the shortest unambiguous abbreviation (e.g. :q, :l)\n"
+>         return Continue
+
 > repl :: Ctxt IvorFun -> Context -> IO ()
-> repl raw ctxt = do putStr "Idris> "
->                    hFlush stdout
->                    inp <- getLine
->                    case parseTerm inp of
+> repl raw ctxt = do inp <- readline ("Idris> ")
+>                    addHistory inp
+>                    res <- case inp of
+>                        Nothing -> return Continue
+>                        Just (':':command) -> runCommand (words command) commands
+>                        Just exprinput -> do termInput raw ctxt exprinput
+>                                             return Continue
+>                    case res of
+>                      Continue -> repl raw ctxt
+>                      _ -> return ()
+
+>   where
+>      runCommand (c:args) ((_, abbr, fun, _):xs) 
+>         | matchesAbbrev abbr c = fun ctxt args
+>         | otherwise = runCommand (c:args) xs
+>      runCommand _ _ = do putStrLn "Unrecognised command"
+>                          help ctxt []
+>                          return Continue
+>      matchesAbbrev [] _ = True
+>      matchesAbbrev (a:xs) (c:cs) | a == c = matchesAbbrev xs cs
+>                                  | otherwise = False
+
+> termInput raw ctxt tm 
+>               = case parseTerm tm of
 >                      Success tm -> do let itm = makeIvorTerm raw tm
 >                                       gtm <- check ctxt itm
 >                                       execEval raw ctxt (gtm, viewType gtm)
 >                      Failure err f ln -> putStrLn err
->                    repl raw ctxt
->
+
 
 If it is an IO type, execute it, otherwise just eval it.
 

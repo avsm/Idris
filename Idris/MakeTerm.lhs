@@ -9,15 +9,15 @@
 Work out how many implicit arguments we need, then translate our definition
 into an ivor definition, with all the necessary placeholders added.
 
-> makeIvorFun ::  Ctxt IvorFun -> Function -> IvorFun
-> makeIvorFun ctxt (Function n ty clauses) 
+> makeIvorFun ::  Ctxt IvorFun -> Decl -> Function -> IvorFun
+> makeIvorFun ctxt decl (Function n ty clauses) 
 >     = let (rty, imp) = addImpl ctxt ty
 >           ity = makeIvorTerm ctxt rty
 >           extCtxt = addEntry ctxt n (IvorFun undefined (Just ity) 
->                                              imp undefined)
+>                                              imp undefined decl)
 >           pclauses = map (mkPat extCtxt imp) clauses in
 >       IvorFun (toIvorName n) (Just ity) imp 
->                   (PattDef (Patterns pclauses))
+>                   (PattDef (Patterns pclauses)) decl
 >   where mkPat ectx imp (id,(RawClause lhs rhs)) 
 >               = let lhs' = addPlaceholders ectx lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
@@ -39,7 +39,7 @@ Convert a raw term to an ivor term, adding placeholders
 >     -- out of an application
 >     where ap ex (RVar n)
 >               = case ctxtLookup ctxt n of
->                   Just (IvorFun _ (Just ty) imp _) -> 
+>                   Just (IvorFun _ (Just ty) imp _ _) -> 
 >                     mkApp (RVar n) 
 >                               (mkImplicitArgs 
 >                                (map fst (fst (getBinders ty []))) imp ex)
@@ -77,34 +77,36 @@ in our list of explicit names to add, add it.
 >        Ctxt IvorFun -> -- new
 >        [Decl] -> Ctxt IvorFun
 > mif ctxt acc [] = acc
-> mif ctxt acc ((Fun f):ds) 
->         = let fn = makeIvorFun (ctxt++acc) f in
+> mif ctxt acc (decl@(Fun f):ds) 
+>         = let fn = makeIvorFun (ctxt++acc) decl f in
 >               mif ctxt (addEntry acc (funId f) fn) ds
-> mif ctxt acc ((Fwd n ty):ds) 
+> mif ctxt acc (decl@(Fwd n ty):ds) 
 >         = let (rty, imp) = addImpl (ctxt++acc) ty
 >               ity = makeIvorTerm (ctxt++acc) rty in
 >               mif ctxt (addEntry acc n (IvorFun (toIvorName n) (Just ity) 
->                                             imp Later)) ds
-> mif ctxt acc ((DataDecl d):ds) 
->         = addDataEntries ctxt acc d ds -- will call mif on ds
-> mif ctxt acc ((TermDef n tm):ds) 
+>                                             imp Later decl)) ds
+> mif ctxt acc (decl@(DataDecl d):ds) 
+>         = addDataEntries ctxt acc decl d ds -- will call mif on ds
+> mif ctxt acc (decl@(TermDef n tm):ds) 
 >         = let (itmraw, imp) = addImpl (ctxt++acc) tm
 >               itm = makeIvorTerm (ctxt++acc) itmraw in
 >               mif ctxt (addEntry acc n 
->                      (IvorFun (toIvorName n) Nothing imp (SimpleDef itm))) ds
+>                   (IvorFun (toIvorName n) Nothing imp 
+>                            (SimpleDef itm) decl)) ds
 
 Add an entry for the type id and for each of the constructors.
 
-> addDataEntries :: Ctxt IvorFun -> Ctxt IvorFun -> Datatype -> [Decl] -> 
+> addDataEntries :: Ctxt IvorFun -> Ctxt IvorFun -> Decl ->
+>                   Datatype -> [Decl] -> 
 >                   Ctxt IvorFun
-> addDataEntries ctxt acc (Datatype tid tty cons) ds = 
+> addDataEntries ctxt acc decl (Datatype tid tty cons) ds = 
 >     let (tyraw, imp) = addImpl (ctxt++acc) tty
 >         tytm = makeIvorTerm (ctxt++acc) tyraw
 >         acctmp = addEntry (ctxt++acc) tid (IvorFun (toIvorName tid) (Just tytm) imp 
->                                   undefined)
+>                                   undefined decl)
 >         ddef = makeInductive acctmp tid (getBinders tytm []) cons []
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
->                                  (DataDef ddef)) in
+>                                  (DataDef ddef) decl) in
 >         addConEntries ctxt acc' cons ds
 
 > getBinders (Forall n ty sc) acc = (getBinders sc ((n,ty):acc))
@@ -128,7 +130,7 @@ Add an entry for the type id and for each of the constructors.
 > addConEntries ctxt acc ((cid, ty):cs) ds 
 >     = let (tyraw, imp) = addImpl (ctxt++acc) ty
 >           tytm = makeIvorTerm (ctxt++acc) tyraw
->           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon) in
+>           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon Constructor) in
 >           addConEntries ctxt acc' cs ds
 
 > addIvor :: Monad m => 
@@ -138,7 +140,7 @@ Add an entry for the type id and for each of the constructors.
 
 > addIvorDef :: Monad m =>
 >                Ctxt IvorFun -> Context -> (Id, IvorFun) -> m Context
-> addIvorDef raw ctxt (n,IvorFun name tyin _ def) 
+> addIvorDef raw ctxt (n,IvorFun name tyin _ def _) 
 >     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ctxt

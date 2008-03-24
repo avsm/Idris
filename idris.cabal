@@ -37,7 +37,8 @@ Library
         Exposed-modules: Idris.Parser, Idris.Lexer, Idris.Lib, Idris.AbsSyntax, Idris.Context,
                          Idris.MakeTerm, Idris.Prefix, RunIO
 
-        Build-depends:   base>3, containers, array, parsec, mtl, ivor
+        Build-depends:   base>3, containers, array, parsec, mtl,
+                         readline, ivor
         Extensions:      MagicHash, UndecidableInstances, OverlappingInstances
 
 Executable     idris

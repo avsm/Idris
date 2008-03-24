@@ -144,7 +144,7 @@ runAction ctxt (CantReduce t) k
            -- hFlush stdout
 
 primLock :: Lock -> IO ()
-primLock (Lock lock) = waitQSem lock
+primLock (Lock lock) = do waitQSem lock
 
 primUnlock :: Lock -> IO ()
 primUnlock (Lock lock) = signalQSem lock
