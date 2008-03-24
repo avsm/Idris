@@ -453,6 +453,7 @@ boolean flag (true for showing them)
 >              cb Im = "}"
 >              cb Ex = ")"
 >              internal (UN ('_':'_':_)) = True
+>              internal (MN _ _) = True
 >              internal _ = False
 >     showP p (RBind n (RLet val ty) sc)
 >           = bracket p 2 $

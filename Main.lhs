@@ -12,6 +12,7 @@
 > import Idris.MakeTerm
 > import Idris.Lib
 > import Idris.Parser
+> import Idris.Latex
 
 > import RunIO
 
@@ -68,7 +69,7 @@ Command; minimal abbreviation; function to run it; description
 > quit _ _ _ = do return Quit
 > tmtype raw ctxt tms = do icheckType raw ctxt (unwords tms)
 >                          return Continue
-> latex raw ctxt (nm:_) = do putStrLn "Nothing happens"
+> latex raw ctxt (nm:_) = do latexDump raw (UN nm)
 >                            return Continue
 > help _ _ _ 
 >    = do putStrLn $ "\nIdris version " ++ version
