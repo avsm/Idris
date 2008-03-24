@@ -27,7 +27,7 @@
 > instance LaTeX Decl where
 >     latex ctxt (DataDecl (Datatype id ty cons))
 >           = "\\Data\\hg\\:" ++ latex ctxt id ++ "\\:\\Hab\\:" ++
->             latex ctxt ty ++ "\\hg\\Where\\\\ \\n\\begin{array}{rl}\n" ++ 
+>             latex ctxt ty ++ "\\hg\\Where\\\\ \n\\begin{array}{rl}\n" ++ 
 >                     conList (map (latex ctxt) cons) ++
 >                             "\\end{array}\n"
 >                                
@@ -56,7 +56,9 @@
 >                                latex ctxt rhs ++ "}\\\\ \n"
 >         where
 >             showArgs [] = ""
->             showArgs (a:as) = " & " ++ latex ctxt a ++ showArgs as
+>             showArgs (a:as) = " & " ++ bracket (latex ctxt a) ++ showArgs as
+>             bracket x | ':' `elem` x = "(" ++ x ++ ")"
+>                       | otherwise = x
 
 Type/term pairs
 
@@ -68,8 +70,47 @@ Clauses
 > instance (LaTeX a) => LaTeX (a,RawClause) where
 >     latex ctxt (nm,clause) = latex ctxt clause
 
+Constants
+
+> instance LaTeX Constant where
+>     latex ctxt TYPE = "\\Type"
+>     latex ctxt n = show n
+
+Main bit for terms
+
 > instance LaTeX RawTerm where
->     latex ctxt tm = showImp False tm -- tmp
+>     latex ctxt tm = showP 10 tm where
+>        showP p (RVar (UN "__Unit")) = "()"
+>        showP p (RVar (UN "__Empty")) = "\\bottom"
+>        showP p (RVar i) = latex ctxt i
+>        showP p RRefl = "\\DC{refl}"
+>        showP p (RApp f a) = bracket p 1 $ showP 1 f ++ "\\:" ++ showP 0 a
+>        showP p (RAppImp n f a) = showP 1 f
+>        showP p (RBind n (Lam ty) sc)
+>           = bracket p 2 $ 
+>             "\\lambda\\VV{" ++ show n ++ "}." ++ showP 10 sc
+>        showP p (RBind n (Pi Ex ty) sc)
+>           | internal n -- hack for spotting unused names quickly!
+>              = bracket p 2 $ showP 1 ty ++ "\\to" ++ showP 10 sc
+>           | otherwise
+>              = bracket p 2 $
+>                "(" ++ show n ++ " \\Hab " ++ showP 10 ty ++ ")\\to" ++
+>                       showP 10 sc
+>          where internal (UN ('_':'_':_)) = True
+>                internal (MN _ _) = True
+>                internal _ = False
+>        showP p (RBind n (Pi Im ty) sc)
+>              = bracket p 2 $ showP 10 sc
+>        showP p (RBind n (RLet val ty) sc)
+>           = bracket p 2 $
+>             "\\LET:\\VV{" ++ show n ++ "}\\: = " ++ showP 10 val
+>                    ++ "\\:\\IN\\:" ++ showP 10 sc
+>        showP p (RConst c) = latex ctxt c
+>        showP p (RInfix op l r) = bracket p 5 $
+>                               showP 4 l ++ show op ++ showP 4 r
+>        showP _ x = show x -- need Do notation
+>        bracket outer inner str | inner>outer = "("++str++")"
+>                                | otherwise = str
 
 
 

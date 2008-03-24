@@ -447,7 +447,7 @@ boolean flag (true for showing them)
 >           | otherwise
 >              = bracket p 2 $
 >                ob im ++ show n ++ " : " ++ showP 10 ty ++ cb im ++ " -> " ++
->                showP 1 sc
+>                showP 10 sc
 >        where ob Im = "{"
 >              ob Ex = "("
 >              cb Im = "}"
