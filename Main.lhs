@@ -56,11 +56,21 @@ Command; minimal abbreviation; function to run it; description
 
 > commands
 >    = [("quit", "q", quit, "Exits the top level"),
+>       ("type", "t", tmtype, "Print the type of a term"),
+>       ("latex", "l", latex, "Print definition as LaTeX"),
 >       ("help", "h", help, "Show help text"),
 >       ("?", "?", help, "Show help text")]
 
-> quit _ _ = do return Quit
-> help _ _ 
+> type Command = Ctxt IvorFun -> Context -> [String] -> IO REPLRes
+
+> quit, tmtype, help :: Command
+
+> quit _ _ _ = do return Quit
+> tmtype raw ctxt tms = do icheckType raw ctxt (unwords tms)
+>                          return Continue
+> latex raw ctxt (nm:_) = do putStrLn "Nothing happens"
+>                            return Continue
+> help _ _ _ 
 >    = do putStrLn $ "\nIdris version " ++ version
 >         putStrLn $ "----------------" ++ take (length version) (repeat '-')
 >         putStrLn "Commands available:\n"
@@ -72,22 +82,25 @@ Command; minimal abbreviation; function to run it; description
 
 > repl :: Ctxt IvorFun -> Context -> IO ()
 > repl raw ctxt = do inp <- readline ("Idris> ")
->                    addHistory inp
 >                    res <- case inp of
 >                        Nothing -> return Continue
->                        Just (':':command) -> runCommand (words command) commands
->                        Just exprinput -> do termInput raw ctxt exprinput
->                                             return Continue
+>                        Just (':':command) -> 
+>                            do addHistory (':':command)
+>                               runCommand (words command) commands
+>                        Just exprinput -> 
+>                            do termInput raw ctxt exprinput
+>                               addHistory exprinput
+>                               return Continue
 >                    case res of
 >                      Continue -> repl raw ctxt
 >                      _ -> return ()
 
 >   where
 >      runCommand (c:args) ((_, abbr, fun, _):xs) 
->         | matchesAbbrev abbr c = fun ctxt args
+>         | matchesAbbrev abbr c = fun raw ctxt args
 >         | otherwise = runCommand (c:args) xs
 >      runCommand _ _ = do putStrLn "Unrecognised command"
->                          help ctxt []
+>                          help raw ctxt []
 >                          return Continue
 >      matchesAbbrev [] _ = True
 >      matchesAbbrev (a:xs) (c:cs) | a == c = matchesAbbrev xs cs
@@ -112,6 +125,15 @@ If it is an IO type, execute it, otherwise just eval it.
 >                                -- putStrLn (showImp True (unIvor ivs (view res)))
 >                                putStr (showImp False (unIvor ivs (view res)))
 >                                putStrLn $ " : " ++ showImp False (unIvor ivs (viewType res))
+
+> icheckType :: Ctxt IvorFun -> Context -> String -> IO ()
+> icheckType ivs ctxt tmin
+>         = case parseTerm tmin of 
+>               Success tm -> 
+>                    do let itm = makeIvorTerm ivs tm
+>                       gtm <- check ctxt itm
+>                       putStrLn $ showImp False (unIvor ivs (viewType gtm))
+>               Failure err _ _ -> putStrLn err
 
 > prims c = do c <- addPrimitive c (name "Int")
 >              c <- addPrimitive c (name "Float")
