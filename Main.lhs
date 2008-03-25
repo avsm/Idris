@@ -69,8 +69,8 @@ Command; minimal abbreviation; function to run it; description
 > quit _ _ _ = do return Quit
 > tmtype raw ctxt tms = do icheckType raw ctxt (unwords tms)
 >                          return Continue
-> latex raw ctxt (nm:_) = do latexDump raw (UN nm)
->                            return Continue
+> latex raw ctxt (nm:defs) = do latexDump raw (latexDefs defs) (UN nm)
+>                               return Continue
 > help _ _ _ 
 >    = do putStrLn $ "\nIdris version " ++ version
 >         putStrLn $ "----------------" ++ take (length version) (repeat '-')
