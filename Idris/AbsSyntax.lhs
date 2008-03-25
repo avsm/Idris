@@ -36,6 +36,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 
 > data Decl = DataDecl Datatype | Fwd Id RawTerm
 >           | Fun Function | TermDef Id RawTerm | Constructor
+>           | LatexDefs [(Id,String)]
 >    deriving Show
 
 Function types and clauses are given separately, so we'll parse them

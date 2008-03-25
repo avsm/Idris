@@ -69,6 +69,7 @@ import Idris.Lib
       else            { TokenElse }
       let             { TokenLet }
       in              { TokenIn }
+      latex           { TokenLaTeX }
 
 %nonassoc LAM
 %nonassoc let in
@@ -104,12 +105,20 @@ Program: { [] }
 Declaration :: { ParseDecl }
 Declaration: Function { $1 }
            | Datatype { RealDecl (DataDecl $1) }
+           | Latex { RealDecl $1 }
 
 Function :: { ParseDecl }
 Function : Name ':' Term ';' { FunType $1 $3 }
          | DefTerm '=' Term ';' { FunClause (mkDef $1) $3 }
 
 --         | Name '=' Term ';' { RealDecl (TermDef $1 $3) }
+
+Latex :: { Decl }
+Latex : latex '{' LatexDefs '}' { LatexDefs $3 }
+
+LatexDefs :: { [(Id,String)] }
+LatexDefs : Name '=' string { [($1,$3)] }
+          | Name '=' string ',' LatexDefs { ($1,$3):$5 }
 
 DefTerm :: { (Id, [(RawTerm, Maybe Id)]) }
 DefTerm : Name ArgTerms { ($1, $2) }

@@ -93,6 +93,9 @@ in our list of explicit names to add, add it.
 >               mif ctxt (addEntry acc n 
 >                   (IvorFun (toIvorName n) Nothing imp 
 >                            (SimpleDef itm) decl)) ds
+> mif ctxt acc (decl@(LatexDefs ls):ds) 
+>         = mif ctxt (addEntry acc (MN "latex" 0) 
+>                     (IvorFun undefined Nothing 0 undefined decl)) ds
 
 Add an entry for the type id and for each of the constructors.
 
@@ -140,6 +143,7 @@ Add an entry for the type id and for each of the constructors.
 
 > addIvorDef :: Monad m =>
 >                Ctxt IvorFun -> Context -> (Id, IvorFun) -> m Context
+> addIvorDef raw ctxt (n,IvorFun name tyin _ def (LatexDefs _)) = return ctxt
 > addIvorDef raw ctxt (n,IvorFun name tyin _ def _) 
 >     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now

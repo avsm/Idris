@@ -21,7 +21,7 @@
 
 > instance LaTeX Id where
 >     latex ctxt defs n 
->         = case lookup n defs of
+>         = case lookup n (defs++ldefs) of
 >             Just l -> l
 >             Nothing -> case ctxtLookup ctxt n of
 >                          Just (IvorFun _ _ _ _ d) -> ty d (show n)
@@ -29,6 +29,9 @@
 >         where ty (DataDecl _) n = "\\TC{" ++ n ++ "}"          
 >               ty Constructor n = "\\DC{" ++ n ++ "}"
 >               ty _ n = "\\FN{" ++ n ++ "}"
+>               ldefs = case ctxtLookup ctxt (MN "latex" 0) of
+>                         Just (IvorFun _ _ _ _ (LatexDefs ds)) -> ds
+>                         Nothing -> []
 
 > instance LaTeX IvorFun where
 >     latex ctxt defs (IvorFun nm ty _ _ decl) = latex ctxt defs decl
@@ -48,7 +51,7 @@
 
 > instance LaTeX Function where
 >     latex ctxt defs (Function n ty clauses) =
->         latex ctxt defs n ++ "\\:\\Hab\\:" ++ latex ctxt defs ty ++ "\\\\ \n" ++
+>         latex ctxt defs n ++ "\\:\\Hab\\:\AR{" ++ latex ctxt defs ty ++ "}\\\\ \n" ++
 >         latexClauses clauses
 >        where latexClauses [] = ""
 >              latexClauses cs@((n,(RawClause lhs rhs)):_) =

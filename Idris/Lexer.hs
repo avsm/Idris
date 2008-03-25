@@ -94,6 +94,7 @@ data Token
       | TokenEmptyType
       | TokenUnitType
       | TokenUnderscore
+      | TokenLaTeX
       | TokenEOF
  deriving (Show, Eq)
 
@@ -213,6 +214,7 @@ lexVar cont cs =
 
 lexSpecial cont cs =
     case span isAllowed cs of
+      ("latex",rest) -> cont TokenLaTeX rest
       (thing,rest) -> lexError '%' rest
 
 lexMeta cont cs =
