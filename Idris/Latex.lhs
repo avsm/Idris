@@ -75,7 +75,7 @@
 Type/term pairs
 
 > instance (LaTeX a) => LaTeX (a,RawTerm) where
->     latex ctxt defs (tm,ty) = latex ctxt defs tm ++ "\\:\\Hab\\:" ++ latex ctxt defs ty
+>     latex ctxt defs (tm,ty) = latex ctxt defs tm ++ "\\:\\Hab\\:\\AR{" ++ latex ctxt defs ty ++ "}"
 
 Clauses
 
@@ -86,6 +86,10 @@ Constants
 
 > instance LaTeX Constant where
 >     latex ctxt defs TYPE = "\\Type"
+>     latex ctxt defs StringType = "\\TC{String}"
+>     latex ctxt defs IntType = "\\TC{String}"
+>     latex ctxt defs FloatType = "\\TC{String}"
+>     latex ctxt defs (Builtin s) = "\\TC{" ++ s ++ "}"
 >     latex ctxt defs n = show n
 
 Main bit for terms
