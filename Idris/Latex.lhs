@@ -51,7 +51,7 @@
 
 > instance LaTeX Function where
 >     latex ctxt defs (Function n ty clauses) =
->         latex ctxt defs n ++ "\\:\\Hab\\:\AR{" ++ latex ctxt defs ty ++ "}\\\\ \n" ++
+>         latex ctxt defs n ++ "\\:\\Hab\\:\\AR{" ++ latex ctxt defs ty ++ "}\\\\ \n" ++
 >         latexClauses clauses
 >        where latexClauses [] = ""
 >              latexClauses cs@((n,(RawClause lhs rhs)):_) =
@@ -120,9 +120,17 @@ Main bit for terms
 >        showP p (RConst c) = latex ctxt defs c
 >        showP p (RInfix op l r) = bracket p 5 $
 >                               showP 4 l ++ show op ++ showP 4 r
+>        showP p (RDo ds) = "\\RW{do}\\:\\AR{" ++ 
+>                           concat (map (latex ctxt defs) ds) ++
+>                           "}"
 >        showP _ x = show x -- need Do notation
 >        bracket outer inner str | inner>outer = "("++str++")"
 >                                | otherwise = str
 
+> instance LaTeX Do where
+>     latex ctxt defs (DoBinding n ty tm) 
+>         = latex ctxt defs n ++ "\\leftarrow " ++ latex ctxt defs tm ++ 
+>           "\\\\ \n"
+>     latex ctxt defs (DoExp tm) = latex ctxt defs tm ++ "\\\\ \n"
 
 
