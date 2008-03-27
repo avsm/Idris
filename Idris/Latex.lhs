@@ -39,8 +39,8 @@
 > instance LaTeX Decl where
 >     latex ctxt defs (DataDecl (Datatype id ty cons))
 >           = "\\DM{\\AR{\n\\Data\\hg\\:" ++ 
->             latex ctxt defs id ++ "\\:\\Hab\\:" ++
->             latex ctxt defs ty ++ "\\hg\\Where\\\\ \n\\begin{array}{rl}\n" ++ 
+>             latex ctxt defs id ++ "\\:\\Hab\\:\\AR{" ++
+>             latex ctxt defs ty ++ "\\hg\\Where}\\\\ \n\\begin{array}{rl}\n" ++ 
 >                     conList (map (latex ctxt defs) cons) ++
 >                             "\\end{array}\n}}"
 >        where conList [] = ""
@@ -91,8 +91,8 @@ Constants
 > instance LaTeX Constant where
 >     latex ctxt defs TYPE = "\\Type"
 >     latex ctxt defs StringType = "\\TC{String}"
->     latex ctxt defs IntType = "\\TC{String}"
->     latex ctxt defs FloatType = "\\TC{String}"
+>     latex ctxt defs IntType = "\\TC{Int}"
+>     latex ctxt defs FloatType = "\\TC{Float}"
 >     latex ctxt defs (Builtin s) = "\\TC{" ++ s ++ "}"
 >     latex ctxt defs n = show n
 
@@ -114,7 +114,7 @@ Main bit for terms
 >              = bracket p 2 $ showP 1 ty ++ "\\to" ++ showP 10 sc
 >           | otherwise
 >              = bracket p 2 $
->                "(" ++ show n ++ " \\Hab " ++ showP 10 ty ++ ")\\to" ++
+>                "(\\VV{" ++ show n ++ "} \\Hab " ++ showP 10 ty ++ ")\\to" ++
 >                       showP 10 sc
 >          where internal (UN ('_':'_':_)) = True
 >                internal (MN _ _) = True
