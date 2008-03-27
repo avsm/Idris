@@ -38,21 +38,25 @@
 
 > instance LaTeX Decl where
 >     latex ctxt defs (DataDecl (Datatype id ty cons))
->           = "\\Data\\hg\\:" ++ latex ctxt defs id ++ "\\:\\Hab\\:" ++
+>           = "\\DM{\\AR{\n\\Data\\hg\\:" ++ 
+>             latex ctxt defs id ++ "\\:\\Hab\\:" ++
 >             latex ctxt defs ty ++ "\\hg\\Where\\\\ \n\\begin{array}{rl}\n" ++ 
 >                     conList (map (latex ctxt defs) cons) ++
->                             "\\end{array}\n"
->                                
+>                             "\\end{array}\n}}"
 >        where conList [] = ""
 >              conList [a] = " & " ++ a ++ "\n"
 >              conList (a:as) = " & " ++ a ++ "\\\\ \n \\mid" ++ conList as 
 >     latex ctxt defs (Fun f) = latex ctxt defs f
->     latex ctxt defs (TermDef n tm) = latex ctxt defs n ++ "\\:=\\:" ++ latex ctxt defs tm
+>     latex ctxt defs (TermDef n tm) = "\\DM{" ++ latex ctxt defs n ++ "\\:=\\:" ++ latex ctxt defs tm ++ "}"
+>     latex ctxt defs (Fwd n ty) = "\\DM{" ++ latex ctxt defs n ++ "\\:\\Hab\\:\\AR{" ++ latex ctxt defs ty ++ "}}"
+>     latex ctxt defs _ = "Can't LaTeXify this"
+>                                
 
 > instance LaTeX Function where
 >     latex ctxt defs (Function n ty clauses) =
+>         "\\DM{\\AR{\n" ++
 >         latex ctxt defs n ++ "\\:\\Hab\\:\\AR{" ++ latex ctxt defs ty ++ "}\\\\ \n" ++
->         latexClauses clauses
+>         latexClauses clauses ++ "}}"
 >        where latexClauses [] = ""
 >              latexClauses cs@((n,(RawClause lhs rhs)):_) =
 >                  let arity = length (getRawArgs lhs) in
@@ -124,9 +128,14 @@ Main bit for terms
 >        showP p (RConst c) = latex ctxt defs c
 >        showP p (RInfix op l r) = bracket p 5 $
 >                               showP 4 l ++ show op ++ showP 4 r
->        showP p (RDo ds) = "\\RW{do}\\:\\AR{" ++ 
->                           concat (map (latex ctxt defs) ds) ++
->                           "}"
+
+We want the closing bracket inside the \AR here, so it's on the right line,
+hence the weird bracketing.
+
+>        showP p (RDo ds) = (bracket p 2 $
+>                            "\\RW{do}\\:\\AR{" ++ 
+>                            concat (map (latex ctxt defs) ds)) ++ "}"
+>                            
 >        showP _ x = show x -- need Do notation
 >        bracket outer inner str | inner>outer = "("++str++")"
 >                                | otherwise = str
