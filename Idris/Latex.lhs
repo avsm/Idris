@@ -104,6 +104,7 @@ Main bit for terms
 >        showP p (RVar (UN "__Empty")) = "\\bottom"
 >        showP p (RVar i) = latex ctxt defs i
 >        showP p RRefl = "\\DC{refl}"
+>        showP p RPlaceholder = "\\_"
 >        showP p (RApp f a) = bracket p 1 $ showP 1 f ++ "\\:" ++ showP 0 a
 >        showP p (RAppImp n f a) = showP 1 f
 >        showP p (RBind n (Lam ty) sc)
