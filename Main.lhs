@@ -13,6 +13,7 @@
 > import Idris.Lib
 > import Idris.Parser
 > import Idris.Latex
+> import Idris.Compiler
 
 > import RunIO
 
@@ -53,31 +54,38 @@ Load things in this order:
 
 > data REPLRes = Quit | Continue
 
-Command; minimal abbreviation; function to run it; description
+Command; minimal abbreviation; function to run it; description; visibility
 
 > commands
->    = [("quit", "q", quit, "Exits the top level"),
->       ("type", "t", tmtype, "Print the type of a term"),
->       ("latex", "l", latex, "Print definition as LaTeX"),
->       ("help", "h", help, "Show help text"),
->       ("?", "?", help, "Show help text")]
+>    = [("quit", "q", quit, "Exits the top level",True),
+>       ("type", "t", tmtype, "Print the type of a term",True),
+>       ("compile", "c", tcomp, "Compile a definition (of type IO ()", True),
+>       ("latex", "l", latex, "Print definition as LaTeX",False),
+>       ("help", "h", help, "Show help text",True),
+>       ("?", "?", help, "Show help text",True)]
 
 > type Command = Ctxt IvorFun -> Context -> [String] -> IO REPLRes
 
-> quit, tmtype, help :: Command
+> quit, tmtype, tcomp, help :: Command
 
 > quit _ _ _ = do return Quit
 > tmtype raw ctxt tms = do icheckType raw ctxt (unwords tms)
 >                          return Continue
 > latex raw ctxt (nm:defs) = do latexDump raw (latexDefs defs) (UN nm)
 >                               return Continue
+> tcomp raw ctxt (top:[]) = do comp raw ctxt (UN top) top
+>                              return Continue
+> tcomp raw ctxt (top:exec:_) = do comp raw ctxt (UN top) exec
+>                                  return Continue
 > help _ _ _ 
 >    = do putStrLn $ "\nIdris version " ++ version
 >         putStrLn $ "----------------" ++ take (length version) (repeat '-')
 >         putStrLn "Commands available:\n"
 >         putStrLn "\t<expression>     Execute the given expression"
->         mapM_ (\ (com, _, _, desc) -> 
->                       putStrLn $ "\t:" ++ com ++ (take (16-length com) (repeat ' ')) ++ desc) commands
+>         mapM_ (\ (com, _, _, desc,vis) -> 
+>                    if vis 
+>                       then putStrLn $ "\t:" ++ com ++ (take (16-length com) (repeat ' ')) ++ desc
+>                       else return ()) commands
 >         putStrLn "\nCommands may be given the shortest unambiguous abbreviation (e.g. :q, :l)\n"
 >         return Continue
 
@@ -97,7 +105,7 @@ Command; minimal abbreviation; function to run it; description
 >                      _ -> return ()
 
 >   where
->      runCommand (c:args) ((_, abbr, fun, _):xs) 
+>      runCommand (c:args) ((_, abbr, fun, _, _):xs) 
 >         | matchesAbbrev abbr c = fun raw ctxt args
 >         | otherwise = runCommand (c:args) xs
 >      runCommand _ _ = do putStrLn "Unrecognised command"

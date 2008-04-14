@@ -1,4 +1,5 @@
 include "nat.idr";
+include "list.idr";
 
 data Vect : # -> Nat -> # where
    VNil : Vect a O
@@ -49,5 +50,14 @@ testVect = VCons 5
 	   (VCons 3
 	   VNil))));
 
+length : (List a) -> Nat;
+length Nil = O;
+length (Cons x xs) = S (length xs);
+
+listToVect : (xs:List a) -> (Vect a (length xs));
+listToVect Nil = VNil;
+listToVect (Cons x xs) = VCons x (listToVect xs);
+
 qsortInt : (Vect Int n) -> (Vect Int n);
-qsortInt = qsort (\x y . x<y);
+qsortInt xs = qsort (\x, y . x<y) xs;
+
