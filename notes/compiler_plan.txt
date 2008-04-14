@@ -1,0 +1,10 @@
+Match compiler
+  * ViewTerm -> Pattern
+  * Pattern Set -> Simple case tree
+  * Simple case tree  -> Epic definitions
+IO tree interpreter, in Epic. Special cases for the various constructors.
+  * [[IODo foo f]] ==> let val = [[foo]]; f val
+    [[IOReturn val]] ==> val
+    [[PutStr v]] ==> do putStr v; PUSH unit. etc.
+
+Simple CGI program?

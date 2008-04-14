@@ -137,7 +137,7 @@ hence the weird bracketing.
 >                            "\\RW{do}\\:\\AR{" ++ 
 >                            concat (map (latex ctxt defs) ds)) ++ "}"
 >                            
->        showP _ x = show x -- need Do notation
+>        showP _ x = show x 
 >        bracket outer inner str | inner>outer = "("++str++")"
 >                                | otherwise = str
 
