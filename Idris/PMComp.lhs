@@ -8,6 +8,7 @@ Pattern matching compiler, convert to simple case expressions
 > import Ivor.TT
 
 > import Data.Typeable
+> import Debug.Trace
 
 > data SimpleCase = Case Id [CaseAlt]
 >                 | Tm ViewTerm
@@ -21,7 +22,7 @@ Pattern matching compiler, convert to simple case expressions
 > pmcomp raw ctxt (n, Patterns ps) = pm' n (map mkPat ps)
 >    where mkPat (PClause args rv) 
 >                = Clause (map ((toPat ctxt).(toPattern ctxt)) args) rv
->          pm' n ps = Tm Placeholder
+>          pm' n ps = match raw ctxt ps
 
 It's easier if we can distinguish syntactically between constructor forms
 and variables (and constants)
@@ -33,6 +34,7 @@ and variables (and constants)
 >   deriving Show
 
 > data Clause = Clause [Pat] ViewTerm
+>   deriving Show
 
 > toPat :: Context -> ViewTerm -> Pat
 > toPat ctxt tm = toPat' tm [] where
@@ -49,12 +51,37 @@ and variables (and constants)
 >                                 Just s -> PConst (Str s)
 >     toPat' (Constant _) args 
 >                = error "Can't happen: constant applied to arguments"
+>     toPat' _ _ = PAny
 
-> isVar n = undefined
-> isCon n = undefined
+>     isVar n = case nameType ctxt n of
+>                 Nothing -> True
+>                 Just Bound -> True
+>                 _ -> False
+>     isCon n = case nameType ctxt n of
+>                 Just DataCon -> True
+>                 _ -> False
 
-> data Partition = Cons Patterns
->                | Vars Patterns
+> isVarPat (Clause ((PVar _):ps) _) = True
+> isVarPat (Clause (PAny:ps) _) = True
+> isVarPat _ = False
 
-> partition :: Ctxt IvorFun -> Context -> Patterns -> [Partition]
-> partition = undefined
+> isConPat (Clause ((PCon _ _):ps) _) = True
+> isConPat (Clause ((PConst _):ps) _) = True
+> isConPat _ = False
+
+> data Partition = Cons [Clause]
+>                | Vars [Clause]
+
+> partition :: Ctxt IvorFun -> Context -> [Clause] -> [Partition]
+> partition raw ctxt [] = []
+> partition raw ctxt ms@(m:_)
+>    | isVarPat m = let (vars, rest) = span isVarPat ms in
+>                            (Vars vars):partition raw ctxt rest 
+>    | isConPat m = let (cons, rest) = span isConPat ms in
+>                            (Cons cons):(partition raw ctxt rest)
+> partition raw ctxt x = error (show x)
+
+> match :: Ctxt IvorFun -> Context -> [Clause] -> SimpleCase
+> match raw ctxt cs = Tm Placeholder
+
+
