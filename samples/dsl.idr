@@ -22,6 +22,23 @@ envLookup : {xs:Vect Ty n} ->
 envLookup fO (Extend t env) = t;
 envLookup (fS i) (Extend t env) = envLookup i env;
 
+{-
+SCase __cvar_0 
+[Alt S [z4] 
+     (SCase __cvar_1 [Alt VCons [z4,__pvar_4,z3,z5] 
+            (SCase __cvar_2 [Alt fO [z4] 
+                                (SCase __cvar_3 
+				      [Alt Extend [z3,z4,z5,t,env] (Tm t) ,
+                                       Default ErrorCase]),
+                             Alt fS [z4,i] 
+                                (SCase __cvar_3 
+                                      [Alt Extend [z3,z4,z5,t,env] (Tm
+				         envLookup z4 z5 i env),
+				       Default ErrorCase]),
+			     Default ErrorCase]),
+			     Default ErrorCase]),Default ErrorCase]
+-}
+
 updateEnv : {xs:Vect Ty n} ->
 	    (Env xs) -> (i:Fin n) -> (val:interpTy (vlookup i xs)) ->
 	    (Env xs);
