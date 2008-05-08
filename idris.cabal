@@ -36,6 +36,7 @@ Build-type:     Simple
 Library
         Exposed-modules: Idris.Parser, Idris.Lexer, Idris.Lib, 
                          Idris.AbsSyntax, Idris.Context, Idris.Latex
+                         Idris.Compiler, Idris.LambdaLift, Idris.PMComp, 
                          Idris.MakeTerm, Idris.Prefix, RunIO
 
         Build-depends:   base>3, containers, array, parsec, mtl,
@@ -46,4 +47,5 @@ Executable     idris
                Main-is: Main.lhs
                Other-modules: Idris.Parser, Idris.Lexer, Idris.Lib, 
                               Idris.AbsSyntax, Idris.Context,
+                              Idris.Compiler, Idris.LambdaLift, Idris.PMComp, 
                               Idris.MakeTerm, Idris.Prefix, RunIO
