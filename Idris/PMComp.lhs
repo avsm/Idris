@@ -50,6 +50,9 @@ and variables (and constants)
 >     toPat' (Constant _) args 
 >                = error "Can't happen: constant applied to arguments"
 
+> isVar n = undefined
+> isCon n = undefined
+
 > data Partition = Cons Patterns
 >                | Vars Patterns
 
