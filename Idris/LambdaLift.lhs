@@ -3,6 +3,7 @@
 > module Idris.LambdaLift where
 
 > import Idris.AbsSyntax
+> import Idris.PMComp
 > import Ivor.TT
 
 This is the language we're converting directly into Epic code, and the
