@@ -224,33 +224,6 @@ new set of clauses to match.
 >               | con == n = (ConGroup (CConst n) (cs ++ [([], res)])):gs
 >               | otherwise = g:(addConG con res gs)
 
-
-   gc acc ((MAlt f l (p:ps) res):ms) = do
-       acc' <- addGroup f l p ps res acc
-       gc acc' ms
-
-   addGroup f l p ps rval acc = case isPatt p ctxt mod of
-       ConPatt con conargs -> return $ addg con conargs (MAlt f l ps rval) acc
-       Constant cval -> return $ addConG cval (MAlt f l ps rval) acc
-       ArrayPatt len conargs -> return $ addArrG len conargs (MAlt f l ps rval) acc
-       pat -> fail $ f ++ ":" ++ show l ++ ":I don't understand this pattern " -- ++ show pat
-
---   addgAll var res [] = [OneVar var res]
---   addgAll var res (g@(ConGroup n cs):gs)
---       = (ConGroup n (cs ++ [([], res)
-
-   addg con conargs res [] = [ConGroup (CName con) [(conargs, res)]]
-   addg con conargs res (g@(ConGroup (CName n) cs):gs) 
-      | con == n = (ConGroup (CName n) (cs ++ [(conargs, res)])):gs
-      | otherwise = g:(addg con conargs res gs)
-
-   addConG con res [] = [ConGroup (CConst con) [([], res)]]
-   addConG con res (g@(ConGroup (CConst n) cs):gs) 
-      | con == n = (ConGroup (CConst n) (cs ++ [([], res)])):gs
-      | otherwise = g:(addConG con res gs)
-
-
-
 In the variable rule:
 
 case v args of

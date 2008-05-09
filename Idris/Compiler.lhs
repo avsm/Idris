@@ -4,6 +4,7 @@
 
 > import Idris.AbsSyntax
 > import Idris.PMComp
+> import Idris.LambdaLift
 > import Ivor.TT
 
 Get every definition from the context. Convert them all to simple case
@@ -16,11 +17,22 @@ already simple case trees.
 >                             dumpComp pcomp
 >                             putStrLn "Not implemented"
 >    where dumpComp [] = return ()
->          dumpComp ((x,def):xs) = do print x
->                                     print def
->                                     putStrLn "----"
->                                     dumpComp xs
+>          dumpComp ((x,(args,def)):xs) 
+>                       = do print x
+>                            print (args, def)
+>                            putStrLn "----------------------"
+>                            let lifted = lambdaLift x args def
+>                            dumpLift lifted
+>                            putStrLn "======================"
+>                            dumpComp xs
 
+
+> dumpLift :: [(Name, [Name], SimpleCase)] -> IO ()
+> dumpLift [] = return ()
+> dumpLift ((n, args, def):xs) = do putStrLn $ "\t" ++ show n
+>                                   putStrLn $ "\t" ++ show (args,def)
+>                                   putStrLn "--------"
+>                                   dumpLift xs
 
 > pmCompDef :: Ctxt IvorFun -> Context -> 
 >              (Name, (ViewTerm, Patterns)) -> 
