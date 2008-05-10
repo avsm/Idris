@@ -21,7 +21,7 @@ fallthrough when a function is known to be total, and ErrorCAse otherwise.
 >                 | Impossible
 >    deriving Show
 
-> data CaseAlt = Alt Name [Name] SimpleCase
+> data CaseAlt = Alt Name Int [Name] SimpleCase
 >              | ConstAlt Constant SimpleCase
 >              | Default SimpleCase
 >    deriving Show
@@ -31,7 +31,7 @@ fallthrough when a function is known to be total, and ErrorCAse otherwise.
 > pmcomp :: Ctxt IvorFun -> Context -> Name -> ViewTerm -> Patterns -> 
 >           ([Name], SimpleCase)
 > pmcomp raw ctxt n ty (Patterns ps) 
->       = pm' n (map mkPat ps)
+>       = pm' n (map mkPat (deIOpats ps))
 >    where mkPat (PClause args rv) 
 >                = Clause (map ((toPat ctxt).(toPattern ctxt)) args) rv
 >          pm' n ps = evalState (doCaseComp raw ctxt ps) (CS 0)
@@ -39,7 +39,7 @@ fallthrough when a function is known to be total, and ErrorCAse otherwise.
 It's easier if we can distinguish syntactically between constructor forms
 and variables (and constants)
 
-> data Pat = PCon Name [Pat]
+> data Pat = PCon Name Int [Pat]
 >          | PVar Name
 >          | PConst Constant
 >          | PAny
@@ -53,8 +53,10 @@ and variables (and constants)
 >     toPat' (Name _ n) []
 >         | isVar n = PVar n
 >     toPat' (Name _ n) args 
->         | isCon n = PCon n args
->         | otherwise = error "Can't happen: variable applied to arguments"
+>         | isCon n = case getConstructorTag ctxt n of
+>                       Just i -> PCon n i args
+>                       Nothing -> error "Can't happen: no tag"
+>         | otherwise = error $ "Can't happen: variable applied to arguments " ++ show (n,args)
 >     toPat' (App f a) args = toPat' f ((toPat' a []):args)
 >     toPat' (Constant c) []
 >             = case (cast c)::Maybe Int of
@@ -77,7 +79,7 @@ and variables (and constants)
 > isVarPat (Clause (PAny:ps) _) = True
 > isVarPat _ = False
 
-> isConPat (Clause ((PCon _ _):ps) _) = True
+> isConPat (Clause ((PCon _ _ _):ps) _) = True
 > isConPat (Clause ((PConst _):ps) _) = True
 > isConPat _ = False
 
@@ -131,7 +133,7 @@ In the constructor rule:
 For each distinct constructor (or constant) create a group of possible
 patterns in ConType and Group
 
-> data ConType = CName Name -- ordinary named constructor
+> data ConType = CName Name Int -- ordinary named constructor
 >              | CConst Constant -- constant pattern
 >    deriving (Show, Eq)
 
@@ -154,8 +156,8 @@ patterns in ConType and Group
 >    = do g <- altGroups gs
 >         return $ SCase v g
 >   where altGroups [] = return [Default err]
->         altGroups ((ConGroup (CName n) args):cs)
->           = do g <- altGroup n args
+>         altGroups ((ConGroup (CName n i) args):cs)
+>           = do g <- altGroup n i args
 >                rest <- altGroups cs
 >                return (g:rest)
 >         altGroups ((ConGroup (CConst cval) args):cs)
@@ -163,11 +165,11 @@ patterns in ConType and Group
 >                rest <- altGroups cs
 >                return (g:rest)
 
->         altGroup n gs 
+>         altGroup n i gs 
 >            = do (newArgs, nextCs) <- argsToAlt gs
 >                 matchCs <- match raw ctxt (map (Name Unknown) newArgs++vs)
 >                                           nextCs err
->                 return $ Alt n newArgs matchCs
+>                 return $ Alt n i newArgs matchCs
 >         altConstGroup n gs
 >            = do (_, nextCs) <- argsToAlt gs
 >                 matchCs <- match raw ctxt vs nextCs err
@@ -210,14 +212,15 @@ new set of clauses to match.
 >            gc acc' cs
 
 >          addGroup p ps res acc = case p of
->             PCon con args -> return $ addg con args (Clause ps res) acc
+>             PCon con i args -> return $ addg con i args (Clause ps res) acc
 >             PConst cval -> return $ addConG cval (Clause ps res) acc
 >             pat -> fail $ show pat ++ " is not a constructor or constant (can't happen)"
           
->          addg con conargs res [] = [ConGroup (CName con) [(conargs, res)]]
->          addg con conargs res (g@(ConGroup (CName n) cs):gs)
->               | con == n = (ConGroup (CName n) (cs ++ [(conargs, res)])):gs
->               | otherwise = g:(addg con conargs res gs)
+>          addg con i conargs res [] 
+>                   = [ConGroup (CName con i) [(conargs, res)]]
+>          addg con i conargs res (g@(ConGroup (CName n j) cs):gs)
+>               | i == j = (ConGroup (CName n i) (cs ++ [(conargs, res)])):gs
+>               | otherwise = g:(addg con i conargs res gs)
 
 >          addConG con res [] = [ConGroup (CConst con) [([],res)]]
 >          addConG con res (g@(ConGroup (CConst n) cs):gs)
@@ -247,3 +250,61 @@ case args of
 >                    = Clause ps (subst p v res)
 >         repVar v (Clause (PAny:ps) res) = Clause ps res
 
+
+
+Remove IO gubbins, make actions and ordering explicit
+
+bind : IO A -> (A -> IO B) -> IO B
+becomes 
+bind : A -> (A -> B) -> B
+
+bind _ _ val fn ==> let newv = [[val]]
+                        in [[fn newv]]
+
+IOReturn _ a ==> [[a]]
+IODo _ c k ==> [[k]] [[c]]
+
+FIXME: Currently requires bind, iodo, etc to be fully applied. Need 
+intermediate functions for when this isn't the case
+
+> bname i = name (show (MN "bname" i))
+
+> deIOpats :: [PClause] -> [PClause]
+> deIOpats cs = evalState (dp cs) 0
+>     where dp [] = return []
+>           dp ((PClause args rv):ps) = do args' <- mapM deIO args
+>                                          rv' <- deIO rv
+>                                          ps' <- dp ps
+>                                          return ((PClause args' rv'):ps')
+
+> deIO :: ViewTerm -> State Int ViewTerm
+> deIO (App (App (App (App (Name _ bind) _) _) v) k)
+>      | bind == (name "bind") 
+>           = do i <- get
+>                put (i+1)
+>                v' <- deIO v
+>                k' <- deIO k
+>                return $ Let (bname i) Star -- type irrelevant
+>                             v' (quickSimpl (App k' (Name Unknown (bname i))))
+> deIO (App (App (Name _ ret) _) a)
+>      | ret == (name "IOReturn") = deIO a
+> deIO (App (App (App (Name _ iodo) _) c) k)
+>      | iodo == (name "IODo") 
+>         = do k' <- deIO k
+>              c' <- deIO c
+>              return (quickSimpl (App k' c'))
+> deIO (App f a) = do f' <- deIO f
+>                     a' <- deIO a
+>                     return (App f' a')
+> deIO (Lambda n ty sc) = do sc' <- deIO sc
+>                            return (Lambda n ty sc')
+> deIO (Let n ty v sc) = do v' <- deIO v
+>                           sc' <- deIO sc
+>                           return (Let n ty v' sc')
+> deIO x = return x
+
+Simplify the common case in bind/IODo
+
+> quickSimpl (App (Lambda x ty sc) val)
+>    = subst x val sc
+> quickSimpl x = x

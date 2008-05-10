@@ -22,17 +22,19 @@ already simple case trees.
 >                            print (args, def)
 >                            putStrLn "----------------------"
 >                            let lifted = lambdaLift x args def
->                            dumpLift lifted
+>                            dumpLift ctxt lifted
 >                            putStrLn "======================"
 >                            dumpComp xs
 
 
-> dumpLift :: [(Name, [Name], SimpleCase)] -> IO ()
-> dumpLift [] = return ()
-> dumpLift ((n, args, def):xs) = do putStrLn $ "\t" ++ show n
->                                   putStrLn $ "\t" ++ show (args,def)
->                                   putStrLn "--------"
->                                   dumpLift xs
+> dumpLift :: Context -> [(Name, [Name], SimpleCase)] -> IO ()
+> dumpLift _ [] = return ()
+> dumpLift ctxt ((n, args, def):xs) 
+>              = do let def' = toSC ctxt def
+>                   putStrLn $ "\t" ++ show n
+>                   putStrLn $ "\t" ++ show (args,def')
+>                   putStrLn "--------"
+>                   dumpLift ctxt xs
 
 > pmCompDef :: Ctxt IvorFun -> Context -> 
 >              (Name, (ViewTerm, Patterns)) -> 

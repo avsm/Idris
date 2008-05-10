@@ -5,8 +5,9 @@
 > import Idris.AbsSyntax
 > import Idris.PMComp
 > import Ivor.TT
-
+> 
 > import Control.Monad.State
+> import Data.Typeable
 
 This is the language we're converting directly into Epic code, and the
 output of the lambda lifter
@@ -15,6 +16,7 @@ output of the lambda lifter
 >    deriving Show
 
 > data SCBody = SVar Name
+>             | SCon Name Int
 >             | SApp SCBody [SCBody]
 >             | SLet Name SCBody SCBody
 >             | SCCase SCBody [SCAlt]
@@ -23,6 +25,7 @@ output of the lambda lifter
 >             | SSeq SCBody SCBody -- sequencing, arising from IO code
 >             | SIOOp SCIO
 >             | SConst Constant
+>             | SError
 >    deriving Show
 
 Case alternatives, could be a constructor (with tag), a constant, or
@@ -79,8 +82,8 @@ name, arguments, body
 >                                 return (Tm t')
 >          liftSC env x = return x
 
->          liftAlt env (Alt c args sc) = do sc' <- liftSC (env++args) sc
->                                           return (Alt c args sc')
+>          liftAlt env (Alt c i args sc) = do sc' <- liftSC (env++args) sc
+>                                             return (Alt c i args sc')
 >          liftAlt env (ConstAlt c sc) = do sc' <- liftSC env sc
 >                                           return (ConstAlt c sc)
 >          liftAlt env (Default sc) = do sc' <- liftSC env sc
@@ -119,6 +122,49 @@ with env and newargs. Apply it to the environment only.
 Second step, turn the lambda lifted SimpleCases into SCFuns, translating 
 IO operations and do notation as we go.
 
-> makeSC :: SimpleCase -> SCFun
-> makeSC = undefined
+> class ToSC a where
+>     toSC :: Context -> a -> SCBody
+
+> instance ToSC SimpleCase where
+>     toSC c ErrorCase = SError
+>     toSC c Impossible = SError
+>     toSC c (Tm vt) = toSC c vt
+>     toSC c (SCase vt alts) = SCCase (toSC c vt) (map toSCa alts)
+>        where toSCa (Alt n i ns sc) = SAlt n i ns (toSC c sc)
+>              toSCa (ConstAlt v sc) = SConstAlt v (toSC c sc)
+>              toSCa (Default sc)  = SDefault (toSC c sc)
+
+> instance ToSC ViewTerm where
+>     toSC ctxt t = sc' t [] where
+>        sc' (Name _ n) args = case getConstructorTag ctxt n of
+>                                Just i -> scapply (SCon n i) args
+>                                Nothing -> scapply (SVar n) args
+>        sc' (App f a) args = sc' f ((sc' a []):args)
+>        sc' (Let n ty val x) args 
+>                = scapply (SLet n (sc' val []) (sc' x [])) args
+>        sc' (Constant c) [] 
+>            = case (cast c)::Maybe Int of
+>                 Just i -> SConst (Num i)
+>                 Nothing -> case (cast c)::Maybe String of
+>                                Just s -> SConst (Str s)
+>        sc' x args = SUnit -- no runtime meaning
+
+scapply deals with special cases for infix operators, IO, etc.
+
+> scapply :: SCBody -> [SCBody] -> SCBody
+
+Infix operators
+
+> scapply (SVar n) [x,y]
+>         | Just op <- getOp n allOps = SInfix op x y
+> scapply (SVar n) [_,_,_,_]
+>         | n == opFn JMEq = SUnit
+> scapply (SVar n) [_,x,y]
+>         | n == opFn OpEq = SInfix OpEq x y
+
+Everything else
+
+> scapply f [] = f
+> scapply f args = SApp f args
+
 

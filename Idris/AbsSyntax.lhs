@@ -363,6 +363,13 @@ ready for typechecking
 
 > mkRName n = UN (show n)
 
+> getOp v allops 
+>     = let ops = mapMaybe (\x -> if opFn x == v 
+>                                 then Just x 
+>                                 else Nothing) allops
+>          in if null ops then Nothing
+>                         else Just (head ops)
+
 Convert an ivor term back to a raw term, for pretty printing purposes.
 Use the context to decide which arguments to make implicit
 
@@ -384,16 +391,9 @@ Now built-in operators
 >     unI (Name _ v) [_,_,x,y]
 >         | v == opFn JMEq = RInfix JMEq x y
 >     unI (Name _ v) [_,x,y]
->         | v == opFn OpEq = RInfix JMEq x y
+>         | v == opFn OpEq = RInfix OpEq x y
 >     unI (Name _ v) [x,y]
 >         | Just op <- getOp v allOps = RInfix op x y
->        where getOp v allops 
->                  = let ops = mapMaybe (\x -> if opFn x == v 
->                                                 then Just x 
->                                                 else Nothing) allops
->                        in if null ops then Nothing
->                                       else Just (head ops)
-
 >     unI (Name _ v) args 
 >        = case ctxtLookup ctxt (mkRName v) of
 >            Just fdata -> mkImpApp (implicitArgs fdata) 
