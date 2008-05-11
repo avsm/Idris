@@ -22,7 +22,6 @@ output of the lambda lifter
 >             | SCCase SCBody [SCAlt]
 >             | SUnit -- for anything that has no runtime meaning, eg types
 >             | SInfix Op SCBody SCBody
->             | SSeq SCBody SCBody -- sequencing, arising from IO code
 >             | SIOOp SCIO
 >             | SConst Constant
 >             | SError
@@ -122,6 +121,9 @@ with env and newargs. Apply it to the environment only.
 Second step, turn the lambda lifted SimpleCases into SCFuns, translating 
 IO operations and do notation as we go.
 
+> scFun :: Context -> [Name] -> SimpleCase -> SCFun
+> scFun ctxt args lifted = SCFun args (toSC ctxt lifted)
+
 > class ToSC a where
 >     toSC :: Context -> a -> SCBody
 
@@ -136,7 +138,8 @@ IO operations and do notation as we go.
 
 > instance ToSC ViewTerm where
 >     toSC ctxt t = sc' t [] where
->        sc' (Name _ n) args = case getConstructorTag ctxt n of
+>        sc' (Name _ n) args 
+>             = case getConstructorTag ctxt n of
 >                                Just i -> scapply (SCon n i) args
 >                                Nothing -> scapply (SVar n) args
 >        sc' (App f a) args = sc' f ((sc' a []):args)
