@@ -90,6 +90,7 @@ separately then collect them together into a list of Decls
 Raw terms, as written by the programmer with no implicit arguments added.
 
 > data RawTerm = RVar Id
+>              | RExpVar Id -- variable with all explicit args
 >              | RApp RawTerm RawTerm
 >              | RAppImp Id RawTerm RawTerm -- Name the argument we make explicit
 >              | RBind Id RBinder RawTerm

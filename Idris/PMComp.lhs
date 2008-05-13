@@ -33,7 +33,7 @@ fallthrough when a function is known to be total, and ErrorCAse otherwise.
 > pmcomp raw ctxt n ty (Patterns ps) 
 >       = pm' n (map mkPat (deIOpats ps))
 >    where mkPat (PClause args rv) 
->                = Clause (map ((toPat ctxt).(toPattern ctxt)) args) rv
+>            = Clause (map ((toPat ctxt).(toPattern ctxt)) args) rv
 >          pm' n ps = evalState (doCaseComp raw ctxt ps) (CS 0)
 
 It's easier if we can distinguish syntactically between constructor forms

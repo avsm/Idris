@@ -94,6 +94,7 @@ data Token
       | TokenEmptyType
       | TokenUnitType
       | TokenUnderscore
+      | TokenBang
       | TokenLaTeX
       | TokenEOF
  deriving (Show, Eq)
@@ -140,6 +141,7 @@ lexer cont ('\\':cs) = cont TokenLambda cs
 lexer cont ('|':cs) = cont TokenBar cs
 lexer cont ('.':cs) = cont TokenDot cs
 lexer cont ('#':cs) = cont TokenType cs
+lexer cont ('!':cs) = cont TokenBang cs
 lexer cont ('%':cs) = lexSpecial cont cs
 lexer cont ('?':cs) = lexMeta cont cs
 lexer cont (c:cs) = lexError c cs

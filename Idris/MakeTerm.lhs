@@ -44,6 +44,7 @@ Convert a raw term to an ivor term, adding placeholders
 >                               (mkImplicitArgs 
 >                                (map fst (fst (getBinders ty []))) imp ex)
 >                   _ -> RVar n
+>           ap ex (RExpVar n) = RVar n
 >           ap ex (RAppImp n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
 >           ap ex (RApp f a) = (RApp (ap ex f) (ap [] a))
 >           ap ex (RBind n (Pi p ty) sc)

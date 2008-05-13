@@ -44,6 +44,7 @@ import Idris.Lib
       '.'             { TokenDot }
       '_'             { TokenUnderscore }
       ','             { TokenComma }
+      '!'             { TokenBang }
       concat          { TokenConcat }
       eq              { TokenEQ }
       ge              { TokenGE }
@@ -73,6 +74,7 @@ import Idris.Lib
 
 %nonassoc LAM
 %nonassoc let in
+%nonassoc '!'
 %left '(' '{'
 %left '+' '-'
 %left '*' '/'
@@ -189,6 +191,7 @@ NoAppTerm :: { RawTerm }
 NoAppTerm : Name { RVar $1 }
           | '(' Term ')' { $2 }
           | metavar { RMetavar $1 }
+          | '!' Name { RExpVar $2 }
           | NoAppTerm arrow NoAppTerm { RBind (MN "X" 0)
                                         (Pi Ex $1) $3 }
           | '(' TypedBinds ')' arrow NoAppTerm

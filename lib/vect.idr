@@ -1,10 +1,10 @@
 include "nat.idr";
 
-data Vect : (A:#)->(n:Nat)-># where
+data Vect : # -> Nat -> # where
    VNil : Vect A O
  | VCons : A -> (Vect A k) -> (Vect A (S k));
 
-data Fin : (n:Nat)-># where
+data Fin : Nat -> # where
    fO : Fin (S k)
  | fS : (Fin k) -> (Fin (S k));
 
