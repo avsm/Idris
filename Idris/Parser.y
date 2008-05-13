@@ -110,7 +110,7 @@ Declaration: Function { $1 }
            | Latex { RealDecl $1 }
 
 Function :: { ParseDecl }
-Function : Name ':' Term ';' { FunType $1 $3 }
+Function : Name ':' Type ';' { FunType $1 $3 }
          | DefTerm '=' Term ';' { FunClause (mkDef $1) $3 }
 
 --         | Name '=' Term ';' { RealDecl (TermDef $1 $3) }
@@ -155,8 +155,11 @@ Binds : Name MaybeType { [($1,$2)] }
       | Name MaybeType ',' Binds { ($1,$2):$4 }
 
 TypedBinds :: { [(Id, RawTerm)] }
-TypedBinds : Names ':' Term { map ( \x -> (x,$3)) $1 }
-           | Names ':' Term ',' TypedBinds { (map ( \x -> (x,$3)) $1) ++ $5 }
+TypedBinds : TypedBind ',' TypedBinds { $1 ++ $3 }
+           | TypedBind { $1 }
+
+TypedBind :: { [(Id, RawTerm)] }
+TypedBind : Names ':' Term { map ( \x -> (x,$3)) $1 }
 
 Names :: { [Id] }
 Names : Name { [$1] }
@@ -187,6 +190,18 @@ MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}
           | ':' NoAppTerm { $2 }
 
+MaybeAType :: { RawTerm }
+MaybeAType : { RPlaceholder}
+          | ':' Term { $2 }
+
+-- Term representing a type may begin with implicit argument list
+
+Type :: { RawTerm }
+Type : '{' Names MaybeAType '}' arrow Type
+               { doBind (Pi Im) (map (\x -> (x, $3)) $2) $6 }
+     | Term { $1 }
+
+
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name { RVar $1 }
           | '(' Term ')' { $2 }
@@ -196,8 +211,8 @@ NoAppTerm : Name { RVar $1 }
                                         (Pi Ex $1) $3 }
           | '(' TypedBinds ')' arrow NoAppTerm
                 { doBind (Pi Ex) $2 $5 }
-          | '{' TypedBinds '}' arrow NoAppTerm
-                { doBind (Pi Im) $2 $5 }
+--          | '{' TypedBinds '}' arrow NoAppTerm
+--                { doBind (Pi Im) $2 $5 }
           | Constant { RConst $1 }
           | refl { RRefl }
           | empty { RVar (UN "__Empty") }
@@ -236,7 +251,7 @@ Terms : { [] }
       | NoAppTerm Terms { $1:$2 }
 
 DType :: { RawTerm }
-DType : ':' Term where { $2 }
+DType : ':' Type where { $2 }
       | '=' { RConst TYPE }
       | VarList '=' { mkTyParams $1 }
 
@@ -258,7 +273,7 @@ Constructor : Name CType { Full $1 $2 }
 --            | Name { Simple $1 [] }
 
 CType :: { RawTerm }
-CType : ':' Term { $2 }
+CType : ':' Type { $2 }
 
 {
 
