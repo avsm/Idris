@@ -45,6 +45,7 @@ separately then collect them together into a list of Decls
 > data ParseDecl = RealDecl Decl
 >                | FunType Id RawTerm
 >                | FunClause RawTerm RawTerm
+>                | ProofScript [ITactic]
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
 > collectDecls pds = cds [] [] pds
@@ -105,6 +106,16 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > data Do = DoBinding Id RawTerm RawTerm
 >         | DoExp RawTerm
 >     deriving (Show, Eq)
+
+> data ITactic = Intro [Id]
+>              | Refine RawTerm
+>              | Induction RawTerm
+>              | Case RawTerm
+>              | Rewrite RawTerm
+>              | Unfold Id
+>              | Compute
+>              | Equiv RawTerm
+>     deriving Show
 
 > getFn :: RawTerm -> RawTerm
 > getFn (RApp f a) = getFn f

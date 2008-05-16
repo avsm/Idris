@@ -14,6 +14,7 @@
 > import Idris.Parser
 > import Idris.Latex
 > import Idris.Compiler
+> import Idris.Prover
 
 > import RunIO
 
@@ -52,13 +53,15 @@ Load things in this order:
 >                        return (ctxt, alldefs)
 >       Failure err f ln -> fail err
 
-> data REPLRes = Quit | Continue
+> data REPLRes = Quit | Continue | NewCtxt (Ctxt IvorFun) Context
 
 Command; minimal abbreviation; function to run it; description; visibility
 
 > commands
 >    = [("quit", "q", quit, "Exits the top level",True),
 >       ("type", "t", tmtype, "Print the type of a term",True),
+>       ("prove", "p", prove, "Begin a proof of an undefined name",True),
+>       ("ivor", "i", ivor, "Drop into the Ivor shell",True),
 >       ("compile", "c", tcomp, "Compile a definition (of type IO ()", True),
 >       ("latex", "l", latex, "Print definition as LaTeX",False),
 >       ("normalise", "n", norm, "Normalise a term (without executing)", True),
@@ -72,6 +75,10 @@ Command; minimal abbreviation; function to run it; description; visibility
 > quit _ _ _ = do return Quit
 > tmtype raw ctxt tms = do icheckType raw ctxt (unwords tms)
 >                          return Continue
+> prove raw ctxt (nm:[]) = do ctxt' <- doProof raw ctxt (UN nm)
+>                             return (NewCtxt raw ctxt')
+> ivor raw ctxt _ = do ctxt' <- doIvor ctxt
+>                      return (NewCtxt raw ctxt')
 > latex raw ctxt (nm:defs) = do latexDump raw (latexDefs defs) (UN nm)
 >                               return Continue
 > tcomp raw ctxt (top:[]) = do comp raw ctxt (UN top) top
@@ -106,6 +113,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                               return Continue
 >                    case res of
 >                      Continue -> repl raw ctxt
+>                      NewCtxt raw' ctxt' -> repl raw' ctxt'
 >                      _ -> return ()
 
 >   where

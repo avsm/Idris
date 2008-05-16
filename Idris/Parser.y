@@ -60,6 +60,7 @@ import Idris.Lib
       type            { TokenType }
       data            { TokenDataType }
       where           { TokenWhere }
+      proof           { TokenProof $$ }
       refl            { TokenRefl }
       empty           { TokenEmptyType }
       unit            { TokenUnitType }
@@ -112,6 +113,10 @@ Declaration: Function { $1 }
 Function :: { ParseDecl }
 Function : Name ':' Type ';' { FunType $1 $3 }
          | DefTerm '=' Term ';' { FunClause (mkDef $1) $3 }
+--         | proof '{' Tactics '}' { error "Foo" }
+
+-- Tactics :: { [(ITactic] }
+-- Tactics : 
 
 --         | Name '=' Term ';' { RealDecl (TermDef $1 $3) }
 

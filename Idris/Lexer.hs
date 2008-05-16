@@ -1,6 +1,7 @@
 module Idris.Lexer where
 
 import Data.Char
+import Debug.Trace
 
 import Idris.AbsSyntax
 
@@ -40,7 +41,9 @@ happyError = reportError "Parse error"
 reportError :: String -> P a
 reportError err = getFileName `thenP` \fn ->
                   getLineNo `thenP` \line ->
-                      failP (fn ++ ":" ++ show line ++ ":" ++ err)
+		  getContent `thenP` \str ->
+                      failP (fn ++ ":" ++ show line ++ ":" ++ err ++ 
+                             " - before " ++ take 80 str ++ "...")
 
 data Token
       = TokenName Id
@@ -59,6 +62,7 @@ data Token
       | TokenLockType
       | TokenDataType
       | TokenWhere
+      | TokenProof String
       | TokenType
       | TokenOB
       | TokenCB
@@ -155,6 +159,8 @@ lexerEatComment nls cont (c:cs) = lexerEatComment nls cont cs
 
 lexerEatToNewline cont ('\n':cs)
    = \fn line -> lexer cont cs fn (line+1)
+lexerEatToNewline cont []
+   = \fn line -> lexer cont [] fn line
 lexerEatToNewline cont (c:cs) = lexerEatToNewline cont cs
 
 lexNum cont cs = case readNum cs of
@@ -210,6 +216,11 @@ lexVar cont cs =
       ("else",rest) -> cont TokenElse rest
       ("let",rest) -> cont TokenLet rest
       ("in",rest) -> cont TokenIn rest
+-- TODO: Need a separate lexer/parser for proofs, so that we don't eat all
+-- the reserved words. So, after 'proof', the lexer should take the 
+-- rest of the input up to the end of proof marker, and feed that to a separate
+-- parser.
+      ("proof",rest) -> lexProof cont rest
 -- values
 -- expressions
       (var,rest) -> cont (mkname var) rest
@@ -218,6 +229,15 @@ lexSpecial cont cs =
     case span isAllowed cs of
       ("latex",rest) -> cont TokenLaTeX rest
       (thing,rest) -> lexError '%' rest
+
+-- Read everything up to '[whitespace]Qed'
+
+lexProof cont cs = 
+   \fn line ->
+      case getprf cs of
+        Just (str,rest,nls) -> cont (TokenProof str) rest fn (nls+line)
+        Nothing -> failP (fn++":"++show line++":No QED in Proof")
+                          cs fn line
 
 lexMeta cont cs =
     case span isAllowed cs of
@@ -254,3 +274,13 @@ getchar ('\\':'0':'\'':xs) = Just ('\0',xs) -- null
 getchar ('\\':x:'\'':xs) = Just (x,xs) -- Literal
 getchar (x:'\'':xs) = Just (x,xs)
 getchar _ = Nothing
+
+getprf :: String -> Maybe (String, String, Int)
+getprf s = case getprf' "" s 0 of 
+               Just (str,rest,nls) -> Just (reverse str,rest,nls)
+               _ -> Nothing
+getprf' acc (c:'Q':'E':'D':rest)
+    | isSpace c = \nl -> Just (acc,rest,nl)
+getprf' acc ('\n':xs) = \nl ->getprf' ('\n':acc) xs (nl+1) -- Count the newline
+getprf' acc (x:xs) = getprf' (x:acc) xs
+getprf' acc _ = \nl -> Nothing
