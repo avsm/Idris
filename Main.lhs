@@ -61,12 +61,13 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("type", "t", tmtype, "Print the type of a term",True),
 >       ("compile", "c", tcomp, "Compile a definition (of type IO ()", True),
 >       ("latex", "l", latex, "Print definition as LaTeX",False),
+>       ("normalise", "n", norm, "Normalise a term (without executing)", True),
 >       ("help", "h", help, "Show help text",True),
 >       ("?", "?", help, "Show help text",True)]
 
 > type Command = Ctxt IvorFun -> Context -> [String] -> IO REPLRes
 
-> quit, tmtype, tcomp, help :: Command
+> quit, tmtype, tcomp, norm, help :: Command
 
 > quit _ _ _ = do return Quit
 > tmtype raw ctxt tms = do icheckType raw ctxt (unwords tms)
@@ -77,6 +78,9 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                              return Continue
 > tcomp raw ctxt (top:exec:_) = do comp raw ctxt (UN top) exec
 >                                  return Continue
+> norm raw ctxt tms = do termInput False raw ctxt (unwords tms)
+>                        return Continue
+
 > help _ _ _ 
 >    = do putStrLn $ "\nIdris version " ++ version
 >         putStrLn $ "----------------" ++ take (length version) (repeat '-')
@@ -97,7 +101,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                            do addHistory (':':command)
 >                               runCommand (words command) commands
 >                        Just exprinput -> 
->                            do termInput raw ctxt exprinput
+>                            do termInput True raw ctxt exprinput
 >                               addHistory exprinput
 >                               return Continue
 >                    case res of
@@ -115,25 +119,26 @@ Command; minimal abbreviation; function to run it; description; visibility
 >      matchesAbbrev (a:xs) (c:cs) | a == c = matchesAbbrev xs cs
 >                                  | otherwise = False
 
-> termInput raw ctxt tm 
->               = case parseTerm tm of
->                      Success tm -> do let itm = makeIvorTerm raw tm
->                                       gtm <- check ctxt itm
->                                       execEval raw ctxt (gtm, viewType gtm)
->                      Failure err f ln -> putStrLn err
+> termInput runio raw ctxt tm 
+>         = case parseTerm tm of
+>                Success tm -> do let itm = makeIvorTerm raw tm
+>                                 gtm <- check ctxt itm
+>                                 execEval runio raw ctxt (gtm, viewType gtm)
+>                Failure err f ln -> putStrLn err
 
 
 If it is an IO type, execute it, otherwise just eval it.
 
-> execEval :: Ctxt IvorFun -> Context -> (Term, ViewTerm) -> IO ()
-> execEval ivs ctxt (tm, (App (Name _ io) _))
+> execEval :: Bool -> Ctxt IvorFun -> Context -> (Term, ViewTerm) -> IO ()
+> execEval True ivs ctxt (tm, (App (Name _ io) _))
 >          | io == name "IO" = do exec ctxt tm
 >                                 -- putStrLn $ show (whnf ctxt tm)
-> execEval ivs ctxt (tm, _) = do let res = (whnf ctxt tm)
->                                -- print res
->                                -- putStrLn (showImp True (unIvor ivs (view res)))
->                                putStr (showImp False (unIvor ivs (view res)))
->                                putStrLn $ " : " ++ showImp False (unIvor ivs (viewType res))
+> execEval _ ivs ctxt (tm, _) 
+>         = do let res = (whnf ctxt tm)
+>              -- print res
+>              -- putStrLn (showImp True (unIvor ivs (view res)))
+>              putStr (showImp False (unIvor ivs (view res)))
+>              putStrLn $ " : " ++ showImp False (unIvor ivs (viewType res))
 
 > icheckType :: Ctxt IvorFun -> Context -> String -> IO ()
 > icheckType ivs ctxt tmin
