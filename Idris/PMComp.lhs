@@ -48,6 +48,10 @@ and variables (and constants)
 > data Clause = Clause [Pat] ViewTerm
 >   deriving Show
 
+FIXME: If an argument is repeated in the patterns, turn the later ones
+into underscores (since type checking will verify they are the same,
+and if we don't matching can get confused).
+
 > toPat :: Context -> ViewTerm -> Pat
 > toPat ctxt tm = toPat' tm [] where
 >     toPat' (Name _ n) []
@@ -98,7 +102,10 @@ and variables (and constants)
 > doCaseComp :: Ctxt IvorFun -> Context ->
 >               [Clause] -> State CS ([Name], SimpleCase)
 > doCaseComp raw ctxt cs = do vs <- newVars cs
->                             sc <- match raw ctxt (map mkVT vs) cs ErrorCase
+>                             let (cs', vs') = reOrder cs vs
+>                             sc <- match raw ctxt (map mkVT vs') cs' ErrorCase
+>                             -- return names in original order (this is the
+>                             -- argument list we're making)
 >                             return (map (name.show) vs, sc)
 >    where newVars [] = return []
 >          newVars ((Clause ps _):_)
@@ -106,6 +113,16 @@ and variables (and constants)
 >                    put (CS (i+(length ps)))
 >                    return $ map (MN "cvar") [i..(i+(length ps)-1)]
 >          mkVT x = Name Unknown (name (show x))
+
+Reorder variables so that one with most disjoint cases is first.
+(Actually, quick hack, just reverse them, since then the dependent things
+will at least be looked at last, and we'll be matching on the real arguments
+rather than indices.)
+
+>          reOrder cs vs = (cs,vs) -- (reverseAll cs, reverse vs)
+>          reverseAll [] = []
+>          reverseAll ((Clause args rest):cs) 
+>                       = (Clause (reverse args) rest):(reverseAll cs)
 
 > match :: Ctxt IvorFun -> Context -> 
 >          [ViewTerm] -> -- arguments
@@ -247,7 +264,9 @@ case args of
 >     let alts' = map (repVar v) alts
 >     match raw ctxt vs alts' err
 >   where repVar v (Clause ((PVar p):ps) res) 
->                    = Clause ps (subst p v res)
+>                    = let nres = subst p v res in
+>                      {- trace (show v ++ " for " ++ dbgshow p ++ " in " ++ show res ++ " gives " ++ show nres) $ -}
+>                          Clause ps nres
 >         repVar v (Clause (PAny:ps) res) = Clause ps res
 
 

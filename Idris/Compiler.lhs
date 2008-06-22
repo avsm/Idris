@@ -8,6 +8,7 @@
 > import Ivor.TT
 
 > import System.IO
+> import Debug.Trace
 
 Get every definition from the context. Convert them all to simple case
 trees. Ignore constructors, types, etc. Simple definitions are, of course, 
@@ -20,7 +21,8 @@ already simple case trees.
 >                             compileAll raw ctxt ofile scs
 >    where allSCs [] = []
 >          allSCs ((x,(args,def)):xs) 
->                       = let lifted = lambdaLift x args def
+>                       = -- trace (show (x,def)) $
+>                         let lifted = lambdaLift ctxt x args def
 >                             scfuns = map (\ (n,args,sc) -> 
 >                                             (n, scFun ctxt args sc)) lifted
 >                             xs' = allSCs xs in
@@ -44,7 +46,7 @@ already simple case trees.
 > writeDef :: Handle -> (Name, SCFun) -> IO ()
 > writeDef h (n,(SCFun args def)) = do
 >   hPutStrLn h (show n ++ " (" ++ list args ++ ") -> Any = \n" ++
->                writeSC def)
+>                writeSC n def)
 >    where list [] = ""
 >          list [a] = show a ++ " : Any"
 >          list (x:xs) = show x ++ " : Any, " ++ list xs
@@ -52,43 +54,47 @@ already simple case trees.
 Write out a constructor name, turning constructors of IO commands into
 the relevant IO operation
 
-> writeSC :: SCBody -> String
-> writeSC (SVar n) = show n
-> writeSC (SCon n i) = writeCon n i ++ "()"
-> writeSC (SApp (SCon n i) args) = writeCon n i ++ "(" ++ list args ++ ")"
->  where list [] = ""
->        list [a] = writeSC a
->        list (x:xs) = writeSC x ++ ", " ++ list xs
-> writeSC (SApp b args) = "(" ++ writeSC b ++")(" ++ list args ++ ")"
->  where list [] = ""
->        list [a] = writeSC a
->        list (x:xs) = writeSC x ++ ", " ++ list xs
-> writeSC (SLet n val b) = "let " ++ show n ++ " : Any = " ++ writeSC val
->                          ++ " in ("  ++ writeSC b ++ ")"
-> writeSC (SCCase b alts) = "case " ++ writeSC b ++ " of { " ++ writeAlts alts
->                           ++ "}"
-> writeSC (SInfix op l r) = writeOp op (writeSC l) (writeSC r)
-> writeSC (SConst c) = writeConst c
-> writeSC SError = "error \"error\""
+> writeSC :: Name -> SCBody -> String
+> writeSC fname b = writeSC' b where
+>   writeSC' (SVar n) = show n
+>   writeSC' (SCon n i) = writeCon n i ++ "()"
+>   writeSC' (SApp (SCon n i) args) = writeCon n i ++ "(" ++ list args ++ ")"
+>     where list [] = ""
+>           list [a] = writeSC' a
+>           list (x:xs) = writeSC' x ++ ", " ++ list xs
+>   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
+>       where list [] = ""
+>             list [a] = writeSC' a
+>             list (x:xs) = writeSC' x ++ ", " ++ list xs
+>   writeSC' (SLet n val b) = "let " ++ show n ++ " : Any = " ++ writeSC' val
+>                          ++ " in ("  ++ writeSC' b ++ ")"
+>   writeSC' (SCCase b alts) = "case " ++ writeSC' b ++ " of { " ++ 
+>                              writeAlts fname alts
+>                             ++ "}"
+>   writeSC' (SInfix op l r) = writeOp op (writeSC' l) (writeSC' r)
+>   writeSC' (SConst c) = writeConst c
+>   writeSC' SUnit = "42"
+>   writeSC' SError = "error \"error\""
 
 > writeCon :: Name -> Int -> String
 > writeCon n i
->   | n == name "PutStr" = "putStr"
->   | n == name "GetStr" = "readStr"
+>   | n == name "PutStr" = "__epic_putStr"
+>   | n == name "GetStr" = "__epic_readStr"
 >   | otherwise = "Con " ++ show i
 
-> writeOp Concat l r = "append(" ++ l ++", " ++ r ++")"
+> writeOp Concat l r = "__epic_append(" ++ l ++", " ++ r ++")"
 > writeOp op l r = "(" ++ l ++ ") " ++ show op ++ " (" ++ r ++ ")"
 
-> writeAlts [] = ""
-> writeAlts [a] = writeAlt a
-> writeAlts (x:xs) = writeAlt x ++ " | " ++ writeAlts xs
+> writeAlts n [] = ""
+> writeAlts n [a] = writeAlt n a
+> writeAlts n (x:xs) = writeAlt n x ++ " | " ++ writeAlts n xs
 
-> writeAlt (SAlt _ t args b) = "Con " ++ show t ++ " (" ++ list args ++ ") -> "
->                              ++ writeSC b
+> writeAlt n (SAlt _ t args b) = "Con " ++ show t ++ " (" ++ list args ++ ") -> "
+>                                ++ writeSC n b
 >    where list [] = ""
 >          list [a] = show a ++ ":Any"
 >          list (x:xs) = show x ++ ":Any, " ++ list xs
-> writeAlt _ = "Con 9999 () -> error \"foo\"" -- TMP HACK, need default in Epic
+> writeAlt n (SDefault b) = "Default -> " ++ writeSC n b
+> writeAlt n _ = "Default -> error \"unhandled case in " ++ show n ++ "\""
 
 > writeConst c = show c

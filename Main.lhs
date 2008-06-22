@@ -141,8 +141,8 @@ If it is an IO type, execute it, otherwise just eval it.
 > execEval True ivs ctxt (tm, (App (Name _ io) _))
 >          | io == name "IO" = do exec ctxt tm
 >                                 -- putStrLn $ show (whnf ctxt tm)
-> execEval _ ivs ctxt (tm, _) 
->         = do let res = (whnf ctxt tm)
+> execEval runio ivs ctxt (tm, _) 
+>         = do let res = (evalnew ctxt tm)
 >              -- print res
 >              -- putStrLn (showImp True (unIvor ivs (view res)))
 >              putStr (showImp False (unIvor ivs (view res)))

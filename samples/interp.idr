@@ -55,6 +55,20 @@ fSnd = Lam (Lam (Var fO));
 fPlus : Term VNil (TyFun TyNat (TyFun TyNat TyNat));
 fPlus = Lam (Lam (plusOp (Var fO) (Var (fS fO))));
 
+fPlusA : Term VNil (TyFun TyNat TyNat);
+fPlusA = Lam (plusOp (Var fO) (NatVal (S (S O))));
+
 fPlusInf = Lam {G=VNil} (Lam (plusOp (Var fO) (Var (fS fO))));
 
-test = interp Empty fPlus;
+test : Nat -> Nat -> Nat;
+test x y = interp Empty fPlus x y;
+
+shownat : Nat -> String;
+shownat O = "O";
+shownat (S k) = "s" ++ (shownat k);
+
+main : IO ();
+-- main = do { putStrLn (shownat (interp Empty (NatVal (S (S O))))); };
+main = do { putStrLn (shownat (interp Empty 
+		     (plusOp (NatVal (S O)) (NatVal (S (S O)))))); };
+-- main = do { putStrLn (shownat (test (S (S O)) (S (S (S O))))); };

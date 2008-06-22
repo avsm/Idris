@@ -1,7 +1,7 @@
 data Command : # where
     PutStr : String -> Command
   | GetStr : Command
-  | Fork : A -> Command -- not sure I can forward declare types. Must check. 
+  | Fork : {A:#} -> A -> Command
   | NewLock : Int -> Command
   | DoLock : Lock -> Command
   | DoUnlock : Lock -> Command
@@ -62,16 +62,16 @@ readIORefPrim : Int -> (IO A);
 readIORefPrim {A} i = IODo (ReadRef A i) (\a . (IOReturn a));
 
 writeIORefPrim : Int -> A -> (IO ());
-writeIORefPrim i val = IODo (WriteRef i val) (\a . (IOReturn a));
+writeIORefPrim {A} i val = IODo (WriteRef {A} i val) (\a . (IOReturn a));
 
 newIORef : A -> (IO (IORef A));
 newIORef val = do { i <- newIORefPrim;
 		    writeIORefPrim i val;
 		    return (MkIORef i);
-		    };
+		  };
 
 readIORef : (IORef A) -> (IO A);
-readIORef {A} (MkIORef i) = readIORefPrim {A} i;
+readIORef (MkIORef i) = readIORefPrim i;
 
 writeIORef : (IORef A) -> A -> (IO ());
 writeIORef (MkIORef i) val = writeIORefPrim i val;

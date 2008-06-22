@@ -147,14 +147,15 @@ Add an entry for the type id and for each of the constructors.
 > addIvorDef raw ctxt (n,IvorFun name tyin _ def (LatexDefs _)) = return ctxt
 > addIvorDef raw ctxt (n,IvorFun name tyin _ def _) 
 >     = trace ("Processing "++ show n) $ case def of
->         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
+>         PattDef ps -> -- trace (show ps) $ 
+>                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ctxt
 >                            else fail $ "Metavariables are:\n" ++ 
 >                                        concat (map showDef newdefs)
->         SimpleDef tm -> case tyin of
+>         SimpleDef tm -> {- trace (show tm) $ -} case tyin of
 >                           Nothing -> addDef ctxt name tm
 >                           Just ty -> addTypedDef ctxt name tm ty
->         DataDef ind -> addDataNoElim ctxt ind
+>         DataDef ind -> {- trace (show ind) $ -} addDataNoElim ctxt ind
 >         Later -> case tyin of
 >                    Just ty -> declare ctxt name ty
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n

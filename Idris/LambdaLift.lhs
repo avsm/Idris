@@ -8,6 +8,7 @@
 > 
 > import Control.Monad.State
 > import Data.Typeable
+> import Debug.Trace
 
 This is the language we're converting directly into Epic code, and the
 output of the lambda lifter
@@ -70,9 +71,11 @@ name, arguments, body
 
 > data LiftState = SCS Int [(Name, [Name], SimpleCase)] 
 
-> lambdaLift :: Name -> [Name] -> SimpleCase -> [(Name, [Name], SimpleCase)]
-> lambdaLift root args sc 
->        = let (body, SCS _ defs) = runState (liftSC args sc) (SCS 0 []) in
+> lambdaLift :: Context -> Name -> [Name] -> 
+>               SimpleCase -> [(Name, [Name], SimpleCase)]
+> lambdaLift ctxt root args sc 
+>        = let scEta = expandCons ctxt sc
+>              (body, SCS _ defs) = runState (liftSC args scEta) (SCS 0 []) in
 >              (root,args,body):defs
 >    where liftSC env (SCase tm alts) = do tm' <- lift env tm
 >                                          alts' <- mapM (liftAlt env) alts
@@ -88,10 +91,13 @@ name, arguments, body
 >          liftAlt env (Default sc) = do sc' <- liftSC env sc
 >                                        return (Default sc)
 
+First arugment says whether to eta expand
+
 >          lift env (Lambda n ty sc) = liftLam env [n] sc
 >          lift env (App f a) = do f' <- lift env f
 >                                  a' <- lift env a
 >                                  return (App f' a')
+
 >          lift env (Let n ty val sc) = do val' <- lift env val
 >                                          sc' <- lift (n:env) sc
 >                                          return (Let n ty val' sc')
@@ -101,7 +107,8 @@ name, arguments, body
 Hoover up all the arguments to nested lambdsa, and make a new function.
 with env and newargs. Apply it to the environment only.
 
->          liftLam env newargs (Lambda n ty sc) = liftLam env (newargs++[n]) sc
+>          liftLam env newargs (Lambda n ty sc) 
+>                      = liftLam env (newargs++[n]) sc
 >          liftLam env newargs x = do
 >              x' <- lift (env++newargs) x
 >              newFn <- getNewSC
@@ -117,6 +124,46 @@ with env and newargs. Apply it to the environment only.
 
 >          addFn name args body = do SCS i bs <- get
 >                                    put (SCS i ((name,args,body):bs))
+
+We need ot make sure all constructors are fully applied before we start
+
+> expandCons ctxt sc = ec' sc
+>   where
+>     ec' (Tm tm) = Tm (ec tm)
+>     ec' (SCase tm alts) = SCase (ec tm) (map ecalt alts)
+>     ec' x = x
+>     ecalt (Alt n i ns sc) = Alt n i ns (ec' sc)
+>     ecalt (ConstAlt c sc) = ConstAlt c (ec' sc)
+>     ecalt (Default sc) = Default (ec' sc)
+
+>     ec ap@(App f a) 
+>         | Just (ar, con, args) <- needsExp (App f a)
+>              = etaExp ar con args
+>     ec (App f a) = App (ec f) (ec a)
+>     ec (Lambda n ty sc) = Lambda n (ec ty) (ec sc)
+
+That's all the terms we care about.
+
+>     ec x = x
+
+>     needsExp ap = needsExp' ap []
+>     needsExp' (App f a) as = needsExp' f ((ec a):as)
+>     needsExp' nm@(Name _ n) as 
+>         = do ar <- getConstructorArity ctxt n
+>              if (ar == length as) then Nothing
+>                  else Just (ar, nm, as)
+>     needsExp' _ _ = Nothing
+
+We don't care about the type on the lambda here, We'll never look at it
+even when compiling, it's just for the sake of having constructors fully
+applied.
+
+>     etaExp ar con args 
+>         = let newargs = map (\n -> (toIvorName (MN "exp" n)))
+>                            [1..(ar-(length args))] in
+>               addLam newargs (apply con (args++(map (Name Unknown) newargs)))
+>     addLam [] t = t
+>     addLam (n:ns) t = Lambda n Star (addLam ns t)
 
 Second step, turn the lambda lifted SimpleCases into SCFuns, translating 
 IO operations and do notation as we go.
@@ -140,8 +187,10 @@ IO operations and do notation as we go.
 >     toSC ctxt t = sc' t [] where
 >        sc' (Name _ n) args 
 >             = case getConstructorTag ctxt n of
->                                Just i -> scapply (SCon n i) args
->                                Nothing -> scapply (SVar n) args
+>                   Just i -> scapply (SCon n i) args
+>                   Nothing -> case nameType ctxt n of
+>                                      Just TypeCon -> SUnit
+>                                      _ -> scapply (SVar n) args
 >        sc' (App f a) args = sc' f ((sc' a []):args)
 >        sc' (Let n ty val x) args 
 >                = scapply (SLet n (sc' val []) (sc' x [])) args
