@@ -125,7 +125,7 @@ with env and newargs. Apply it to the environment only.
 >          addFn name args body = do SCS i bs <- get
 >                                    put (SCS i ((name,args,body):bs))
 
-We need ot make sure all constructors are fully applied before we start
+We need to make sure all constructors are fully applied before we start
 
 > expandCons ctxt sc = ec' sc
 >   where
@@ -139,7 +139,7 @@ We need ot make sure all constructors are fully applied before we start
 >     ec ap@(App f a) 
 >         | Just (ar, con, args) <- needsExp (App f a)
 >              = etaExp ar con args
->     ec (App f a) = App (ec f) (ec a)
+>     ec (App f a) = App f (ec a)
 >     ec (Lambda n ty sc) = Lambda n (ec ty) (ec sc)
 
 That's all the terms we care about.

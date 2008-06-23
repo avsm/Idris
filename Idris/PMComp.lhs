@@ -119,7 +119,7 @@ Reorder variables so that one with most disjoint cases is first.
 will at least be looked at last, and we'll be matching on the real arguments
 rather than indices.)
 
->          reOrder cs vs = (cs,vs) -- (reverseAll cs, reverse vs)
+>          reOrder cs vs = (reverseAll cs, reverse vs)
 >          reverseAll [] = []
 >          reverseAll ((Clause args rest):cs) 
 >                       = (Clause (reverse args) rest):(reverseAll cs)
