@@ -12,7 +12,6 @@ data Env : (xs:Vect Ty n) -> # where
  | Extend : {xs:Vect Ty n} -> (interpTy t) -> (Env xs) -> 
 	    (Env (VCons t xs));
 
-tCtxt : Vect Ty (S O);
 tCtxt = VCons TyNat VNil;
 
 tEnv : Env tCtxt;
@@ -85,10 +84,7 @@ lInc = BIND (READ fO)
  (\n . BIND (TRACE ("Read " ++ (showNat n)))
  (\u . WRITE fO (S n)));
 
-nine : Nat;
 nine = mult (S (S (S O))) (S (S (S O)));
-
-lots : Nat;
 lots = mult nine nine;
 
 testProg : Lang tCtxt tCtxt TyUnit;
