@@ -85,6 +85,10 @@ the relevant IO operation
 >   | n == name "NewRef" = "__epic_newRef"
 >   | n == name "ReadRef" = "__epic_readRef"
 >   | n == name "WriteRef" = "__epic_writeRef"
+>   | n == name "NewLock" = "__epic_newLock"
+>   | n == name "DoLock" = "__epic_doLock"
+>   | n == name "DoUnlock" = "__epic_doUnlock"
+>   | n == name "Fork" = "__epic_fork"
 >   | otherwise = "Con " ++ show i
 
 > writeOp Concat l r = "__epic_append(" ++ l ++", " ++ r ++")"

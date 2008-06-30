@@ -19,3 +19,16 @@ __epic_readRef (A:Any, r:Int) -> Any =
 
 __epic_writeRef (A:Any, r:Int, v:Any) -> Unit =
     foreign Unit "writeRef" (r:Int, v:Any)
+
+__epic_newLock (l:Int) -> Int =
+   foreign Int "newLock" (l:Int)
+
+__epic_doLock (l:Int) -> Unit =
+   foreign Unit "doLock" (l:Int)
+
+__epic_doUnlock (l:Int) -> Unit =
+   foreign Unit "doUnlock" (l:Int)
+
+__epic_fork (a:Any, f:Fun) -> Unit =
+   foreign Unit "doFork" (f:Fun)
+
