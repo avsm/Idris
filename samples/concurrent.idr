@@ -6,6 +6,7 @@ shownat O = "O";
 shownat (S k) = "s" ++ (shownat k);
 
 bignat = mult (S (S (S (S (S (S (S O))))))) (S (S (S (S (S (S (S O)))))));
+bigbignat = mult bignat bignat;
 
 count : Lock -> String -> Nat -> (IO ());
 count l str O = putStrLn "Phew";

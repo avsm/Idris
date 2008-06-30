@@ -64,6 +64,13 @@ the relevant IO operation
 >     where list [] = ""
 >           list [a] = writeSC' a
 >           list (x:xs) = writeSC' x ++ ", " ++ list xs
+
+Fork is a special case, because it's argument needs to be evaluated lazily
+or it'll be evaluated by the type we run the thread!
+
+>   writeSC' (SApp (SVar n) [arg])
+>     | n == name "fork" =
+>         "fork(lazy("++writeSC' arg++"))"
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
 >       where list [] = ""
 >             list [a] = writeSC' a
