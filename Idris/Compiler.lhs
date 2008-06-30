@@ -82,6 +82,9 @@ the relevant IO operation
 > writeCon n i
 >   | n == name "PutStr" = "__epic_putStr"
 >   | n == name "GetStr" = "__epic_readStr"
+>   | n == name "NewRef" = "__epic_newRef"
+>   | n == name "ReadRef" = "__epic_readRef"
+>   | n == name "WriteRef" = "__epic_writeRef"
 >   | otherwise = "Con " ++ show i
 
 > writeOp Concat l r = "__epic_append(" ++ l ++", " ++ r ++")"
