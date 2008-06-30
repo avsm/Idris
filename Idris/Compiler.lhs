@@ -5,6 +5,7 @@
 > import Idris.AbsSyntax
 > import Idris.PMComp
 > import Idris.LambdaLift
+> import Idris.Lib
 > import Ivor.TT
 
 > import System.IO
@@ -38,7 +39,8 @@ already simple case trees.
 > compileAll ctxt raw ofile scs = do
 >   let efile = ofile ++ ".e"
 >   eH <- openFile efile WriteMode
->   hPutStrLn eH "include \"Prelude.e\"\n\n"
+>   prel <- readLibFile defaultLibPath "Prelude.e"
+>   hPutStrLn eH prel
 >   mapM_ (writeDef eH) scs
 >   hClose eH
 >   putStrLn $ "Output " ++ efile

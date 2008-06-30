@@ -1,6 +1,6 @@
 > {-# OPTIONS_GHC -fglasgow-exts #-}
 
-> module Idris.Lib(defaultLibPath, readLib) where
+> module Idris.Lib(defaultLibPath, readLib, readLibFile) where
 
 > import Idris.Prefix
 
@@ -36,4 +36,10 @@ Search for a file in the library path given, plus '.'
 >          tryReads (x:xs) = catch (do str <- readFile x
 >                                      putStrLn x
 >                                      return str)
+>                                  (\e -> tryReads xs)
+
+> readLibFile :: [FilePath] -> FilePath -> IO String
+> readLibFile xs x = tryReads (map (\f -> f ++ "/" ++ x) (".":xs))
+>    where tryReads [] = fail $ "Can't find " ++ x
+>          tryReads (x:xs) = catch (readFile x)
 >                                  (\e -> tryReads xs)

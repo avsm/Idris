@@ -12,7 +12,7 @@ all: .PHONY
 install: .PHONY
 	runhaskell Setup.lhs install $(DB)
 	mkdir -p $(PREFIX)/lib/idris
-	install lib/*.idr $(PREFIX)/lib/idris
+	install lib/*.idr lib/*.e $(PREFIX)/lib/idris
 
 package: all install
 

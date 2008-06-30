@@ -13,5 +13,5 @@ shownat O = "O";
 shownat (S k) = "s" ++ (shownat k);
 
 main : IO ();
-main = putStrLn (shownat (adder (S (S (S (S (S O))))) (S (S O)) 
-			 (S (S (S O))) (S O) (S (S O)) (S O) (S (S (S O)))));
+main = putStrLn (shownat (adder (S O) (S (S O)) (S (S O)))); 
+
