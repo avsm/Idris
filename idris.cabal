@@ -11,8 +11,8 @@ Synopsis:       Dependently Typed Functional Programming Language
 Description:    Idris is an experimental language with full dependent types.
                 Dependent types allow types to be predicated on values,
                 meaning that some aspects of a program's behaviour can be
-                specified precisely in the type. The language is closely related
-                to Epigram and Agda.
+                specified precisely in the type. The language is closely 
+		related to Epigram and Agda.
                 .
                 The aims of the project are:
                 .
@@ -40,7 +40,7 @@ Library
                          Idris.MakeTerm, Idris.Prefix, Idris.Prover, RunIO
 
         Build-depends:   base>3, containers, array, parsec, mtl,
-                         readline, ivor
+                         readline, ivor, directory, haskell98
         Extensions:      MagicHash, UndecidableInstances, OverlappingInstances
 
 Executable     idris

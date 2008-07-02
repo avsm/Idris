@@ -8,7 +8,10 @@
 > import Idris.Lib
 > import Ivor.TT
 
+> import System
 > import System.IO
+> import System.Environment
+> import System.Directory
 > import Debug.Trace
 
 Get every definition from the context. Convert them all to simple case
@@ -37,13 +40,17 @@ already simple case trees.
 > compileAll :: Ctxt IvorFun -> Context -> FilePath -> 
 >               [(Name, SCFun)] -> IO ()
 > compileAll ctxt raw ofile scs = do
->   let efile = ofile ++ ".e"
->   eH <- openFile efile WriteMode
->   prel <- readLibFile defaultLibPath "Prelude.e"
->   hPutStrLn eH prel
->   mapM_ (writeDef eH) scs
->   hClose eH
->   putStrLn $ "Output " ++ efile
+>      (efile, eH) <- tempfile
+>      prel <- readLibFile defaultLibPath "Prelude.e"
+>      hPutStrLn eH prel
+>      mapM_ (writeDef eH) scs
+>      hClose eH
+>      let cmd = "epic " ++ efile ++ " -o " ++ ofile
+>      exit <- system cmd
+>      removeFile efile
+>      if (exit /= ExitSuccess) 
+>         then fail "EPIC FAIL"
+>         else return ()
 
 > writeDef :: Handle -> (Name, SCFun) -> IO ()
 > writeDef h (n,(SCFun args def)) = do
@@ -114,3 +121,15 @@ or it'll be evaluated by the type we run the thread!
 > writeAlt n _ = "Default -> error \"unhandled case in " ++ show n ++ "\""
 
 > writeConst c = show c
+
+> tempfile :: IO (FilePath, Handle)
+> tempfile = do env <- environment "TMPDIR"
+>               let dir = case env of
+>                               Nothing -> "/tmp"
+>                               (Just d) -> d
+>               openTempFile dir "idris"
+
+> environment :: String -> IO (Maybe String)
+> environment x = catch (do e <- getEnv x
+>                           return (Just e))
+>                       (\_ -> return Nothing)

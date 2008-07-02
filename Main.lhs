@@ -3,6 +3,7 @@
 > import Ivor.TT
 > import Ivor.Shell
 
+> import System
 > import System.Environment
 > import System.IO
 > import System.Console.Readline
@@ -63,6 +64,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("prove", "p", prove, "Begin a proof of an undefined name",True),
 >       ("ivor", "i", ivor, "Drop into the Ivor shell",True),
 >       ("compile", "c", tcomp, "Compile a definition (of type IO ()", True),
+>       ("execute", "e", texec, "Compile and execute 'main'", True),
 >       ("latex", "l", latex, "Print definition as LaTeX",False),
 >       ("normalise", "n", norm, "Normalise a term (without executing)", True),
 >       ("help", "h", help, "Show help text",True),
@@ -70,7 +72,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 
 > type Command = Ctxt IvorFun -> Context -> [String] -> IO REPLRes
 
-> quit, tmtype, tcomp, norm, help :: Command
+> quit, tmtype, tcomp, texec, norm, help :: Command
 
 > quit _ _ _ = do return Quit
 > tmtype raw ctxt tms = do icheckType raw ctxt (unwords tms)
@@ -82,9 +84,13 @@ Command; minimal abbreviation; function to run it; description; visibility
 > latex raw ctxt (nm:defs) = do latexDump raw (latexDefs defs) (UN nm)
 >                               return Continue
 > tcomp raw ctxt (top:[]) = do comp raw ctxt (UN top) top
+>                              putStrLn $ "Output " ++ top
 >                              return Continue
 > tcomp raw ctxt (top:exec:_) = do comp raw ctxt (UN top) exec
 >                                  return Continue
+> texec raw ctxt _ = do comp raw ctxt (UN "main") "main"
+>                       system "./main"
+>                       return Continue
 > norm raw ctxt tms = do termInput False raw ctxt (unwords tms)
 >                        return Continue
 
