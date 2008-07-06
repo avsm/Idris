@@ -110,11 +110,13 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > data ITactic = Intro [Id]
 >              | Refine RawTerm
 >              | Induction RawTerm
+>              | Fill RawTerm
 >              | Case RawTerm
 >              | Rewrite RawTerm
 >              | Unfold Id
 >              | Compute
 >              | Equiv RawTerm
+>              | Qed
 >     deriving Show
 
 > getFn :: RawTerm -> RawTerm
@@ -214,6 +216,7 @@ Pattern clauses
 > mkApp :: RawTerm -> [RawTerm] -> RawTerm
 > mkApp f [] = f
 > mkApp f (a:as) = mkApp (RApp f a) as
+
 
 For each raw definition, we'll translate it into something Ivor will understand
 with all the placeholders added. For this we'll need to know how many

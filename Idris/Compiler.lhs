@@ -73,7 +73,7 @@ the relevant IO operation
 >           list (x:xs) = writeSC' x ++ ", " ++ list xs
 
 Fork is a special case, because it's argument needs to be evaluated lazily
-or it'll be evaluated by the type we run the thread!
+or it'll be evaluated by the time we run the thread!
 
 >   writeSC' (SApp (SVar n) [arg])
 >     | n == name "fork" =

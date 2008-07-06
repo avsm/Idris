@@ -60,7 +60,6 @@ import Idris.Lib
       type            { TokenType }
       data            { TokenDataType }
       where           { TokenWhere }
-      proof           { TokenProof $$ }
       refl            { TokenRefl }
       empty           { TokenEmptyType }
       unit            { TokenUnitType }
@@ -71,6 +70,12 @@ import Idris.Lib
       else            { TokenElse }
       let             { TokenLet }
       in              { TokenIn }
+      proof           { TokenProof }
+      intro           { TokenIntro }
+      refine          { TokenRefine }
+      induction       { TokenInduction }
+      fill            { TokenFill }
+      qed             { TokenQED }
       latex           { TokenLaTeX }
 
 %nonassoc LAM
@@ -113,6 +118,9 @@ Declaration: Function { $1 }
 Function :: { ParseDecl }
 Function : Name ':' Type ';' { FunType $1 $3 }
          | DefTerm '=' Term ';' { FunClause (mkDef $1) $3 }
+
+--         | Nameproof Script { ProofScript $2 }
+
 --         | proof '{' Tactics '}' { error "Foo" }
 
 -- Tactics :: { [(ITactic] }
@@ -279,6 +287,20 @@ Constructor : Name CType { Full $1 $2 }
 
 CType :: { RawTerm }
 CType : ':' Type { $2 }
+
+Tactic :: { ITactic }
+Tactic : intro Names { Intro $2 }
+       | refine Term { Refine $2 }
+       | induction Term { Induction $2 }
+       | fill Term { Fill $2 }
+       | qed { Qed }
+
+ProofScript :: { [ITactic] }
+ProofScript : proof '{' Tactics '}' { $3 }
+
+Tactics :: { [ITactic] }
+Tactics : Tactic ';' { [$1] }
+        | Tactic ';' Tactics { $1:$3 }
 
 {
 

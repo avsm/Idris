@@ -62,7 +62,6 @@ data Token
       | TokenLockType
       | TokenDataType
       | TokenWhere
-      | TokenProof String
       | TokenType
       | TokenOB
       | TokenCB
@@ -100,6 +99,13 @@ data Token
       | TokenUnderscore
       | TokenBang
       | TokenLaTeX
+-- Tactics
+      | TokenProof
+      | TokenIntro
+      | TokenRefine
+      | TokenInduction
+      | TokenFill
+      | TokenQED
       | TokenEOF
  deriving (Show, Eq)
 
@@ -216,11 +222,15 @@ lexVar cont cs =
       ("else",rest) -> cont TokenElse rest
       ("let",rest) -> cont TokenLet rest
       ("in",rest) -> cont TokenIn rest
--- TODO: Need a separate lexer/parser for proofs, so that we don't eat all
--- the reserved words. So, after 'proof', the lexer should take the 
--- rest of the input up to the end of proof marker, and feed that to a separate
--- parser.
-      ("proof",rest) -> lexProof cont rest
+-- tactics
+-- FIXME: it'd be better to have a 'theorem proving' state so that these
+-- aren't always reserved words.
+      ("Proof",rest) -> cont TokenProof rest
+      ("Intro",rest) -> cont TokenIntro rest
+      ("Refine",rest) -> cont TokenRefine rest
+      ("Induction",rest) -> cont TokenInduction rest
+      ("Fill", rest) -> cont TokenFill rest
+      ("QED", rest) -> cont TokenQED rest
 -- values
 -- expressions
       (var,rest) -> cont (mkname var) rest
@@ -231,13 +241,14 @@ lexSpecial cont cs =
       (thing,rest) -> lexError '%' rest
 
 -- Read everything up to '[whitespace]Qed'
-
+{-
 lexProof cont cs = 
    \fn line ->
       case getprf cs of
         Just (str,rest,nls) -> cont (TokenProof str) rest fn (nls+line)
         Nothing -> failP (fn++":"++show line++":No QED in Proof")
                           cs fn line
+-}
 
 lexMeta cont cs =
     case span isAllowed cs of
