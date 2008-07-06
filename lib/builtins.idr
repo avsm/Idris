@@ -11,3 +11,14 @@ Pair A B = Sigma A (\x:A.B);
 
 pair : A -> B -> (Pair A B);
 pair {A} {B} a b = Exists {P=\x:A.B} a b;
+
+rewrite : {A:B->#} -> (A m) -> (m=n) -> (A n);
+rewrite t (refl m) = t;
+
+-- This way is needed for Ivor's rewriting tactic
+
+__eq_repl : (A:#)->(x,y:A)->(q:x=y)->(P:(m:A)->#)->(p:P x)->(P y);
+__eq_repl A x x (refl x) P p = p;
+
+__eq_sym : (A:#)->(a,b:A)->(p:a=b)->(b=a);
+__eq_sym A a a p = refl _;

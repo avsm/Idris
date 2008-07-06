@@ -125,7 +125,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Induction RawTerm
 >              | Fill RawTerm
 >              | Case RawTerm
->              | Rewrite RawTerm
+>              | Rewrite Bool RawTerm
 >              | Unfold Id
 >              | Compute
 >              | Equiv RawTerm
@@ -261,9 +261,15 @@ name in the scope, returning the number of implicit arguments the resulting
 type has.
 
 > addImpl :: Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
-> addImpl ctxt raw 
+> addImpl = addImpl' True 
+
+Bool says whether to pi bind unknown names
+
+> addImpl' :: Bool -> Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
+> addImpl' pi ctxt raw 
 >             = let (newargs, totimp) = execState (addImplB [] raw) ([],0) in
->                   (pibind newargs raw, totimp)
+>                   if pi then (pibind newargs raw, totimp)
+>                      else (raw, totimp)
 >     where addImplB :: [Id] -> RawTerm -> State ([Id], Int) ()
 >           addImplB env (RVar i)
 >               | i `elem` env = return ()

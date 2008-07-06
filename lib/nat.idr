@@ -19,5 +19,3 @@ plus_nSm : ((plus n (S m)) = (S (plus n m)));
 plus_nSm {n=O} {m} = (refl (S m));
 plus_nSm {n=S k} {m} = eq_resp_S plus_nSm;
 
-rewrite : {A:B->#} -> (A m) -> (m=n) -> (A n);
-rewrite t (refl m) = t;

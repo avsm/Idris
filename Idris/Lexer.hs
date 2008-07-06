@@ -103,6 +103,9 @@ data Token
       | TokenProof
       | TokenIntro
       | TokenRefine
+      | TokenRewrite
+      | TokenCompute
+      | TokenUnfold
       | TokenInduction
       | TokenFill
       | TokenQED
@@ -226,10 +229,13 @@ lexVar cont cs =
 -- FIXME: it'd be better to have a 'theorem proving' state so that these
 -- aren't always reserved words.
       ("Proof",rest) -> cont TokenProof rest
-      ("Intro",rest) -> cont TokenIntro rest
-      ("Refine",rest) -> cont TokenRefine rest
-      ("Induction",rest) -> cont TokenInduction rest
-      ("Fill", rest) -> cont TokenFill rest
+      ("intro",rest) -> cont TokenIntro rest
+      ("refine",rest) -> cont TokenRefine rest
+      ("replace",rest) -> cont TokenRewrite rest
+      ("compute",rest) -> cont TokenCompute rest
+      ("unfold",rest) -> cont TokenUnfold rest
+      ("induction",rest) -> cont TokenInduction rest
+      ("fill", rest) -> cont TokenFill rest
       ("QED", rest) -> cont TokenQED rest
 -- values
 -- expressions
