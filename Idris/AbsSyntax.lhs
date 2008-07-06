@@ -36,6 +36,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 
 > data Decl = DataDecl Datatype | Fwd Id RawTerm
 >           | Fun Function | TermDef Id RawTerm | Constructor
+>           | Prf Proof
 >           | LatexDefs [(Id,String)]
 >    deriving Show
 
@@ -45,7 +46,7 @@ separately then collect them together into a list of Decls
 > data ParseDecl = RealDecl Decl
 >                | FunType Id RawTerm
 >                | FunClause RawTerm RawTerm
->                | ProofScript [ITactic]
+>                | ProofScript Id [ITactic]
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
 > collectDecls pds = cds [] [] pds
@@ -60,6 +61,11 @@ separately then collect them together into a list of Decls
 >                                  fail $ "No type declaration for " ++ show n
 >                             Just ty -> getClauses rds fwds n ty [] ds
 >                 _ -> fail $ "Invalid pattern clause"
+>         cds rds fwds ((ProofScript n prf):ds)
+>             = case lookup n fwds of
+>                      Nothing ->
+>                          fail $ "No theorem called " ++ show n
+>                      Just ty -> cds ((Prf (Proof n ty prf)):rds) fwds ds
 >         cds rds fwds [] = return (reverse rds)
 
 >         getClauses rds fwds n t clauses ((FunClause pat ret):ds)
@@ -81,6 +87,13 @@ separately then collect them together into a list of Decls
 >                           funType :: RawTerm,
 >                           funClauses :: [(Id, RawClause)]
 >                          }
+>   deriving Show
+
+> data Proof = Proof {
+>                     proofId :: Id,
+>                     proofType :: RawTerm,
+>                     proofScript :: [ITactic]
+>                    }
 >   deriving Show
 
 > getId :: Decl -> Id

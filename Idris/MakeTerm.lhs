@@ -97,6 +97,7 @@ in our list of explicit names to add, add it.
 > mif ctxt acc (decl@(LatexDefs ls):ds) 
 >         = mif ctxt (addEntry acc (MN "latex" 0) 
 >                     (IvorFun undefined Nothing 0 undefined decl)) ds
+> mif ctxt acc ((Prf _):ds) = error "Not implemented"
 
 Add an entry for the type id and for each of the constructors.
 

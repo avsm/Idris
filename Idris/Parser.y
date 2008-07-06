@@ -14,6 +14,8 @@ import Idris.Lib
 
 %name mkparse Program
 %name mkparseTerm Term
+%name mkparseTactic Tactic
+
 %tokentype { Token }
 %monad { P } { thenP } { returnP }
 %lexer { lexer } { TokenEOF }
@@ -117,7 +119,9 @@ Declaration: Function { $1 }
 
 Function :: { ParseDecl }
 Function : Name ':' Type ';' { FunType $1 $3 }
+         | Name ProofScript ';' { ProofScript $1 $2 }
          | DefTerm '=' Term ';' { FunClause (mkDef $1) $3 }
+
 
 --         | Nameproof Script { ProofScript $2 }
 
@@ -313,6 +317,9 @@ parse s fn = do ds <- mkparse s fn 1
 
 parseTerm :: String -> Result RawTerm
 parseTerm s = mkparseTerm s "(input)" 0
+
+parseTactic :: String -> Result ITactic
+parseTactic s = mkparseTactic s "(tactic)" 0
 
 mkCon :: RawTerm -> ConParse -> (Id,RawTerm)
 mkCon _ (Full n t) = (n,t)
