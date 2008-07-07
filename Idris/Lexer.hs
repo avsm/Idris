@@ -209,7 +209,7 @@ isAllowed c = isAlpha c || isDigit c || c `elem` "_\'?#"
 lexVar cont cs =
    case span isAllowed cs of
 -- Keywords
-      ("Proof",rest) -> cont TokenProof rest
+      ("proof",rest) -> cont TokenProof rest
       ("data",rest) -> cont TokenDataType rest
       ("where",rest) -> cont TokenWhere rest
 -- Types

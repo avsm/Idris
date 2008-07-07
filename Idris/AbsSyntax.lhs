@@ -252,6 +252,7 @@ Name definitions Ivor-side.
 >              | IDataCon -- Data constructor
 >              | SimpleDef !ViewTerm -- simple function definition
 >              | DataDef !Inductive -- data type definition
+>              | IProof [ITactic]
 >              | Later -- forward declaration
 >    deriving Show
 

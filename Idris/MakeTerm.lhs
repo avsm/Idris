@@ -1,6 +1,8 @@
 > module Idris.MakeTerm where
 
 > import Idris.AbsSyntax
+> import Idris.Prover
+
 > import Ivor.TT
 > import Debug.Trace
 
@@ -97,7 +99,14 @@ in our list of explicit names to add, add it.
 > mif ctxt acc (decl@(LatexDefs ls):ds) 
 >         = mif ctxt (addEntry acc (MN "latex" 0) 
 >                     (IvorFun undefined Nothing 0 undefined decl)) ds
-> mif ctxt acc ((Prf _):ds) = error "Not implemented"
+> mif ctxt acc (decl@(Prf (Proof n ty scr)):ds) 
+>     = case ctxtLookup acc n of
+>          Nothing -> error "This can't happen because we checked earlier..."
+>          Just (IvorFun _ (Just ty) imp _ _) -> 
+>             mif ctxt (addEntry acc n
+>               (IvorFun (toIvorName n) (Just ty) imp (IProof scr) decl)) ds
+
+error "Not implemented"
 
 Add an entry for the type id and for each of the constructors.
 
@@ -157,6 +166,7 @@ Add an entry for the type id and for each of the constructors.
 >                           Nothing -> addDef ctxt name tm
 >                           Just ty -> addTypedDef ctxt name tm ty
 >         DataDef ind -> {- trace (show ind) $ -} addData ctxt ind
+>         IProof scr -> runScript raw ctxt n scr
 >         Later -> case tyin of
 >                    Just ty -> declare ctxt name ty
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n

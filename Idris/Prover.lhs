@@ -1,13 +1,14 @@
-> module Idris.Prover(doProof, doIvor) where
+> module Idris.Prover(doProof, runScript, doIvor) where
 
 > import System.Console.Readline
 
 > import Idris.AbsSyntax
-> import Idris.MakeTerm
 > import Idris.Parser
 
 > import Ivor.Shell
 > import Ivor.TT
+
+> import Debug.Trace
 
 > doProof :: Ctxt IvorFun -> Context -> Id -> IO Context
 > doProof raw ctxt nm = 
@@ -16,6 +17,26 @@
 >        (ctxt, script) <- proofShell (show nm ++ "> ") raw [] ctxt
 >        showScript nm script
 >        return ctxt
+
+> runScript :: Monad m => Ctxt IvorFun -> Context -> Id -> [ITactic] -> 
+>              m Context
+> runScript raw ctxt nm tacs =
+>     do ctxt <- resume ctxt (toIvorName nm)
+>        ctxt <- attack defaultGoal ctxt
+>        execScript raw ctxt tacs
+
+This function assumes that it can plough on knowing the proof is fine.
+If it isn't, it'll break, but with an error. We probably ought to check
+properly, if only for useful diagnostics.
+
+> execScript :: Monad m => Ctxt IvorFun -> Context -> [ITactic] -> m Context
+> execScript raw ctxt [] = return ctxt
+> execScript raw ctxt (t:ts) = do (ctxt,_) <- applyTac raw ctxt [] t
+>                                 ctxt <- keepSolving defaultGoal ctxt
+>                                 ctxt <- if ((numUnsolved ctxt) > 0)
+>                                            then beta defaultGoal ctxt
+>                                            else return ctxt
+>                                 execScript raw ctxt ts
 
 > showScript :: Id -> [String] -> IO ()
 > showScript nm sc 
@@ -47,8 +68,8 @@ undone bits, after a Qed
 >                                 then proofShell prompt raw script ctxt
 >                                 else return (ctxt, script)
 
-> applyTac :: Ctxt IvorFun -> Context -> [String] -> ITactic -> 
->             IO (Context, [String])
+> applyTac :: Monad m => Ctxt IvorFun -> Context -> [String] -> ITactic -> 
+>             m (Context, [String])
 > applyTac raw ctxt script Undo = do ctxt <- restore ctxt
 >                                    -- remove the undo and the command
 >                                    let script' = init (init script)
