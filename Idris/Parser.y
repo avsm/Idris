@@ -78,6 +78,7 @@ import Idris.Lib
       rewrite         { TokenRewrite }
       compute         { TokenCompute }
       unfold          { TokenUnfold }
+      undo            { TokenUndo }
       induction       { TokenInduction }
       fill            { TokenFill }
       qed             { TokenQED }
@@ -303,6 +304,7 @@ Tactic : intro Names { Intro $2 }
        | rewrite leftarrow Term { Rewrite True $3 }
        | compute { Compute }
        | unfold Name { Unfold $2 }
+       | undo { Undo }
        | induction Term { Induction $2 }
        | fill Term { Fill $2 }
        | qed { Qed }

@@ -13,39 +13,59 @@
 > doProof raw ctxt nm = 
 >     do ctxt <- resume ctxt (toIvorName nm)
 >        ctxt <- attack defaultGoal ctxt
->        proofShell (show nm ++ "> ") raw ctxt
+>        (ctxt, script) <- proofShell (show nm ++ "> ") raw [] ctxt
+>        showScript nm script
+>        return ctxt
 
-> proofShell :: String -> Ctxt IvorFun -> Context -> IO Context
-> proofShell prompt raw ctxt = do
+> showScript :: Id -> [String] -> IO ()
+> showScript nm sc 
+>    = do putStrLn $ (show nm) ++ " proof {"
+>         putStr $ concat (map (\line -> "\t" ++ line ++ ";\n") sc)
+>         putStrLn "};"
+
+Remember the proof script (that's the [String]) and output it, without the
+undone bits, after a Qed
+
+> proofShell :: String -> Ctxt IvorFun -> [String] -> Context -> 
+>               IO (Context, [String])
+> proofShell prompt raw script ctxt = do
 >     putStrLn $ showCtxtState raw ctxt
 >     inp <- readline prompt
 >     res <- case inp of
 >              Nothing -> return ""
 >              Just tac -> return tac
->     case parseTactic res of
+>     case parseTactic ("%"++res) of
 >            Failure err f l -> do putStrLn err
->                                  proofShell prompt raw ctxt
->            Success tac -> do ctxt <- applyTac raw ctxt tac
+>                                  proofShell prompt raw script ctxt
+>            Success tac -> do let script' = script ++ ["%"++res]
+>                              (ctxt, script) <- applyTac raw ctxt script' tac
 >                              ctxt <- keepSolving defaultGoal ctxt
 >                              ctxt <- if ((numUnsolved ctxt) > 0)
 >                                          then beta defaultGoal ctxt
 >                                          else return ctxt
 >                              if (proving ctxt)
->                                 then proofShell prompt raw ctxt
->                                 else return ctxt 
+>                                 then proofShell prompt raw script ctxt
+>                                 else return (ctxt, script)
 
-> applyTac :: Ctxt IvorFun -> Context -> ITactic -> IO Context
-> applyTac raw ctxt tac = at tac where
->     at (Intro []) = intros defaultGoal ctxt
->     at (Intro ns) = introsNames (map toIvorName ns) defaultGoal ctxt
->     at (Refine t) = refine (ivor t) defaultGoal ctxt
->     at (Fill t) = fill (ivor t) defaultGoal ctxt
->     at (Induction t) = induction (ivor t) defaultGoal ctxt
->     at (Rewrite f t) = replace eqN replN symN (ivor t) f
+> applyTac :: Ctxt IvorFun -> Context -> [String] -> ITactic -> 
+>             IO (Context, [String])
+> applyTac raw ctxt script Undo = do ctxt <- restore ctxt
+>                                    -- remove the undo and the command
+>                                    let script' = init (init script)
+>                                    return (ctxt, script')
+> applyTac raw ctxt script tac = do ctxt <- at (save ctxt) tac 
+>                                   return (ctxt, script)
+>   where
+>     at ctxt (Intro []) = intros defaultGoal ctxt
+>     at ctxt (Intro ns) = introsNames (map toIvorName ns) defaultGoal ctxt
+>     at ctxt (Refine t) = refine (ivor t) defaultGoal ctxt
+>     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
+>     at ctxt (Induction t) = induction (ivor t) defaultGoal ctxt
+>     at ctxt (Rewrite f t) = replace eqN replN symN (ivor t) f
 >                                defaultGoal ctxt
->     at Compute = compute defaultGoal ctxt
->     at (Unfold n) = unfold (toIvorName n) defaultGoal ctxt
->     at Qed = qed ctxt
+>     at ctxt Compute = compute defaultGoal ctxt
+>     at ctxt (Unfold n) = unfold (toIvorName n) defaultGoal ctxt
+>     at ctxt Qed = qed ctxt
 
 >     ivor t = let (t',impl) = addImpl' False raw t in
 >              toIvor t'

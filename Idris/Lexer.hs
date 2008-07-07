@@ -106,6 +106,7 @@ data Token
       | TokenRewrite
       | TokenCompute
       | TokenUnfold
+      | TokenUndo
       | TokenInduction
       | TokenFill
       | TokenQED
@@ -208,6 +209,9 @@ isAllowed c = isAlpha c || isDigit c || c `elem` "_\'?#"
 lexVar cont cs =
    case span isAllowed cs of
 -- Keywords
+      ("Proof",rest) -> cont TokenProof rest
+      ("data",rest) -> cont TokenDataType rest
+      ("where",rest) -> cont TokenWhere rest
 -- Types
       ("Int",rest) -> cont TokenIntType rest
       ("Char",rest) -> cont TokenCharType rest
@@ -215,8 +219,6 @@ lexVar cont cs =
       ("String",rest) -> cont TokenStringType rest
       ("Lock",rest) -> cont TokenLockType rest
       ("Handle",rest) -> cont TokenHandleType rest
-      ("data",rest) -> cont TokenDataType rest
-      ("where",rest) -> cont TokenWhere rest
       ("refl",rest) -> cont TokenRefl rest
       ("include",rest) -> cont TokenInclude rest
       ("do",rest) -> cont TokenDo rest
@@ -225,18 +227,6 @@ lexVar cont cs =
       ("else",rest) -> cont TokenElse rest
       ("let",rest) -> cont TokenLet rest
       ("in",rest) -> cont TokenIn rest
--- tactics
--- FIXME: it'd be better to have a 'theorem proving' state so that these
--- aren't always reserved words.
-      ("Proof",rest) -> cont TokenProof rest
-      ("intro",rest) -> cont TokenIntro rest
-      ("refine",rest) -> cont TokenRefine rest
-      ("replace",rest) -> cont TokenRewrite rest
-      ("compute",rest) -> cont TokenCompute rest
-      ("unfold",rest) -> cont TokenUnfold rest
-      ("induction",rest) -> cont TokenInduction rest
-      ("fill", rest) -> cont TokenFill rest
-      ("QED", rest) -> cont TokenQED rest
 -- values
 -- expressions
       (var,rest) -> cont (mkname var) rest
@@ -244,6 +234,18 @@ lexVar cont cs =
 lexSpecial cont cs =
     case span isAllowed cs of
       ("latex",rest) -> cont TokenLaTeX rest
+-- tactics
+-- FIXME: it'd be better to have a 'theorem proving' state so that these
+-- don't need the uglu syntax...
+      ("intro",rest) -> cont TokenIntro rest
+      ("refine",rest) -> cont TokenRefine rest
+      ("rewrite",rest) -> cont TokenRewrite rest
+      ("compute",rest) -> cont TokenCompute rest
+      ("unfold",rest) -> cont TokenUnfold rest
+      ("undo",rest) -> cont TokenUndo rest
+      ("induction",rest) -> cont TokenInduction rest
+      ("fill", rest) -> cont TokenFill rest
+      ("qed", rest) -> cont TokenQED rest
       (thing,rest) -> lexError '%' rest
 
 -- Read everything up to '[whitespace]Qed'
