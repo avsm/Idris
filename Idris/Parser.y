@@ -36,11 +36,14 @@ import Idris.Lib
       ')'             { TokenCB }
       '{'             { TokenOCB }
       '}'             { TokenCCB }
+      '['             { TokenOSB }
+      ']'             { TokenCSB }
       '+'             { TokenPlus }
       '-'             { TokenMinus }
       '*'             { TokenTimes }
       '/'             { TokenDivide }
       '='             { TokenEquals }
+      mightbe         { TokenMightEqual }
       '<'             { TokenLT }
       '>'             { TokenGT }
       '.'             { TokenDot }
@@ -127,7 +130,8 @@ Function :: { ParseDecl }
 Function : Name ':' Type ';' { FunType $1 $3 }
          | Name ProofScript ';' { ProofScript $1 $2 }
          | DefTerm '=' Term ';' { FunClause (mkDef $1) $3 }
-
+         | DefTerm mightbe Term ';' '[' Name ']'
+              { FunClauseP (mkDef $1) $3 $6 }
 
 --         | Nameproof Script { ProofScript $2 }
 

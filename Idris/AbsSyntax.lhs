@@ -43,9 +43,13 @@ We store everything directly as a 'ViewTerm' from Ivor.
 Function types and clauses are given separately, so we'll parse them
 separately then collect them together into a list of Decls
 
+A FunClauseP is a clause which is probably the wrong type, but instructs
+the system to insert a hole for a proof that turns it into the right type.
+
 > data ParseDecl = RealDecl Decl
 >                | FunType Id RawTerm
 >                | FunClause RawTerm RawTerm
+>                | FunClauseP RawTerm RawTerm Id
 >                | ProofScript Id [ITactic]
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
@@ -64,16 +68,23 @@ separately then collect them together into a list of Decls
 >         cds rds fwds ((ProofScript n prf):ds)
 >             = case lookup n fwds of
 >                      Nothing ->
->                          fail $ "No theorem called " ++ show n
->                      Just ty -> cds ((Prf (Proof n ty prf)):rds) fwds ds
+>                          cds ((Prf (Proof n Nothing prf)):rds) fwds ds
+>                      Just ty -> 
+>                          cds ((Prf (Proof n (Just ty) prf)):rds) fwds ds
 >         cds rds fwds [] = return (reverse rds)
 
 >         getClauses rds fwds n t clauses ((FunClause pat ret):ds)
 >             | (RVar n) == getFn pat
 >                 = getClauses rds fwds n t ((n, RawClause pat ret):clauses) ds
+>         getClauses rds fwds n t clauses ((FunClauseP pat ret mv):ds)
+>             | (RVar n) == getFn pat
+>                 = getClauses rds fwds n t ((n, RawClause pat (mkhret mv ret)):clauses) ds
 >         getClauses rds fwds n t [] ds = cds ((Fwd n t):rds) ((n,t):fwds) ds
 >         getClauses rds fwds n t clauses ds =
 >             cds ((Fun (Function n t (reverse clauses))):rds) fwds ds
+
+>         mkhret mv v = RBind (UN "value") (RLet v RPlaceholder) 
+>                             (RMetavar mv)
 
 > data Datatype = Datatype {
 >                           tyId :: Id,
@@ -91,7 +102,7 @@ separately then collect them together into a list of Decls
 
 > data Proof = Proof {
 >                     proofId :: Id,
->                     proofType :: RawTerm,
+>                     proofType :: Maybe RawTerm,
 >                     proofScript :: [ITactic]
 >                    }
 >   deriving Show
@@ -114,6 +125,14 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RInfix Op RawTerm RawTerm
 >              | RDo [Do]
 >              | RRefl
+>    deriving (Show, Eq)
+
+> data RBinder = Pi Plicit RawTerm
+>              | Lam RawTerm
+>              | RLet RawTerm RawTerm
+>    deriving (Show, Eq)
+
+> data Plicit = Im | Ex
 >    deriving (Show, Eq)
 
 > data Do = DoBinding Id RawTerm RawTerm
@@ -161,14 +180,6 @@ Raw terms, as written by the programmer with no implicit arguments added.
 
 Binders; Pi (either implicit or explicitly written), Lambda and Let with
 value.
-
-> data RBinder = Pi Plicit RawTerm
->              | Lam RawTerm
->              | RLet RawTerm RawTerm
->    deriving (Show, Eq)
-
-> data Plicit = Im | Ex
->    deriving (Show, Eq)
 
 > data Constant = Num Int
 >               | Str String
@@ -375,6 +386,55 @@ ready for typechecking
 > toIvorConst IntType = Name Unknown (name "Int")
 > toIvorConst FloatType = Name Unknown (name "Float")
 > toIvorConst (Builtin ty) = Name Unknown (name ty)
+
+Convert a raw term to an ivor term, adding placeholders
+
+> makeIvorTerm :: Ctxt IvorFun -> RawTerm -> ViewTerm
+> makeIvorTerm ctxt tm = let expraw = addPlaceholders ctxt tm in
+>                            toIvor expraw
+
+> addPlaceholders :: Ctxt IvorFun -> RawTerm -> RawTerm
+> addPlaceholders ctxt tm = ap [] tm
+>     -- Count the number of args we've made explicit in an application
+>     -- and don't add placeholders for them. Reset the counter if we get
+>     -- out of an application
+>     where ap ex (RVar n)
+>               = case ctxtLookup ctxt n of
+>                   Just (IvorFun _ (Just ty) imp _ _) -> 
+>                     mkApp (RVar n) 
+>                               (mkImplicitArgs 
+>                                (map fst (fst (getBinders ty []))) imp ex)
+>                   _ -> RVar n
+>           ap ex (RExpVar n) = RVar n
+>           ap ex (RAppImp n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
+>           ap ex (RApp f a) = (RApp (ap ex f) (ap [] a))
+>           ap ex (RBind n (Pi p ty) sc)
+>               = RBind n (Pi p (ap [] ty)) (ap [] sc)
+>           ap ex (RBind n (Lam ty) sc)
+>               = RBind n (Lam (ap [] ty)) (ap [] sc)
+>           ap ex (RBind n (RLet val ty) sc)
+>               = RBind n (RLet (ap [] val) (ap [] ty)) (ap [] sc)
+>           ap ex (RInfix op l r) = RInfix op (ap [] l) (ap [] r)
+>           ap ex (RDo ds) = RDo (map apdo ds)
+>           ap ex r = r
+
+>           apdo (DoExp r) = DoExp (ap [] r)
+>           apdo (DoBinding x t r) = DoBinding x (ap [] t) (ap [] r)
+
+Go through the arguments; if an implicit argument has the same name as one
+in our list of explicit names to add, add it.
+
+> mkImplicitArgs :: [Name] -> Int -> [(Name, RawTerm)] -> [RawTerm]
+> mkImplicitArgs _ 0 _ = [] -- No more implicit
+> mkImplicitArgs [] i ns = [] -- No more args
+> mkImplicitArgs (n:ns) i imps
+>      = case lookup n imps of
+>          Nothing -> RPlaceholder:(mkImplicitArgs ns (i-1) imps)
+>          Just v -> v:(mkImplicitArgs ns (i-1) imps)
+
+> getBinders (Forall n ty sc) acc = (getBinders sc ((n,ty):acc))
+> getBinders sc acc = (reverse acc, sc)
+
 
 > undo :: [Do] -> State Int RawTerm
 > undo [] = fail "The last statement in a 'do' block must be an expression"

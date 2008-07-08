@@ -67,12 +67,15 @@ data Token
       | TokenCB
       | TokenOCB
       | TokenCCB
+      | TokenOSB
+      | TokenCSB
       | TokenConcat
       | TokenPlus
       | TokenMinus
       | TokenTimes
       | TokenDivide
       | TokenEquals
+      | TokenMightEqual
       | TokenEQ
       | TokenGE
       | TokenLE
@@ -139,6 +142,8 @@ lexer cont ('(':cs) = cont TokenOB cs
 lexer cont (')':cs) = cont TokenCB cs
 lexer cont ('{':cs) = cont TokenOCB cs
 lexer cont ('}':cs) = cont TokenCCB cs
+lexer cont ('[':cs) = cont TokenOSB cs
+lexer cont (']':cs) = cont TokenCSB cs
 lexer cont ('+':'+':cs) = cont TokenConcat cs
 lexer cont ('+':cs) = cont TokenPlus cs
 lexer cont ('-':cs) = cont TokenMinus cs
@@ -149,6 +154,7 @@ lexer cont ('>':'=':cs) = cont TokenGE cs
 lexer cont ('<':'=':cs) = cont TokenLE cs
 lexer cont ('>':cs) = cont TokenGT cs
 lexer cont ('<':cs) = cont TokenLT cs
+lexer cont ('?':'=':cs) = cont TokenMightEqual cs
 lexer cont ('=':cs) = cont TokenEquals cs
 lexer cont (':':cs) = cont TokenColon cs
 lexer cont (';':cs) = cont TokenSemi cs

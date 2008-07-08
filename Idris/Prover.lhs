@@ -101,8 +101,7 @@ undone bits, after a Qed
 >     at ctxt (Unfold n) = unfold (toIvorName n) defaultGoal ctxt
 >     at ctxt Qed = qed ctxt
 
->     ivor t = let (t',impl) = addImpl' False raw t in
->              toIvor t'
+>     ivor t = makeIvorTerm raw t
 >     eqN = Name Unknown $ name "Eq"
 >     replN = Name Unknown $ toIvorName (UN "__eq_repl")
 >     symN = Name Unknown $ toIvorName (UN "__eq_sym")

@@ -29,51 +29,6 @@ into an ivor definition, with all the necessary placeholders added.
 >                                vrhs = makeIvorTerm ectx rhs in
 >                                PClause vpats vrhs
 
-Convert a raw term to an ivor term, adding placeholders
-
-> makeIvorTerm :: Ctxt IvorFun -> RawTerm -> ViewTerm
-> makeIvorTerm ctxt tm = let expraw = addPlaceholders ctxt tm in
->                            toIvor expraw
-
-> addPlaceholders :: Ctxt IvorFun -> RawTerm -> RawTerm
-> addPlaceholders ctxt tm = ap [] tm
->     -- Count the number of args we've made explicit in an application
->     -- and don't add placeholders for them. Reset the counter if we get
->     -- out of an application
->     where ap ex (RVar n)
->               = case ctxtLookup ctxt n of
->                   Just (IvorFun _ (Just ty) imp _ _) -> 
->                     mkApp (RVar n) 
->                               (mkImplicitArgs 
->                                (map fst (fst (getBinders ty []))) imp ex)
->                   _ -> RVar n
->           ap ex (RExpVar n) = RVar n
->           ap ex (RAppImp n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
->           ap ex (RApp f a) = (RApp (ap ex f) (ap [] a))
->           ap ex (RBind n (Pi p ty) sc)
->               = RBind n (Pi p (ap [] ty)) (ap [] sc)
->           ap ex (RBind n (Lam ty) sc)
->               = RBind n (Lam (ap [] ty)) (ap [] sc)
->           ap ex (RBind n (RLet val ty) sc)
->               = RBind n (RLet (ap [] val) (ap [] ty)) (ap [] sc)
->           ap ex (RInfix op l r) = RInfix op (ap [] l) (ap [] r)
->           ap ex (RDo ds) = RDo (map apdo ds)
->           ap ex r = r
-
->           apdo (DoExp r) = DoExp (ap [] r)
->           apdo (DoBinding x t r) = DoBinding x (ap [] t) (ap [] r)
-
-Go through the arguments; if an implicit argument has the same name as one
-in our list of explicit names to add, add it.
-
-> mkImplicitArgs :: [Name] -> Int -> [(Name, RawTerm)] -> [RawTerm]
-> mkImplicitArgs _ 0 _ = [] -- No more implicit
-> mkImplicitArgs [] i ns = [] -- No more args
-> mkImplicitArgs (n:ns) i imps
->      = case lookup n imps of
->          Nothing -> RPlaceholder:(mkImplicitArgs ns (i-1) imps)
->          Just v -> v:(mkImplicitArgs ns (i-1) imps)
-
 > makeIvorFuns :: Ctxt IvorFun -> [Decl] -> Ctxt IvorFun
 > makeIvorFuns is defs = mif is [] defs
 
@@ -100,9 +55,12 @@ in our list of explicit names to add, add it.
 > mif ctxt acc (decl@(LatexDefs ls):ds) 
 >         = mif ctxt (addEntry acc (MN "latex" 0) 
 >                     (IvorFun undefined Nothing 0 undefined decl)) ds
-> mif ctxt acc (decl@(Prf (Proof n ty scr)):ds) 
+> mif ctxt acc (decl@(Prf (Proof n _ scr)):ds) 
 >     = case ctxtLookup acc n of
->          Nothing -> error "This can't happen because we checked earlier..."
+>          Nothing -> -- add the script and process the type later, should
+>                     -- be a metavariable
+>             mif ctxt (addEntry acc n
+>               (IvorFun (toIvorName n) Nothing 0 (IProof scr) decl)) ds
 >          Just (IvorFun _ (Just ty) imp _ _) -> 
 >             mif ctxt (addEntry acc n
 >               (IvorFun (toIvorName n) (Just ty) imp (IProof scr) decl)) ds
@@ -123,9 +81,6 @@ Add an entry for the type id and for each of the constructors.
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                  (DataDef ddef) decl) in
 >         addConEntries ctxt acc' cons ds
-
-> getBinders (Forall n ty sc) acc = (getBinders sc ((n,ty):acc))
-> getBinders sc acc = (reverse acc, sc)
 
      Inductive (toIvorName tid) [] 
 
@@ -216,8 +171,7 @@ n is a parameter
 >         PattDef ps -> -- trace (show ps) $ 
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ctxt
->                            else fail $ "Metavariables are:\n" ++ 
->                                        concat (map showDef newdefs)
+>                            else addMeta raw ctxt newdefs
 >         SimpleDef tm -> {- trace (show tm) $ -} case tyin of
 >                           Nothing -> addDef ctxt name tm
 >                           Just ty -> addTypedDef ctxt name tm ty
@@ -234,13 +188,19 @@ n is a parameter
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
 >         _ -> return ctxt
 >    where unjust (Just x) = x
+
+
+> addMeta :: Monad m =>
+>            Ctxt IvorFun -> Context -> [(Name, ViewTerm)] -> m Context
+> addMeta raw ctxt newdefs
+>       = trace ("Metavariables are:\n" ++  concat (map showDef newdefs))
+>            $ return ctxt
+>    where
 >          showDef (n,ty) = "  " ++ show n ++ " : " ++ dumpMeta (unIvor raw ty)
 >                           ++ "\n"
-
 >          dumpMeta tm = showImp False (Idris.AbsSyntax.getRetType tm) ++ 
 >                        "\n  in environment\n" ++ 
 >                        dumpArgs (Idris.AbsSyntax.getArgTypes tm)
 >          dumpArgs [] = ""
 >          dumpArgs ((n,ty):xs) = "    " ++ show n ++ " : " ++showImp False ty
 >                                 ++ "\n" ++ dumpArgs xs
-
