@@ -82,6 +82,7 @@ import Idris.Lib
       undo            { TokenUndo }
       induction       { TokenInduction }
       fill            { TokenFill }
+      abandon         { TokenAbandon }
       qed             { TokenQED }
       latex           { TokenLaTeX }
 
@@ -309,6 +310,7 @@ Tactic : intro Names { Intro $2 }
        | undo { Undo }
        | induction Term { Induction $2 }
        | fill Term { Fill $2 }
+       | abandon { Abandon }
        | qed { Qed }
 
 ProofScript :: { [ITactic] }

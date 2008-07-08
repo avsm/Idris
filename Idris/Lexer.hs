@@ -110,6 +110,7 @@ data Token
       | TokenUndo
       | TokenInduction
       | TokenFill
+      | TokenAbandon
       | TokenQED
       | TokenEOF
  deriving (Show, Eq)
@@ -247,6 +248,7 @@ lexSpecial cont cs =
       ("undo",rest) -> cont TokenUndo rest
       ("induction",rest) -> cont TokenInduction rest
       ("fill", rest) -> cont TokenFill rest
+      ("abandon", rest) -> cont TokenAbandon rest
       ("qed", rest) -> cont TokenQED rest
       (thing,rest) -> lexError '%' rest
 

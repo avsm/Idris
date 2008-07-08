@@ -12,11 +12,15 @@
 
 > doProof :: Ctxt IvorFun -> Context -> Id -> IO Context
 > doProof raw ctxt nm = 
->     do ctxt <- resume ctxt (toIvorName nm)
->        ctxt <- attack defaultGoal ctxt
->        (ctxt, script) <- proofShell (show nm ++ "> ") raw [] ctxt
->        showScript nm script
->        return ctxt
+>     do ctxt' <- resume ctxt (toIvorName nm)
+>        ctxt' <- attack defaultGoal ctxt'
+>        putStrLn $ showCtxtState raw ctxt'
+>        (ctxt', script, ok) <- proofShell (show nm ++ "> ") raw [] ctxt'
+>        if ok then do
+>            showScript nm script
+>            return ctxt'
+>          else do putStrLn "Proof abandoned"
+>                  return ctxt
 
 > runScript :: Monad m => Ctxt IvorFun -> Context -> Id -> [ITactic] -> 
 >              m Context
@@ -31,7 +35,7 @@ properly, if only for useful diagnostics.
 
 > execScript :: Monad m => Ctxt IvorFun -> Context -> [ITactic] -> m Context
 > execScript raw ctxt [] = return ctxt
-> execScript raw ctxt (t:ts) = do (ctxt,_) <- applyTac raw ctxt [] t
+> execScript raw ctxt (t:ts) = do (ctxt,_,_) <- applyTac raw ctxt [] t
 >                                 ctxt <- keepSolving defaultGoal ctxt
 >                                 ctxt <- if ((numUnsolved ctxt) > 0)
 >                                            then beta defaultGoal ctxt
@@ -48,34 +52,42 @@ Remember the proof script (that's the [String]) and output it, without the
 undone bits, after a Qed
 
 > proofShell :: String -> Ctxt IvorFun -> [String] -> Context -> 
->               IO (Context, [String])
+>               IO (Context, [String], Bool)
 > proofShell prompt raw script ctxt = do
->     putStrLn $ showCtxtState raw ctxt
 >     inp <- readline prompt
 >     res <- case inp of
 >              Nothing -> return ""
->              Just tac -> return tac
+>              Just ":q" -> return "abandon"
+>              Just tac -> do addHistory tac
+>                             return tac
 >     case parseTactic ("%"++res) of
 >            Failure err f l -> do putStrLn err
 >                                  proofShell prompt raw script ctxt
->            Success tac -> do let script' = script ++ ["%"++res]
->                              (ctxt, script) <- applyTac raw ctxt script' tac
->                              ctxt <- keepSolving defaultGoal ctxt
->                              ctxt <- if ((numUnsolved ctxt) > 0)
->                                          then beta defaultGoal ctxt
->                                          else return ctxt
->                              if (proving ctxt)
->                                 then proofShell prompt raw script ctxt
->                                 else return (ctxt, script)
+>            Success tac -> 
+>                do let script' = script ++ ["%"++res]
+>                   case applyTac raw ctxt script' tac of
+>                     Failure err f l -> do putStrLn err
+>                                           proofShell prompt raw script ctxt
+>                     Success (ctxt, script, True) -> do
+>                       ctxt <- keepSolving defaultGoal ctxt
+>                       ctxt <- if ((numUnsolved ctxt) > 0)
+>                                 then beta defaultGoal ctxt
+>                                 else return ctxt
+>                       if (proving ctxt)
+>                          then do putStrLn $ showCtxtState raw ctxt
+>                                  proofShell prompt raw script ctxt
+>                          else return (ctxt, script, True)
+>                     _ -> return (ctxt, script, False)
 
 > applyTac :: Monad m => Ctxt IvorFun -> Context -> [String] -> ITactic -> 
->             m (Context, [String])
+>             m (Context, [String], Bool)
+> applyTac raw ctxt script Abandon = return (ctxt, script, False)
 > applyTac raw ctxt script Undo = do ctxt <- restore ctxt
 >                                    -- remove the undo and the command
 >                                    let script' = init (init script)
->                                    return (ctxt, script')
+>                                    return (ctxt, script', True)
 > applyTac raw ctxt script tac = do ctxt <- at (save ctxt) tac 
->                                   return (ctxt, script)
+>                                   return (ctxt, script, True)
 >   where
 >     at ctxt (Intro []) = intros defaultGoal ctxt
 >     at ctxt (Intro ns) = introsNames (map toIvorName ns) defaultGoal ctxt

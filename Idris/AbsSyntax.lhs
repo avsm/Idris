@@ -131,6 +131,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Compute
 >              | Equiv RawTerm
 >              | Undo
+>              | Abandon
 >              | Qed
 >     deriving Show
 
@@ -262,6 +263,10 @@ Name definitions Ivor-side.
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting
 type has.
+
+We only want names which appear *in argument position*, e.g. P a we'd add a 
+but not P. We also don't want names which appear in the return type, since
+they'll never be inferrable at the call site.
 
 > addImpl :: Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
 > addImpl = addImpl' True 
