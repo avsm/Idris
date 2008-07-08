@@ -159,9 +159,11 @@ n is a parameter
 >           addConEntries ctxt acc' cs ds
 
 > addIvor :: Monad m => 
->            Ctxt IvorFun -> -- just the ones we haven't added to Ivor
+>            Ctxt IvorFun -> -- all definitions, including prelude
+>            Ctxt IvorFun -> -- just the ones we haven't added to Ivor yet
 >            Context -> m Context
-> addIvor defs ctxt = foldM (addIvorDef defs) ctxt (reverse (ctxtAlist defs))
+> addIvor all defs ctxt = foldM (addIvorDef all) ctxt 
+>                               (reverse (ctxtAlist defs))
 
 > addIvorDef :: Monad m =>
 >                Ctxt IvorFun -> Context -> (Id, IvorFun) -> m Context

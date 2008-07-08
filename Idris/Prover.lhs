@@ -36,12 +36,13 @@ properly, if only for useful diagnostics.
 
 > execScript :: Monad m => Ctxt IvorFun -> Context -> [ITactic] -> m Context
 > execScript raw ctxt [] = return ctxt
-> execScript raw ctxt (t:ts) = do (ctxt,_,_) <- applyTac raw ctxt [] t
->                                 ctxt <- keepSolving defaultGoal ctxt
->                                 ctxt <- if ((numUnsolved ctxt) > 0)
->                                            then beta defaultGoal ctxt
->                                            else return ctxt
->                                 execScript raw ctxt ts
+> execScript raw ctxt (t:ts) 
+>      = do (ctxt,_,_) <- applyTac raw ctxt [] t
+>           ctxt <- keepSolving defaultGoal ctxt
+>           ctxt <- if ((numUnsolved ctxt) > 0)
+>                     then beta defaultGoal ctxt
+>                     else return ctxt
+>           execScript raw ctxt ts
 
 > showScript :: Id -> [String] -> IO ()
 > showScript nm sc 
