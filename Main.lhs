@@ -134,12 +134,12 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                                  | otherwise = False
 
 > termInput runio raw ctxt tm 
->         = case parseTerm tm of
->                Success tm -> do let itm = makeIvorTerm raw tm
->                                 gtm <- check ctxt itm
->                                 execEval runio raw ctxt (gtm, viewType gtm)
+>         = case getTerm tm of
+>                Success tm -> execEval runio raw ctxt (tm, viewType tm)
 >                Failure err f ln -> putStrLn err
-
+>   where getTerm tm = do parsed <- parseTerm tm
+>                         let itm = makeIvorTerm raw parsed
+>                         check ctxt itm
 
 If it is an IO type, execute it, otherwise just eval it.
 
