@@ -145,7 +145,7 @@ first difference between args and args', and rewrite by
 Suspend_Disbelief arg arg'. Keep doing this until the value solves the goal,
 or there is nothing to rewrite.
 
-XXX: at least make sure arg and arg' and not Types, so that we're only 
+At least make sure arg and arg' and not Types, so that we're only 
 suspending disbelief about value equalities, not polymorphic values.
 
 > suspend_disbelief :: Ctxt IvorFun -> ViewTerm -> Tactic
@@ -164,6 +164,9 @@ suspending disbelief about value equalities, not polymorphic values.
 >    where rewriteDiffs [] goal ctxt = idTac goal ctxt
 >          rewriteDiffs ((arg1, arg2):ds) goal ctxt
 >               = do let rt = believe arg1 arg2
+>                    rty <- checkCtxt ctxt goal arg1
+>                    when (viewType rty == Star) $
+>                         fail ((show arg1) ++ " is a type")
 >                    ctxt' <- rewrite rt True goal ctxt
 >                    rewriteDiffs ds goal ctxt'
 
