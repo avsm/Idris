@@ -22,3 +22,9 @@ __eq_repl A x x (refl x) P p = p;
 
 __eq_sym : (A:#)->(a,b:A)->(p:a=b)->(b=a);
 __eq_sym A a a p = refl _;
+
+-- Used by the 'believe' tactic to make a temporary proof. Programs
+-- using this are not to be trusted!
+
+__Suspend_Disbelief : (m,n:A) -> (m = n);
+

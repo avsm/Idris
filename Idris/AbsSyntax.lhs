@@ -149,6 +149,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Unfold Id
 >              | Compute
 >              | Equiv RawTerm
+>              | Believe RawTerm
 >              | Undo
 >              | Abandon
 >              | Qed

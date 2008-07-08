@@ -113,6 +113,7 @@ data Token
       | TokenUndo
       | TokenInduction
       | TokenFill
+      | TokenBelieve
       | TokenAbandon
       | TokenQED
       | TokenEOF
@@ -254,6 +255,7 @@ lexSpecial cont cs =
       ("undo",rest) -> cont TokenUndo rest
       ("induction",rest) -> cont TokenInduction rest
       ("fill", rest) -> cont TokenFill rest
+      ("believe", rest) -> cont TokenBelieve rest
       ("abandon", rest) -> cont TokenAbandon rest
       ("qed", rest) -> cont TokenQED rest
       (thing,rest) -> lexError '%' rest

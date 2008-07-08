@@ -1,6 +1,7 @@
 > module Idris.Prover(doProof, runScript, doIvor) where
 
 > import System.Console.Readline
+> import Control.Monad
 
 > import Idris.AbsSyntax
 > import Idris.Parser
@@ -94,18 +95,24 @@ undone bits, after a Qed
 >     at ctxt (Refine n) = refine (Name Unknown (toIvorName n)) defaultGoal ctxt
 >     at ctxt ReflP = refine reflN defaultGoal ctxt
 >     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
+>     at ctxt (Believe t) = suspend_disbelief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Induction t) = induction (ivor t) defaultGoal ctxt
->     at ctxt (Rewrite f t) = replace eqN replN symN (ivor t) f
->                                defaultGoal ctxt
+>     at ctxt (Rewrite f t) = rewrite (ivor t) f defaultGoal ctxt
 >     at ctxt Compute = compute defaultGoal ctxt
 >     at ctxt (Unfold n) = unfold (toIvorName n) defaultGoal ctxt
 >     at ctxt Qed = qed ctxt
 
 >     ivor t = makeIvorTerm raw t
->     eqN = Name Unknown $ name "Eq"
->     replN = Name Unknown $ toIvorName (UN "__eq_repl")
->     symN = Name Unknown $ toIvorName (UN "__eq_sym")
->     reflN = Name Unknown $ name "refl"
+
+> eqN = Name Unknown $ name "Eq"
+> replN = Name Unknown $ toIvorName (UN "__eq_repl")
+> symN = Name Unknown $ toIvorName (UN "__eq_sym")
+> reflN = Name Unknown $ name "refl"
+> believe x y = apply (Name Unknown (toIvorName (UN "__Suspend_Disbelief")))
+>                     [Placeholder,x,y]
+
+> rewrite :: ViewTerm -> Bool -> Tactic
+> rewrite = replace eqN replN symN
 
 > showCtxtState :: Ctxt IvorFun -> Context -> String
 > showCtxtState raw ctxt
@@ -132,4 +139,33 @@ undone bits, after a Qed
 > doIvor :: Context -> IO Context
 > doIvor ctxt = do s <- runShell "Ivor> " (newShell ctxt)
 >                  return (getContext s)
->                  
+
+Given a term of type T args and a goal of type T args', look for the
+first difference between args and args', and rewrite by
+Suspend_Disbelief arg arg'. Keep doing this until the value solves the goal,
+or there is nothing to rewrite.
+
+XXX: at least make sure arg and arg' and not Types, so that we're only 
+suspending disbelief about value equalities, not polymorphic values.
+
+> suspend_disbelief :: Ctxt IvorFun -> ViewTerm -> Tactic
+> suspend_disbelief raw val goal ctxt
+>     = do ty <- checkCtxt ctxt goal val
+>          gd <- goalData ctxt True goal
+>          let gtype = view (goalType gd)
+>          let vtype = viewType ty
+>          let (gfn, gargs) = (getApp gtype, getFnArgs gtype)
+>          let (vfn, vargs) = (getApp vtype, getFnArgs vtype)
+>          when (gfn/=vfn) $ fail ((show gfn) ++ " and " ++ (show vfn) ++ 
+>                                  " are different types")
+>          let diffs = filter (\ (x,y) -> x/=y) (zip gargs vargs)
+>          ctxt <- rewriteDiffs diffs goal ctxt
+>          fill val goal ctxt
+>    where rewriteDiffs [] goal ctxt = idTac goal ctxt
+>          rewriteDiffs ((arg1, arg2):ds) goal ctxt
+>               = do let rt = believe arg1 arg2
+>                    ctxt' <- rewrite rt True goal ctxt
+>                    rewriteDiffs ds goal ctxt'
+
+
+          trace (show diffs) $ try (fill val) idTac idTac goal ctxt
