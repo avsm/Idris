@@ -79,7 +79,8 @@ undone bits, after a Qed
 >   where
 >     at ctxt (Intro []) = intros defaultGoal ctxt
 >     at ctxt (Intro ns) = introsNames (map toIvorName ns) defaultGoal ctxt
->     at ctxt (Refine t) = refine (ivor t) defaultGoal ctxt
+>     at ctxt (Refine n) = refine (Name Unknown (toIvorName n)) defaultGoal ctxt
+>     at ctxt ReflP = refine reflN defaultGoal ctxt
 >     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
 >     at ctxt (Induction t) = induction (ivor t) defaultGoal ctxt
 >     at ctxt (Rewrite f t) = replace eqN replN symN (ivor t) f
@@ -93,6 +94,7 @@ undone bits, after a Qed
 >     eqN = Name Unknown $ name "Eq"
 >     replN = Name Unknown $ toIvorName (UN "__eq_repl")
 >     symN = Name Unknown $ toIvorName (UN "__eq_sym")
+>     reflN = Name Unknown $ name "refl"
 
 > showCtxtState :: Ctxt IvorFun -> Context -> String
 > showCtxtState raw ctxt

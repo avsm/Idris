@@ -75,6 +75,7 @@ import Idris.Lib
       proof           { TokenProof }
       intro           { TokenIntro }
       refine          { TokenRefine }
+      reflp           { TokenReflP }
       rewrite         { TokenRewrite }
       compute         { TokenCompute }
       unfold          { TokenUnfold }
@@ -299,7 +300,8 @@ CType : ':' Type { $2 }
 Tactic :: { ITactic }
 Tactic : intro Names { Intro $2 }
        | intro { Intro [] }
-       | refine Term { Refine $2 }
+       | refine Name { Refine $2 }
+       | reflp { ReflP }
        | rewrite Term { Rewrite False $2 }
        | rewrite leftarrow Term { Rewrite True $3 }
        | compute { Compute }

@@ -3,10 +3,11 @@
 > import Idris.AbsSyntax
 > import Idris.Prover
 
-> import Ivor.TT
+> import Ivor.TT as TT
 > import Debug.Trace
 
 > import Control.Monad
+> import List
 
 Work out how many implicit arguments we need, then translate our definition
 into an ivor definition, with all the necessary placeholders added.
@@ -138,6 +139,61 @@ Add an entry for the type id and for each of the constructors.
 >              makeInductive ctxt cdec
 >                            indices cs (((toIvorName cid),tytm):acc)
 
+Examine an inductive definition; any index position which does not
+change across the structure becomes a parameter.
+
+The type has to be fully elaborated here. It's a bit of a hack, but we
+add the type once, without the elim rule, so that the placeholders are filled
+in, then we add it again after we work out what the parameters are, with
+the elim rule.
+
+Parameters go at the left, so as soon as find find an argment which isn't
+a parameter, there can be no more (or we mess up the declared type). Hence 
+'span' rather than 'partition'.
+
+> mkParams :: Inductive -> Inductive
+> mkParams ind@(Inductive tname ps inds ty cons) 
+>   = let (newps', newinds') = span (isParam (map snd cons)) 
+>                                      (zip [0..] inds)
+>         newps = map snd newps'
+>         newinds = map snd newinds'
+>         newty = remAllPs newps ty
+>         newind = Inductive tname (ps++newps) newinds ty (remPs newps cons) in
+>         -- trace (show ind ++ "\n" ++ show newind ++ "\n" ++ show newps) $
+>             newind
+>   where isParam [] _ = True
+>         isParam (c:cs) (pos, (n,ty))
+>              | isParamCon pos c n = isParam cs (pos, (n,ty))
+>              | otherwise = False
+
+If argument at given position wherever 'tname' is applied is always n, then
+n is a parameter
+
+>         isParamCon pos tm n 
+>             = checkp pos n (getApps tm)
+>         checkp pos n [] = True
+>         checkp pos n (t:ts) 
+>              | length t >= pos = nameMatch n (t!!pos) && checkp pos n ts
+>              | otherwise = False
+>         nameMatch n (Name _ nm) = n == nm
+>         nameMatch _ _ = False
+
+>         getApps app@(App f a)
+>             | appIsT (getApp f) = [getFnArgs app]
+>             | otherwise = getApps f ++ getApps a
+>         getApps (Forall n ty sc) = getApps ty ++ getApps sc
+>         getApps x = []
+
+>         appIsT (Name _ n) = n == tname
+>         appIsT _ = False
+
+>         remPs newps [] = []
+>         remPs newps ((n,ty):tys) = (n,remAllPs newps ty):(remPs newps tys)
+>         remAllPs newps (Forall n ty sc)
+>                  | n `elem` (map fst newps) = remAllPs newps sc
+>                  | otherwise = Forall n ty (remAllPs newps sc)
+>         remAllPs newps x = x
+
 > addConEntries :: Ctxt IvorFun -> Ctxt IvorFun -> [(Id,RawTerm)] -> [Decl] -> 
 >                  Ctxt IvorFun
 > addConEntries ctxt acc [] ds = mif ctxt acc ds
@@ -165,7 +221,13 @@ Add an entry for the type id and for each of the constructors.
 >         SimpleDef tm -> {- trace (show tm) $ -} case tyin of
 >                           Nothing -> addDef ctxt name tm
 >                           Just ty -> addTypedDef ctxt name tm ty
->         DataDef ind -> {- trace (show ind) $ -} addData ctxt ind
+>         DataDef ind -> do {- trace (show ind) $ -} 
+>                           c <- addDataNoElim ctxt ind
+>                           -- add once to fill in placeholders
+>                           d <- getInductive c name 
+>                           -- add again after we work out the parameters
+>                           addData ctxt (mkParams d)
+>                           -- trace (show (mkParams d)) $ return c
 >         IProof scr -> runScript raw ctxt n scr
 >         Later -> case tyin of
 >                    Just ty -> declare ctxt name ty
@@ -175,9 +237,9 @@ Add an entry for the type id and for each of the constructors.
 >          showDef (n,ty) = "  " ++ show n ++ " : " ++ dumpMeta (unIvor raw ty)
 >                           ++ "\n"
 
->          dumpMeta tm = showImp False (getRetType tm) ++ 
+>          dumpMeta tm = showImp False (Idris.AbsSyntax.getRetType tm) ++ 
 >                        "\n  in environment\n" ++ 
->                        dumpArgs (getArgTypes tm)
+>                        dumpArgs (Idris.AbsSyntax.getArgTypes tm)
 >          dumpArgs [] = ""
 >          dumpArgs ((n,ty):xs) = "    " ++ show n ++ " : " ++showImp False ty
 >                                 ++ "\n" ++ dumpArgs xs

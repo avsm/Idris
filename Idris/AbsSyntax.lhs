@@ -121,7 +121,8 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >     deriving (Show, Eq)
 
 > data ITactic = Intro [Id]
->              | Refine RawTerm
+>              | Refine Id
+>              | ReflP
 >              | Induction RawTerm
 >              | Fill RawTerm
 >              | Case RawTerm

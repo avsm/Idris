@@ -103,6 +103,7 @@ data Token
       | TokenProof
       | TokenIntro
       | TokenRefine
+      | TokenReflP
       | TokenRewrite
       | TokenCompute
       | TokenUnfold
@@ -236,9 +237,10 @@ lexSpecial cont cs =
       ("latex",rest) -> cont TokenLaTeX rest
 -- tactics
 -- FIXME: it'd be better to have a 'theorem proving' state so that these
--- don't need the uglu syntax...
+-- don't need the ugly syntax...
       ("intro",rest) -> cont TokenIntro rest
       ("refine",rest) -> cont TokenRefine rest
+      ("refl",rest) -> cont TokenReflP rest
       ("rewrite",rest) -> cont TokenRewrite rest
       ("compute",rest) -> cont TokenCompute rest
       ("unfold",rest) -> cont TokenUnfold rest
