@@ -106,6 +106,7 @@ data Token
       | TokenProof
       | TokenIntro
       | TokenRefine
+      | TokenGeneralise
       | TokenReflP
       | TokenRewrite
       | TokenCompute
@@ -248,6 +249,7 @@ lexSpecial cont cs =
 -- don't need the ugly syntax...
       ("intro",rest) -> cont TokenIntro rest
       ("refine",rest) -> cont TokenRefine rest
+      ("generalise",rest) -> cont TokenGeneralise rest
       ("refl",rest) -> cont TokenReflP rest
       ("rewrite",rest) -> cont TokenRewrite rest
       ("compute",rest) -> cont TokenCompute rest

@@ -78,6 +78,7 @@ import Idris.Lib
       proof           { TokenProof }
       intro           { TokenIntro }
       refine          { TokenRefine }
+      generalise      { TokenGeneralise }
       reflp           { TokenReflP }
       rewrite         { TokenRewrite }
       compute         { TokenCompute }
@@ -307,6 +308,7 @@ Tactic :: { ITactic }
 Tactic : intro Names { Intro $2 }
        | intro { Intro [] }
        | refine Name { Refine $2 }
+       | generalise Term { Generalise $2 }
        | reflp { ReflP }
        | rewrite Term { Rewrite False $2 }
        | rewrite leftarrow Term { Rewrite True $3 }

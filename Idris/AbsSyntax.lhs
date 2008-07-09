@@ -141,6 +141,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 
 > data ITactic = Intro [Id]
 >              | Refine Id
+>              | Generalise RawTerm
 >              | ReflP
 >              | Induction RawTerm
 >              | Fill RawTerm
@@ -153,7 +154,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Undo
 >              | Abandon
 >              | Qed
->     deriving Show
+>     deriving (Show, Eq)
 
 > getFn :: RawTerm -> RawTerm
 > getFn (RApp f a) = getFn f

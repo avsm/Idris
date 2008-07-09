@@ -16,9 +16,8 @@
 >     do ctxt' <- resume ctxt (toIvorName nm)
 >        ctxt' <- attack defaultGoal ctxt'
 >        putStrLn $ showCtxtState raw ctxt'
->        (ctxt', script, ok) <- proofShell (show nm ++ "> ") raw [] ctxt'
+>        (ctxt', script, ok) <- proofShell (show nm) raw [] ctxt'
 >        if ok then do
->            showScript nm script
 >            return ctxt'
 >          else do putStrLn "Proof abandoned"
 >                  return ctxt
@@ -44,10 +43,10 @@ properly, if only for useful diagnostics.
 >                     else return ctxt
 >           execScript raw ctxt ts
 
-> showScript :: Id -> [String] -> IO ()
+> showScript :: String -> [String] -> IO ()
 > showScript nm sc 
->    = do putStrLn $ (show nm) ++ " proof {"
->         putStr $ concat (map (\line -> "\t" ++ line ++ ";\n") sc)
+>    = do putStrLn $ nm ++ " proof {"
+>         putStr $ concat (map (\line -> "\t" ++ line ++ ";\n") sc++["%qed"])
 >         putStrLn "};"
 
 Remember the proof script (that's the [String]) and output it, without the
@@ -55,8 +54,8 @@ undone bits, after a Qed
 
 > proofShell :: String -> Ctxt IvorFun -> [String] -> Context -> 
 >               IO (Context, [String], Bool)
-> proofShell prompt raw script ctxt = do
->     inp <- readline prompt
+> proofShell nm raw script ctxt = do
+>     inp <- readline (nm ++ "> ")
 >     res <- case inp of
 >              Nothing -> return ""
 >              Just ":q" -> return "abandon"
@@ -64,12 +63,14 @@ undone bits, after a Qed
 >                             return tac
 >     case parseTactic ("%"++res) of
 >            Failure err f l -> do putStrLn err
->                                  proofShell prompt raw script ctxt
+>                                  proofShell nm raw script ctxt
 >            Success tac -> 
 >                do let script' = script ++ ["%"++res]
+>                   when (tac == Qed) $ 
+>                        showScript nm script
 >                   case applyTac raw ctxt script' tac of
 >                     Failure err f l -> do putStrLn err
->                                           proofShell prompt raw script ctxt
+>                                           proofShell nm raw script ctxt
 >                     Success (ctxt, script, True) -> do
 >                       ctxt <- keepSolving defaultGoal ctxt
 >                       ctxt <- if ((numUnsolved ctxt) > 0)
@@ -77,7 +78,7 @@ undone bits, after a Qed
 >                                 else return ctxt
 >                       if (proving ctxt)
 >                          then do putStrLn $ showCtxtState raw ctxt
->                                  proofShell prompt raw script ctxt
+>                                  proofShell nm raw script ctxt
 >                          else return (ctxt, script, True)
 >                     _ -> return (ctxt, script, False)
 
@@ -94,6 +95,7 @@ undone bits, after a Qed
 >     at ctxt (Intro []) = intros defaultGoal ctxt
 >     at ctxt (Intro ns) = introsNames (map toIvorName ns) defaultGoal ctxt
 >     at ctxt (Refine n) = refine (Name Unknown (toIvorName n)) defaultGoal ctxt
+>     at ctxt (Generalise t) = generalise (ivor t) defaultGoal ctxt
 >     at ctxt ReflP = refine reflN defaultGoal ctxt
 >     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
 >     at ctxt (Believe t) = suspend_disbelief raw (ivor t) defaultGoal ctxt
@@ -171,5 +173,3 @@ suspending disbelief about value equalities, not polymorphic values.
 >                    ctxt' <- rewrite rt True goal ctxt
 >                    rewriteDiffs ds goal ctxt'
 
-
-          trace (show diffs) $ try (fill val) idTac idTac goal ctxt
