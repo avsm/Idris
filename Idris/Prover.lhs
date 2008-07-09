@@ -46,7 +46,7 @@ properly, if only for useful diagnostics.
 > showScript :: String -> [String] -> IO ()
 > showScript nm sc 
 >    = do putStrLn $ nm ++ " proof {"
->         putStr $ concat (map (\line -> "\t" ++ line ++ ";\n") sc++["%qed"])
+>         putStr $ concat (map (\line -> "\t" ++ line ++ ";\n") (sc++["%qed"]))
 >         putStrLn "};"
 
 Remember the proof script (that's the [String]) and output it, without the

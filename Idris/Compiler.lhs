@@ -52,20 +52,25 @@ already simple case trees.
 >         then fail "EPIC FAIL"
 >         else return ()
 
+> quotename [] = ""
+> quotename ('[':cs) = "_OB_"++quotename cs
+> quotename (']':cs) = "_CB_"++quotename cs
+> quotename (c:cs) = c:(quotename cs)
+
 > writeDef :: Handle -> (Name, SCFun) -> IO ()
 > writeDef h (n,(SCFun args def)) = do
 >   hPutStrLn h (show n ++ " (" ++ list args ++ ") -> Any = \n" ++
 >                writeSC n def)
 >    where list [] = ""
->          list [a] = show a ++ " : Any"
->          list (x:xs) = show x ++ " : Any, " ++ list xs
+>          list [a] = quotename (show a) ++ " : Any"
+>          list (x:xs) = quotename (show x) ++ " : Any, " ++ list xs
 
 Write out a constructor name, turning constructors of IO commands into
 the relevant IO operation
 
 > writeSC :: Name -> SCBody -> String
 > writeSC fname b = writeSC' b where
->   writeSC' (SVar n) = show n
+>   writeSC' (SVar n) = quotename (show n)
 >   writeSC' (SCon n i) = writeCon n i ++ "()"
 >   writeSC' (SApp (SCon n i) args) = writeCon n i ++ "(" ++ list args ++ ")"
 >     where list [] = ""
