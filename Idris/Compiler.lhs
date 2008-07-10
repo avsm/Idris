@@ -92,7 +92,7 @@ or it'll be evaluated by the time we run the thread!
 >   writeSC' (SCCase b alts) = "case " ++ writeSC' b ++ " of { " ++ 
 >                              writeAlts fname alts
 >                             ++ "}"
->   writeSC' (SInfix op l r) = writeOp op (writeSC' l) (writeSC' r)
+>   writeSC' (SInfix op l r) = boolOp op (writeOp op (writeSC' l) (writeSC' r))
 >   writeSC' (SConst c) = writeConst c
 >   writeSC' SUnit = "42"
 >   writeSC' SError = "error \"error\""
@@ -112,6 +112,15 @@ or it'll be evaluated by the time we run the thread!
 
 > writeOp Concat l r = "__epic_append(" ++ l ++", " ++ r ++")"
 > writeOp op l r = "(" ++ l ++ ") " ++ show op ++ " (" ++ r ++ ")"
+
+> boolOp op c = if retBool op then
+>                   "__epic_bool(" ++ c ++ ")" else c
+>    where retBool OpLT = True
+>          retBool OpEq = True
+>          retBool OpLEq = True
+>          retBool OpGT = True
+>          retBool OpGEq = True
+>          retBool _ = False
 
 > writeAlts n [] = ""
 > writeAlts n [a] = writeAlt n a
