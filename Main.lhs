@@ -8,6 +8,7 @@
 > import System.IO
 > import System.Console.Readline
 > import Data.Typeable
+> import Char
 
 > import Idris.AbsSyntax
 > import Idris.MakeTerm
@@ -182,6 +183,8 @@ If it is an IO type, execute it, otherwise just eval it.
 >              c <- addExternalFn c (opFn OpLEq) 2 intle "Int->Int->Bool"
 >              c <- addExternalFn c (opFn OpGT) 2 intgt "Int->Int->Bool"
 >              c <- addExternalFn c (opFn OpGEq) 2 intge "Int->Int->Bool"
+>              c <- addExternalFn c (opFn ToString) 1 intToString "Int->String"
+>              c <- addExternalFn c (opFn ToInt) 1 stringToInt "String->Int"
 >              return c
 
 > constEq :: [ViewTerm] -> Maybe ViewTerm
@@ -230,3 +233,22 @@ If it is an IO type, execute it, otherwise just eval it.
 >                        else Just $ Name DataCon (name "False")
 >           _ -> Just $ Name DataCon (name "False")
 > intge _ = Nothing
+
+> intToString :: [ViewTerm] -> Maybe ViewTerm
+> intToString [Constant x]
+>             = case cast x of
+>                 (Just s) -> Just (Constant (iToS s))
+>                 _ -> Nothing
+>    where iToS :: Int -> String
+>          iToS x = show x
+> intToString _ = Nothing
+
+> stringToInt :: [ViewTerm] -> Maybe ViewTerm
+> stringToInt [Constant x]
+>             = case cast x of
+>                 (Just s) -> Just (Constant (sToI s))
+>                 _ -> Nothing
+>     where sToI :: String -> Int
+>           sToI s | all isDigit s = read s
+>                  | otherwise = 0
+> stringToInt _ = Nothing

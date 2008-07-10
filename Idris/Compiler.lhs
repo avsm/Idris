@@ -83,6 +83,11 @@ or it'll be evaluated by the time we run the thread!
 >   writeSC' (SApp (SVar n) [arg])
 >     | n == name "fork" =
 >         "fork(lazy("++writeSC' arg++"))"
+
+TMP HACK until we do coercions on primitives properly
+
+>     | n == name "__toInt" =
+>         "__epic_toInt(" ++ writeSC' arg ++ ")"
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
 >       where list [] = ""
 >             list [a] = writeSC' a

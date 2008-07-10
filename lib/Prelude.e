@@ -35,3 +35,5 @@ __epic_fork (a:Any, f:Fun) -> Unit =
 __epic_bool (x:Int) -> Data =
    if (x==0) then (Con 1 ()) else (Con 0 ())
 
+__epic_toInt (x:String) -> Int = 
+   foreign Int "atoi" (x:String)

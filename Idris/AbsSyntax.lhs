@@ -207,6 +207,7 @@ value.
 
 > data Op = Plus | Minus | Times | Divide | Concat | JMEq
 >         | OpEq | OpLT | OpLEq | OpGT | OpGEq
+>         | ToString | ToInt
 >    deriving Eq
 
 > allOps = [Plus,Minus,Times,Divide,Concat,JMEq,OpEq,OpLT,OpLEq,OpGT,OpGEq]
@@ -235,6 +236,8 @@ value.
 > opFn OpLEq = (name "__intleq")
 > opFn OpGT = (name "__intgt")
 > opFn OpGEq = (name "__intgeq")
+> opFn ToInt = (name "__toInt")
+> opFn ToString = (name "__toString")
 
 Pattern clauses
 
