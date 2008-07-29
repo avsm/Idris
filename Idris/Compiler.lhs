@@ -5,6 +5,7 @@
 > import Idris.AbsSyntax
 > import Idris.PMComp
 > import Idris.LambdaLift
+> import Idris.ConTrans
 > import Idris.Lib
 > import Ivor.TT
 

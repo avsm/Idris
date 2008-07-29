@@ -89,7 +89,8 @@ the system to insert a hole for a proof that turns it into the right type.
 > data Datatype = Datatype {
 >                           tyId :: Id,
 >                           tyType :: RawTerm,
->                           tyConstructors :: [(Id, RawTerm)]
+>                           tyConstructors :: [(Id, RawTerm)],
+>                           tyHasElim :: Bool
 >                          }
 >   deriving Show
 
@@ -269,7 +270,7 @@ Name definitions Ivor-side.
 >              | ITyCon -- Type constructor
 >              | IDataCon -- Data constructor
 >              | SimpleDef !ViewTerm -- simple function definition
->              | DataDef !Inductive -- data type definition
+>              | DataDef !Inductive Bool -- data type definition, generate elim
 >              | IProof [ITactic]
 >              | Later -- forward declaration
 >    deriving Show

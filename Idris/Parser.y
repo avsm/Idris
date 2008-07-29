@@ -64,6 +64,7 @@ import Idris.Lib
       locktype        { TokenLockType }
       type            { TokenType }
       data            { TokenDataType }
+      noelim          { TokenNoElim }
       where           { TokenWhere }
       refl            { TokenRefl }
       empty           { TokenEmptyType }
@@ -161,8 +162,15 @@ ArgTerms : { [] }
       | '{' Name '=' Term '}' ArgTerms { ($4, Just $2):$6 }
 
 Datatype :: { Datatype }
-Datatype : data Name DType Constructors ';'
-             { Datatype $2 $3 (map (mkCon (mkTyApp $2 $3)) $4) }
+Datatype : data DataOpts Name DType Constructors ';'
+             { Datatype $3 $4 (map (mkCon (mkTyApp $3 $4)) $5) $2 }
+
+-- Currently just whether to generate an elim rule, this'll need to be
+-- a list of options if we ever expand this.
+
+DataOpts :: { Bool }
+DataOpts : { True }
+         | '[' noelim ']' { False }
 
 Name :: { Id }
 Name : name { $1 }

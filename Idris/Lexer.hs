@@ -61,6 +61,7 @@ data Token
       | TokenHandleType
       | TokenLockType
       | TokenDataType
+      | TokenNoElim
       | TokenWhere
       | TokenType
       | TokenOB
@@ -221,6 +222,7 @@ lexVar cont cs =
 -- Keywords
       ("proof",rest) -> cont TokenProof rest
       ("data",rest) -> cont TokenDataType rest
+      ("noElim",rest) -> cont TokenNoElim rest
       ("where",rest) -> cont TokenWhere rest
 -- Types
       ("Int",rest) -> cont TokenIntType rest

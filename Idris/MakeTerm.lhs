@@ -72,14 +72,14 @@ Add an entry for the type id and for each of the constructors.
 > addDataEntries :: Ctxt IvorFun -> Ctxt IvorFun -> Decl ->
 >                   Datatype -> [Decl] -> 
 >                   Ctxt IvorFun
-> addDataEntries ctxt acc decl (Datatype tid tty cons) ds = 
+> addDataEntries ctxt acc decl (Datatype tid tty cons e) ds = 
 >     let (tyraw, imp) = addImpl (ctxt++acc) tty
 >         tytm = makeIvorTerm (ctxt++acc) tyraw
 >         acctmp = addEntry (ctxt++acc) tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                   undefined decl)
 >         ddef = makeInductive acctmp tid (getBinders tytm []) cons []
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
->                                  (DataDef ddef) decl) in
+>                                  (DataDef ddef e) decl) in
 >         addConEntries ctxt acc' cons ds
 
      Inductive (toIvorName tid) [] 
@@ -177,12 +177,15 @@ n is a parameter
 >         SimpleDef tm -> {- trace (show tm) $ -} case tyin of
 >                           Nothing -> addDef ctxt name tm
 >                           Just ty -> addTypedDef ctxt name tm ty
->         DataDef ind -> do {- trace (show ind) $ -} 
->                           c <- addDataNoElim ctxt ind
+>         DataDef ind e -> do 
+>                             c <- addDataNoElim ctxt ind
 >                           -- add once to fill in placeholders
->                           d <- getInductive c name 
+>                             if e then do
+>                                     d <- getInductive c name 
 >                           -- add again after we work out the parameters
->                           addData ctxt (mkParams d)
+>                                     addData ctxt (mkParams d)
+>                                  else return c
+>                           -- addDataNoElim ctxt (mkParams d)
 >                           -- trace (show (mkParams d)) $ return c
 >         IProof scr -> runScript raw ctxt n scr
 >         Later -> case tyin of
