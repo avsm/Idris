@@ -19,6 +19,6 @@ count l str (S k) = do { lock l;
 
 main : IO ();
 main = do { lock <- newLock 1;
-	    fork (count lock "Thread" bigbignat);
-	    count lock "Main" bigbignat;
+	    fork (count lock "Thread" bignat);
+	    count lock "Main" bignat;
           };
