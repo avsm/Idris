@@ -74,8 +74,10 @@ name, arguments, body
 > lambdaLift :: Context -> Name -> [Name] -> 
 >               SimpleCase -> [(Name, [Name], SimpleCase)]
 > lambdaLift ctxt root args sc 
->        = let scEta = expandCons ctxt sc
->              (body, SCS _ defs) = runState (liftSC args scEta) (SCS 0 []) in
+>        = let -- scEta = expandCons ctxt sc -- Forcing does this! If we
+>              -- do it again, we undo some of the work forcing has done since
+>              -- we've reduced arity there.
+>              (body, SCS _ defs) = runState (liftSC args sc) (SCS 0 []) in
 >              (root,args,body):defs
 >    where liftSC env (SCase tm alts) = do tm' <- lift env tm
 >                                          alts' <- mapM (liftAlt env) alts

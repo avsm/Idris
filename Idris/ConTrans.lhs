@@ -2,7 +2,8 @@
 
 Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 
-> module Idris.ConTrans(makeTransforms, applyTransforms, Transform) where
+> module Idris.ConTrans(makeTransforms, applyTransforms, transform, 
+>                       Transform) where
 
 > import Idris.AbsSyntax
 > import Ivor.TT
@@ -23,12 +24,29 @@ A transformation is a function converting a ViewTerm to a new form.
 
 > data Transform = Trans String (ViewTerm -> ViewTerm)
 
+> transform :: Context -> [Transform] -> Patterns -> Patterns
+> transform ctxt ts (Patterns ps) = Patterns $ map doTrans ps
+>    where doTrans (PClause args ret) 
+>              = PClause (map (applyTransforms ctxt ts) args)
+>                        (applyTransforms ctxt ts ret)
+
+Test transforms: VNil A => VNil
+                 VCons a k x xs => VCons x xs
+
+> testTrans' (App vnilN@(Name t vnil) _) 
+>      | vnil == name "VNil" = vnilN
+> testTrans' (App (App (App (App vconsN@(Name _ vcons) _) _) x) xs)
+>      | vcons == name "VCons" = (App (App vconsN x) xs)
+> testTrans' x = x
+
+> testTrans = Trans "Vect" testTrans'
+
 > compTrans :: Transform -> Transform -> Transform
 > compTrans (Trans n1 f) (Trans n2 g)
 >           = Trans (n1 ++ " -> " ++ n2) (g.f)
 
 > makeTransforms :: Ctxt IvorFun -> Context -> [Transform]
-> makeTransforms raw ctxt = []
+> makeTransforms raw ctxt = [testTrans]
 
 Apply all transforms in order to a term, eta expanding constructors first.
 

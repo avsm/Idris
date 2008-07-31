@@ -21,7 +21,8 @@ already simple case trees.
 
 > comp :: Ctxt IvorFun -> Context -> Id -> FilePath -> IO ()
 > comp raw ctxt nm ofile = do let pdefs = getAllPatternDefs ctxt
->                             let pcomp = map (pmCompDef raw ctxt) pdefs
+>                             let trans = makeTransforms raw ctxt
+>                             let pcomp = map (pmCompDef raw ctxt trans) pdefs
 >                             let scs = allSCs pcomp
 >                             compileAll raw ctxt ofile scs
 >    where allSCs [] = []
@@ -33,10 +34,11 @@ already simple case trees.
 >                             xs' = allSCs xs in
 >                             scfuns ++ xs'
 
-> pmCompDef :: Ctxt IvorFun -> Context -> 
+> pmCompDef :: Ctxt IvorFun -> Context -> [Transform] ->
 >              (Name, (ViewTerm, Patterns)) -> 
 >              (Name, ([Name], SimpleCase))
-> pmCompDef raw ctxt (n, (ty,ps)) = (n, pmcomp raw ctxt n ty ps)
+> pmCompDef raw ctxt trans (n, (ty,ps)) 
+>              = (n, pmcomp raw ctxt n ty (transform ctxt trans ps))
 
 > compileAll :: Ctxt IvorFun -> Context -> FilePath -> 
 >               [(Name, SCFun)] -> IO ()
