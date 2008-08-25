@@ -94,3 +94,37 @@ applied.
 >     addLam [] t = t
 >     addLam (n:ns) t = Lambda n Star (addLam ns t)
 
+
+Get the type of the constructor, look for constructor guarded arguments
+in the return type, strip them.
+
+If, in addition, there is an index with disjoint constructors *and* all 
+remaining arguments are recursive, transform all constructors to Unit.
+
+ mkConTrans :: Ctxt IvorFun -> Context -> Name -> Name -> [Transform]
+ mkConTrans raw ctxt ty = 
+     let Just cons = getConstructors ctxt ty
+
+Given a constructor name, return the names and types of the arguments
+which are not removed
+
+> getRemaining :: Context -> Name -> [(Name, ViewTerm)]
+> getRemaining = undefined
+
+Given a constructor name, the names of arguments it has, and the names
+of arguments to keep, make a transformation rule.
+
+> mkTrans :: Name -> [Name] -> [Name] -> Transform
+> mkTrans con args keep = Trans (show con ++ "_force") trans
+>    where trans tm = let (f,fargs) = (getApp tm, getFnArgs tm) in
+>                        (tCon f fargs tm)
+>          tCon fc@(Name _ fcon) fargs tm
+>            | con == fcon = if (length args == length fargs)
+>                              then apply fc (dropArgs fargs args keep)
+>                              else tm
+>          tCon _ _ t = t
+>          dropArgs (f:fs) (a:as) keep
+>                   | a `elem` keep = f:(dropArgs fs as keep)
+>                   | otherwise = dropArgs fs as keep
+>          dropArgs _ _ keep = []
+>          

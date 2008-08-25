@@ -88,7 +88,7 @@ getAction n [_,Constant i,val]
     | n == name "WriteRef"
         = case cast i of
              Just i' -> WriteRef i' val
-       
+
 getAction n args = CantReduce (apply (Name Unknown n) args)
 
 getHandle  (App _ (Constant h)) = case cast h of
