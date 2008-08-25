@@ -1,3 +1,28 @@
+include "list.idr";
+
+data FType = FUnit | FInt | FStr | FPtr;
+
+i_ftype : FType -> #;
+i_ftype FInt = Int;
+i_ftype FStr = String;
+i_ftype FUnit = ();
+
+data ForeignFun = FFun String (List FType) FType;
+
+f_retType : ForeignFun -> FType;
+f_retType (FFun nm args ret) = ret;
+
+f_args : ForeignFun -> (List FType);
+f_args (FFun nm args ret) = args;
+
+f_name : ForeignFun -> String;
+f_name (FFun nm args ret) = nm;
+
+data FArgList : (List FType) -> # where
+    fNil : FArgList Nil
+  | fCons : {x:FType} -> (fx:i_ftype x) -> (fxs:FArgList xs) ->
+			 (FArgList (Cons x xs));
+
 data Command : # where
     PutStr : String -> Command
   | GetStr : Command
@@ -7,7 +32,9 @@ data Command : # where
   | DoUnlock : Lock -> Command
   | NewRef : Command
   | ReadRef : # -> Int -> Command
-  | WriteRef : {A:#} -> Int -> A -> Command;
+  | WriteRef : {A:#} -> Int -> A -> Command
+  | Foreign : (f:ForeignFun) -> 
+	      (args:FArgList (f_args f)) -> Command;
 
 Response : Command -> #;
 Response (PutStr s) = ();
@@ -19,6 +46,7 @@ Response (DoUnlock l) = ();
 Response NewRef = Int;
 Response (ReadRef A i) = A;
 Response (WriteRef i val) = ();
+Response (Foreign t args) = i_ftype (f_retType t);
 
 data IO : # -> # where
    IOReturn : A -> (IO A)
