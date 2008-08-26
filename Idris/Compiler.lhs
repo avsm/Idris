@@ -75,6 +75,8 @@ the relevant IO operation
 > writeSC fname b = writeSC' b where
 >   writeSC' (SVar n) = quotename (show n)
 >   writeSC' (SCon n i) = writeCon n i ++ "()"
+>   writeSC' (SApp (SCon n i) (fn:args:[]))
+>     | n == name "Foreign" = writeFCall fn args fname
 >   writeSC' (SApp (SCon n i) args) = writeCon n i ++ "(" ++ list args ++ ")"
 >     where list [] = ""
 >           list [a] = writeSC' a
@@ -143,6 +145,38 @@ TMP HACK until we do coercions on primitives properly
 > writeAlt n _ = "Default -> error \"unhandled case in " ++ show n ++ "\""
 
 > writeConst c = show c
+
+> writeFCall :: SCBody -> SCBody -> Name -> String
+> writeFCall (SApp (SCon ffun _) [SConst (Str fname),argtys,retty]) arglist topname = 
+>     "foreign " ++ fToEpic retty ++ " " ++ show fname ++ 
+>               " (" ++ build (zip (extract arglist) (extract argtys)) ++ ")"
+>     where build [] = ""
+>           build [(x,ty)] = writeSC topname x ++ ":" ++ (fToEpic ty)
+>           build ((x,ty):xs) = writeSC topname x ++ ":" ++ (fToEpic ty) ++ 
+>                               ", " ++ build xs
+
+This'll work for FArgList and List, because the penultimate is always the 
+element and last is always the tail. Should therefore also work before and
+after forcing optimisation...
+
+>           extract (SCon _ 0) = []
+>           extract (SApp (SCon _ 0) _) = []
+>           extract (SApp (SCon _ 1) args) = (last (init args)):
+>                                               (extract (last args))
+>           extract x = error (show x)
+>           exTy arg = fToEpic arg
+
+> writeFCall _ _ _ = error "Ill-formed foreign function call"
+
+
+Convert a constructor application of type 'FType' to an epic type. Just do
+this on tag, we know the type. Check 'FType' in io.idr.
+
+> fToEpic :: SCBody -> String
+> fToEpic (SCon _ 0) = "Unit"
+> fToEpic (SCon _ 1) = "Int"
+> fToEpic (SCon _ 2) = "String"
+> fToEpic (SCon _ 3) = "Ptr"
 
 > tempfile :: IO (FilePath, Handle)
 > tempfile = do env <- environment "TMPDIR"

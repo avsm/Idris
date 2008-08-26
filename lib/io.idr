@@ -104,6 +104,7 @@ readIORef (MkIORef i) = readIORefPrim i;
 writeIORef : (IORef A) -> A -> (IO ());
 writeIORef (MkIORef i) val = writeIORefPrim i val;
 
+{-
 mkFType' : (List FType) -> FType -> #;
 mkFType' Nil ret = IO (i_ftype ret);
 mkFType' (Cons t ts) ret = (i_ftype t) -> (mkFType' ts ret);
@@ -120,3 +121,4 @@ mkFDef nm (Cons t ts) accA fs ret
 
 mkForeign : (f:ForeignFun) -> (mkFType f);
 mkForeign (FFun fn args ret) = mkFDef fn args Nil fNil ret;
+-}
