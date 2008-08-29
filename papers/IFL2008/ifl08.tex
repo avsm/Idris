@@ -1,0 +1,106 @@
+\documentclass{llncs}
+%\documentclass[orivec,dvips,10pt]{llncs}
+
+%\usepackage[draft]{comments}
+\usepackage[final]{comments}
+% \newcommand{\comment}[2]{[#1: #2]}
+\newcommand{\khcomment}[1]{\comment{KH}{#1}}
+\newcommand{\ebcomment}[1]{\comment{EB}{#1}}
+
+\usepackage{epsfig}
+\usepackage{path}
+\usepackage{url}
+\usepackage{amsmath,amssymb} 
+
+\newenvironment{template}{\sffamily}
+
+\usepackage{graphics,epsfig}
+\usepackage{stmaryrd}
+
+\input{./macros.ltx}
+\input{./library.ltx}
+
+\NatPackage
+\FinPackage
+
+\newcommand{\Funl}{\textsc{Funl}}
+\newcommand{\Agda}{\textsc{Agda}}
+
+\newcommand{\mysubsubsection}[1]{
+\noindent
+\textbf{#1}
+}
+\newcommand{\hdecl}[1]{\texttt{#1}}
+\newcommand{\Ivor}{\textsc{Ivor}}
+
+%\usepackage{natbib}
+%\bibpunct();A{},
+%\let\cite=\citep
+
+\begin{document}
+
+\title{\Idris{}, a language with dependent types}
+\author{Edwin Brady}
+
+\institute{School of Computer Science, \\
+ University of St Andrews, St Andrews, Scotland. \\ \texttt{Email: eb@cs.st-andrews.ac.uk}.\\
+\texttt{Tel: +44-1334-463253}, \texttt{Fax: +44-1334-463278} \vspace{0.1in}
+}
+ 
+\maketitle
+
+\begin{abstract}
+\Idris{} is a functional programming language with full dependent
+types, built on top of \Ivor{}, a theorem proving library for
+Haskell. The language provides a platform for practical programming
+with dependent types. Existing systems provide dependent types
+either through lightweight extensions, retaining a separation between
+types and values (e.g. GADTs in Haskell) or via
+full theorem proving requiring total correctness proofs (e.g. Agda,
+Epigram or Coq). In contrast, in \Idris{}, we provide full dependent
+types while acknowledging that realistic programs require input/ouput,
+concurrency, and interfacing with foreign code, and furthermore that
+\emph{totality} is not always necessary.
+
+%In this paper, we introduce the \Idris{} language and 
+We make two main contributions: firstly, we give an implementation of
+an I/O monad with dependent types and show how, using dependent types,
+foreign functions can be incorporated directly into the type system
+without requiring any language extensions; secondly, we exploit the
+fact that \Idris{} is built on top of a tactic based theorem prover to
+show how programming considerations can be separated from proof
+obligations, simplifying program development and readability.
+
+%mention: interactive development. programming techniques. compiling
+%via C, FFI, concurrency, application to Hume.
+
+\end{abstract}
+
+\input{intro}
+
+\input{examples}
+
+%\input{interactive}
+
+%\input{casestudy}
+
+%\input{conclusion}
+
+%\section*{Acknowledgements}
+
+% Local macros:
+
+\newcommand{\Pair}{\TC{Pair}}
+\newcommand{\MkPair}{\DC{MkPair}}
+
+\bibliographystyle{plain}
+\bibliographystyle{abbrv}
+%\begin{small}
+\bibliography{literature.bib}
+
+%\appendix
+
+%\input{code}
+
+%\end{small}
+\end{document}

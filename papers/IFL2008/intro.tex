@@ -1,0 +1,35 @@
+\section{Introduction}
+
+\Idris{} is a functional programming language with full dependent
+types. It is similar to \Epigram~\cite{view-left} or
+\Agda{}~\cite{ulf-thesis}, in that it supports dependent pattern
+matching. It is built on top of the \Ivor{}~\cite{ivor} theorem
+proving library, and is a pure functional language with a syntax
+similar to Haskell with GADTs.  The purpose of the language is to
+provide a platform for practical programming with dependent types.
+
+We have used our own implementation, rather than an
+existing tool, as this gives complete freedom to experiment with
+abstractions and language features beyond the type system, such as I/O
+and concurrency. Additionally, although unrelated to the work we
+present in this paper, the core language is intended as an important
+step towards a fully dependently typed implementation of
+Hume~\cite{Hume-GPCE}.
+
+\subsection{Motivation}
+
+\subsection{Contributions}
+
+\begin{enumerate}
+\item We show that a practical, realistic and efficient dependently
+  typed programming language can be built with existing technology.
+\item We give an implementation of an I/O monad using dependent types,
+  in the style of Hancock and Setzer~\cite{hancock-interactive}, which
+  compiles to C, and allows foreign functions (implemented in C) to be
+  executed without requiring any extensions to the language or type
+  system.
+\item We exploit the fact that \Idris{} is built on top of a tactic
+  based theorem prover, \Ivor{}~\cite{ivor}, to show how programming
+  considerations and proof obligations can be neatly separated.
+\end{enumerate}
+
