@@ -250,9 +250,14 @@
 \newcommand{\With}[1]{\Bar & #1}
 \newcommand{\Witt}[1]{\Bart & #1}
 
+\newcommand{\TryOp}{?\hspace*{-0.2cm}\cq}
+
 \newcommand{\B}{@{\:}r@{\:}c}
+\newcommand{\TryRet}[2]{\multicolumn{2}{l}{\TryOp #1\hg[\FN{#2}]}}
 \newcommand{\Ret}[1]{\multicolumn{2}{l}{\cq #1}}
 \newcommand{\MRet}[2]{\multicolumn{#1}{l}{\cq #2}}
+\newcommand{\MTryRet}[3]{\multicolumn{#1}{l}{\TryOp #2\hg[\FN{#3}]}}
+\newcommand{\MsTryRet}[3]{\multicolumn{#1}{l}{\hg\TryOp #2\hg[\FN{#3}]}}
 \newcommand{\HRet}[1]{\multicolumn{2}{l}{\hq #1}}
 \newcommand{\MHRet}[2]{\multicolumn{#1}{l}{\hq #2}}
 \newcommand{\IRet}[1]{\multicolumn{2}{l}{\iq #1}}

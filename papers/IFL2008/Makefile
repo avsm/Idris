@@ -1,7 +1,7 @@
 all: ifl08.pdf
 
 SOURCES = ifl08.tex literature.bib intro.tex examples.tex interactive.tex \
-  casestudy.tex conclusion.tex
+  casestudy.tex ioforeign.tex conclusion.tex
 
 ifl08.pdf: ${SOURCES}
 #	dvipdf ifl08.dvi

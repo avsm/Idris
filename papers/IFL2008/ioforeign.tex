@@ -1,0 +1,186 @@
+\section{I/O and Foreign Functions}
+
+\label{ioforeign}
+
+\newcommand{\IO}{\TC{IO}}
+\newcommand{\IODo}{\DC{IODo}}
+\newcommand{\IOReturn}{\DC{Return}}
+
+We require input/output operations to be executable from within our
+language. To achieve this, we use Hancock and Setzer's I/O
+model~\cite{hancock-interactive}. This involves implementing a
+Haskell-style I/O monad~\cite{HaskellIO} by defining \remph{commands},
+representing externally executed I/O operations, and \remph{responses}
+which give the type of the value returned by a given command. Our
+$\IO$ monad is then implemented in terms of these of commands and
+responses:
+
+\DM{\AR{
+\Data\hg\:\TC{IO}\:\Hab\:\Type\to\Type\hg\Where\\ 
+\begin{array}{rl}
+ & \DC{IOReturn}\:\Hab\:\VV{A}\to\TC{IO}\:\VV{A}\\ 
+ \mid & \DC{IODo}\:\Hab\:\AR{(c \Hab
+ \TC{Command})\to\\
+(\FN{Response}\:\VV{c}\to\TC{IO}\:\VV{A})\to \TC{IO}\:\VV{A}}
+\end{array}
+}}
+
+\noindent
+Here, $\IODo$ takes a command, $\vc$ and an I/O operation that transforms the response to that command into an $\IO$ value, 
+and returns the result of applying the I/O operation to the command; and $\IOReturn$ simply returns an action packaged as an $\IO$ value.
+To show how this works in practice, we can define simple commands and
+responses for reading and writing to standard input and output:
+
+\DM{\AR{
+\Data\hg\:\TC{Command}\:\Hab\:\Type\hg\Where\\ 
+\begin{array}{rl}
+ & \DC{PutStr}\:\Hab\:\TC{String}\to\TC{Command}\\ 
+ \mid & \DC{GetStr}\:\Hab\:\TC{Command}\\ 
+ \mid & \ldots 
+\end{array}
+}}
+
+\noindent
+The responses to these commands are a $\TC{String}$, in the case that
+we have read a string, or the unit type if we have written a string.
+
+\DM{\AR{
+\FN{Response}\:\Hab\:\AR{\TC{Command}\to\Type}\\ 
+\PA{\A}{ & \FN{Response} & (\DC{PutStr}\:\VV{s}) & \Ret{()}\\ 
+ & \FN{Response} & \DC{GetStr} & \Ret{\TC{String}}\\ 
+ & \ldots
+}
+}}
+
+\newcommand{\ioexec}{\MO{execute}}
+\newcommand{\iorun}{\MO{run}}
+\newcommand{\iodo}[1]{\RW{do}\;\AR{#1}}
+\newcommand{\ioreturn}{\RW{return}}
+\newcommand{\iosep}{\\}
+
+\noindent
+The usual $\FN{bind}$ and $\FN{return}$ operations are simple to
+implement for this monad. We can now write the higher-level reading
+and writing operations:
+
+\DM{
+\AR{
+\FN{getStr}\Hab\IO\:\TC{String}\\
+\FN{getStr}\:=\:\IODo\:\DC{GetStr}\:(\lam{\vs}{\TC{String}}\SC\IOReturn\:\vs)
+\\
+\FN{putStr}\Hab\TC{String}\to\IO\:\Unit\\
+\FN{putStr}\:\vs\:=\:\IODo\:(\DC{PutStr}\:\vs)\:(\lam{\vx}{\TC{Unit}}\SC\IOReturn\:\vx)
+}
+}
+
+\noindent
+Execution of an I/O program consists of evaluating it as normal and
+passing the result to an $\ioexec$ meta-operation. This is defined
+externally to the type theory and simply executes the I/O action at
+the head of the term, then evaluates and executes the
+continuation. Execution of the above simple string I/O
+language is defined by the following pseudo-Haskell code (for
+convenience, we will use Haskell-style $\RW{do}$ notation, with the obvious translation into our $\IODo$ and $\IOReturn$ operations):
+
+\DM{
+\AR{
+\PA{\A}{
+& \ioexec & (\IODo\:\vc\:\vr) & \MoRet{\iorun\:\vc\:\vr} \\
+& \ioexec & (\IOReturn\:\vv) & \MoRet{\ioreturn\:\vv} 
+}
+\smallskip\\
+%}
+%\DM{
+\PA{\A\A}{
+& \iorun & \DC{PutStr} & \vk & \MoRet{\iodo{
+   \mathtt{str} \leftarrow \mathtt{getLine}\\
+   \ioexec\:(\vk\:\mathtt{str})
+   }} \\
+& \iorun & (\DC{GetStr}\:\vs) & \vk & \MoRet{\iodo{
+   \mathtt{putStr}\:\vs\\
+   \ioexec\:(\vk\:\UnitI)
+   }} \\
+& \ldots
+}
+}
+}
+
+In our compiler, which translates \Idris{} to C, we implement this
+operation with a compiler pass which partially evaluates the
+$\FN{bind}$ operation and translates the commands into their C
+equivalents.
+
+%% For the program we will implement in this paper, we require the
+%% following operations, implemented similarly to $\FN{getStr}$ and
+%% $\FN{putStr}$ above:
+
+%% \DM{
+%% \AR{
+%% \FN{fork}\:\Hab\:\AR{\IO\:()\to\IO\:()}\\
+%% \FN{newLock}\:\Hab\:\AR{\TC{Int}\to\IO\:\TC{Lock}}\\ 
+%% \FN{lock},\FN{unlock}\:\Hab\:\AR{\TC{Lock}\to\IO\:()}\\ 
+%% \FN{newIORef}\:\Hab\:\AR{\VV{A}\to\IO\:(\TC{IORef}\:\VV{A})}\\ 
+%% \FN{readIORef}\:\Hab\:\AR{\TC{IORef}\:\VV{A}\to\IO\:\VV{A}}\\ 
+%% \FN{writeIORef}\:\Hab\:\AR{\TC{IORef}\:\VV{A}\to\VV{A}\to\IO\:()}\\ 
+%% }
+%% }
+
+%% $\TC{Lock}$ is an externally implemented semaphore, created by
+%% $\FN{newLock}$, with $\FN{lock}$ and $\FN{unlock}$ requesting and
+%% releasing the semaphore respectively. The other functions behave in
+%% the same way as their Haskell equivalents.
+
+\subsection{Foreign Function Calls}
+
+The $\TC{IO}$ monad as defined above requires us to decide which
+external operations are allowed, and to implement the appropriate
+$\MO{run}$ operation. While this does allow us to write realistic
+programs which communicate with the outside world, it lacks
+flexibility --- there is no way to access arbitrary C libraries for,
+e.g., concurrency, graphics, or networking without modifying the
+implementation of $\MO{run}$.
+
+\DM{\AR{
+\Data\hg\:\TC{FType}\:\Hab\:\AR{\Type\hg\Where}\\ \hg 
+\DC{FUnit}\:\Hab\:\AR{\TC{FType}}\: 
+ \mid \DC{FInt}\:\Hab\:\AR{\TC{FType}}\: 
+ \mid \DC{FStr}\:\Hab\:\AR{\TC{FType}}\: 
+ \mid \DC{FPtr}\:\Hab\:\AR{\TC{FType}}
+}}
+
+\DM{\AR{
+\FN{i\_ftype}\:\Hab\:\AR{\TC{FType}\to\Type}\\ 
+\PA{\A}{ & \FN{i\_ftype} & \DC{FInt} & \Ret{\TC{Int}}\\ 
+ & \FN{i\_ftype} & \DC{FStr} & \Ret{\TC{String}}\\ 
+ & \FN{i\_ftype} & \DC{FUnit} & \Ret{()}\\ 
+}}}
+
+
+\DM{\AR{
+\Data\hg\:\TC{ForeignFun}\:\Hab\:\AR{\Type\hg\Where}\\ 
+\begin{array}{rl}
+ & \DC{FFun}\:\Hab\:\AR{\TC{String}\to\TC{List}\:\TC{FType}\to\TC{FType}\to\TC{ForeignFun}}
+\end{array}
+}}
+
+\DM{\AR{
+\Data\hg\:\TC{FArgList}\:\Hab\:\AR{\TC{List}\:\TC{FType}\to\Type\hg\Where}\\ 
+\begin{array}{rl}
+ & \DC{fNil}\:\Hab\:\AR{\TC{FArgList}\:\DC{Nil}}\\ 
+ \mid & \DC{fCons}\:\Hab\:\AR{(\VV{fx} \Hab \FN{i_ftype}\:\VV{x})\to(\VV{fxs} \Hab \TC{FArgList}\:\VV{xs})\to\TC{FArgList}\:(\DC{Cons}\:\VV{x}\:\VV{xs})}
+\end{array}
+}}
+
+
+\DM{\AR{
+\Data\hg\:\TC{Command}\:\Hab\:\AR{\Type\hg\Where}\\ 
+\begin{array}{rl}
+& \ldots \\
+ \mid & \DC{Foreign}\:\Hab\:\AR{(\VV{f} \Hab \TC{ForeignFun})\to(\VV{args} \Hab \TC{FArgList}\:(\FN{f\_args}\:\VV{f}))\to\TC{Command}}
+\end{array}
+}}
+
+\DM{\AR{
+\FN{mkForeign}\:\Hab\:\AR{(\VV{f} \Hab \TC{ForeignFun})\to\FN{mkFType}\:\VV{f}}\\ 
+\PA{\A}{ & \FN{mkForeign} & (\DC{FFun}\:\VV{fn}\:\VV{args}\:\VV{ret}) & \Ret{\FN{mkFDef}\:\VV{fn}\:\VV{args}\:\DC{Nil}\:\DC{fNil}\:\VV{ret}}\\ 
+}}}

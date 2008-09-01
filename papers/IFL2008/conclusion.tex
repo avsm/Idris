@@ -1,3 +1,27 @@
 \section{Related Work}
 
 \section{Conclusion}
+
+We have described the \Idris{} programming languages and shown how to
+use it to implement a complex problem with dependent types. The
+language, while not approach the maturity of Haskell or other
+dependently typed systems such as \Agda{}, demonstrates that
+\remph{existing technology} is sufficient to implement realistic and
+verified programs. Even a framework for foreign functions can be built
+neatly out of existing work, namely Hancock and Setzer's I/O
+trees~\cite{hancock-interactive}. It is particularly pleasing that
+foreign functions can be added without making \remph{any} changes to
+the core language.
+
+Any program with a sufficiently complex type will require a certain
+amount of theorem proving to typecheck. Our binary adder is an example
+of this. While this kind of program is expressible in weaker types
+systems such as that given by Haskell with open type
+families~\cite{opentype-haskell} the proof obligations become
+difficult to manage. It is therefore essential to provide some kind of
+interactive development tools along with any realistic dependently
+typed language. We have found the ``proposed definition'' syntax to
+reduce the burden on the programmer greatly; it allows a programmer to
+give the definition they believe to be correct, and even test it, and
+means that the \remph{typechecker} generates the required lemma,
+rather than the programmer.

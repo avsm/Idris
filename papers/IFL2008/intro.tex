@@ -8,28 +8,60 @@ proving library, and is a pure functional language with a syntax
 similar to Haskell with GADTs.  The purpose of the language is to
 provide a platform for practical programming with dependent types.
 
-We have used our own implementation, rather than an
-existing tool, as this gives complete freedom to experiment with
+\subsection{Motivation}
+
+Several tools exist today for programming with dependent types, in
+various forms. These range from extensions to existing languages, such
+as Haskell's GADTs~\cite{gadts} and open type
+functions~\cite{opentype-haskell} to languages designed with dependent
+types from the ground up, such as Cayenne~\cite{cayenne-icfp} and
+\Epigram{}~\cite{view-left}. Additionally, theorem provers such as
+\Agda{}~\cite{ulf-thesis} and \Coq{}~\cite{coq-manual} are based on
+dependent types.
+
+None of these systems, however, are suitable for writing realistic
+programs with full dependent types. The type system is either limited
+in some way, restricting the type level functions one can
+write and thus the properties which can be
+shown~\cite{lightweight-dtp}, or the focus is on total correctness,
+which, while clearly desirable, can make many simpler and less
+safety-critical programs more difficult to write than necessary.
+
+In contrast, we are interested in the \remph{practical} aspects of
+dependently typed programming --- we require input and output,
+concurrency, and foreign function calls. We also acknowledge that at
+times, particularly in the early stages of software development, it
+may be necessary to relax some restrictions on the completeness of
+proofs. Application development and testing should not stall because
+of a missing lemma!  Using our own implementation rather than an
+existing tool gives complete freedom to experiment with these
 abstractions and language features beyond the type system, such as I/O
 and concurrency. Additionally, although unrelated to the work we
 present in this paper, the core language is intended as an important
 step towards a fully dependently typed implementation of
 Hume~\cite{Hume-GPCE}.
 
-\subsection{Motivation}
-
 \subsection{Contributions}
 
+This paper introduces \Idris{}, a language with dependent types, which
+compiles to executable code via C. The paper makes the following
+contributions:
+
 \begin{enumerate}
-\item We show that a practical, realistic and efficient dependently
-  typed programming language can be built with existing technology.
 \item We give an implementation of an I/O monad using dependent types,
   in the style of Hancock and Setzer~\cite{hancock-interactive}, which
   compiles to C, and allows foreign functions (implemented in C) to be
   executed without requiring any extensions to the language or type
-  system.
+  system (Section \ref{ioforeign}).
 \item We exploit the fact that \Idris{} is built on top of a tactic
   based theorem prover, \Ivor{}~\cite{ivor}, to show how programming
-  considerations and proof obligations can be neatly separated.
+  considerations and proof obligations can be neatly separated
+  (Section \ref{interactive}).
 \end{enumerate}
+
+Additionally, we demonstrate through a larger example, a verified
+implementation of binary arithmetic which we have previously
+implemented~\cite{tfp-ccc} in \Ivor{} that a practical, realistic and
+efficient dependently typed programming language can be built with
+existing technology (Section \ref{sec:binary}).
 
