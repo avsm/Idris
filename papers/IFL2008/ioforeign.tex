@@ -138,7 +138,10 @@ $\MO{run}$ operation. While this does allow us to write realistic
 programs which communicate with the outside world, it lacks
 flexibility --- there is no way to access arbitrary C libraries for,
 e.g., concurrency, graphics, or networking without modifying the
-implementation of $\MO{run}$.
+implementation of $\MO{run}$. To achieve this, we introduce a
+representation of external functions, and a means to convert them into
+usable \Idris{} functions. We being by defining the C types which we
+can use, and a conversion into \Idris{} types:
 
 \DM{\AR{
 \Data\hg\:\TC{FType}\:\Hab\:\AR{\Type\hg\Where}\\ \hg 
@@ -155,6 +158,10 @@ implementation of $\MO{run}$.
  & \FN{i\_ftype} & \DC{FUnit} & \Ret{()}\\ 
 }}}
 
+Foreign pointers are treated as abstract entities; there is no means
+to modify them, they can simply be passed to and from C. A foreign
+function can then be described using an ordinary data structure. It
+has a name, a list of argument types and a return type:
 
 \DM{\AR{
 \Data\hg\:\TC{ForeignFun}\:\Hab\:\AR{\Type\hg\Where}\\ 
@@ -163,14 +170,24 @@ implementation of $\MO{run}$.
 \end{array}
 }}
 
+When we call the foreign function, it will need an argument list. We
+can represent this as a type depending on the list of argument
+types. This allows us to typecheck foreign function calls in the core
+language itself:
+
 \DM{\AR{
 \Data\hg\:\TC{FArgList}\:\Hab\:\AR{\TC{List}\:\TC{FType}\to\Type\hg\Where}\\ 
 \begin{array}{rl}
  & \DC{fNil}\:\Hab\:\AR{\TC{FArgList}\:\DC{Nil}}\\ 
- \mid & \DC{fCons}\:\Hab\:\AR{(\VV{fx} \Hab \FN{i_ftype}\:\VV{x})\to(\VV{fxs} \Hab \TC{FArgList}\:\VV{xs})\to\TC{FArgList}\:(\DC{Cons}\:\VV{x}\:\VV{xs})}
+ \mid & \DC{fCons}\:\Hab\:\AR{
+\{\vx\Hab\TC{FType}\}\to\{\vxs\Hab\TC{List}\:\TC{FType}\}\to\\
+(\VV{fx} \Hab \FN{i\_ftype}\:\VV{x})\to(\VV{fxs} \Hab \TC{FArgList}\:\VV{xs})\to\TC{FArgList}\:(\DC{Cons}\:\VV{x}\:\VV{xs})}
 \end{array}
 }}
 
+Since we now have descriptions of foreign functions, and a means to
+give them a typechecked list of arguments, we can add foreign function
+calls to our $\TC{Command}$ structure.
 
 \DM{\AR{
 \Data\hg\:\TC{Command}\:\Hab\:\AR{\Type\hg\Where}\\ 
@@ -180,7 +197,81 @@ implementation of $\MO{run}$.
 \end{array}
 }}
 
+The only extension we need make to the system is in the $\MO{execute}$
+and $\MO{run}$ operations. We will not give the full details here, but
+it needs only a means of translation between the run-time
+representation of \Idris{} values and their corresponding C
+representation. The C function to call is given in the
+$\TC{ForeignFun}$ structure, so the execution is straightforward.
+
+\subsection{Constructing foreign functions}
+
+Although we can represent foreign functions using the above
+structures, it is inconvenient to require a programmer to use the
+$\TC{Command}$ structure directly. We would like to be able to convert
+the above representation into a more convenient form. We will do this
+by converting the foreign type into an \Idris{} type, and building a
+corresponding function. Reflection of this kind is implementable
+directly in a dependently typed language. For example, given a foreign
+function described as\ldots
+
+\DM{\FN{printFn}\:=\:\DC{FFun}\:"putStr"\:(\DC{Cons}\:\DC{FStr}\:\DC{Nil})\:\DC{FUnit}}
+
+\noindent
+\ldots we would like a corresponding function to expose to the user.
+
+\DM{\FN{print}\Hab\TC{String}\to\TC{IO}\:()}
+
+To construct the type of this function, we write a helper function
+$\FN{mkType}$ which takes a list of argument types and a return type,
+and from these constructs a function type in the $\TC{IO}$ monad:
+
+\DM{\AR{
+\FN{mkFType}\:\Hab\:\AR{\TC{List}\:\TC{FType}\to\TC{FType}\to\Type}\\ 
+\PA{\A\A}{ & \FN{mkFType'} & \DC{Nil} & \VV{ret} & \Ret{\TC{IO}\:(\FN{i\_ftype}\:\VV{ret})}\\ 
+ & \FN{mkFType'} & (\DC{Cons}\:\VV{t}\:\VV{ts}) & \VV{ret} & \Ret{\FN{i\_ftype}\:\VV{t}\to\FN{mkFType'}\:\VV{ts}\:\VV{ret}}\\ 
+}}}
+
+A function of this type will need to construct the appropriate
+$\DC{Foreign}$ command, which involves building an appropriate
+$\TC{FArgList}$ from its input. We compute a function which builds
+this argument list in an accumulator, iterating over the list of
+argument types:
+
+\DM{\AR{
+\FN{mkFDef}\:\Hab\:\AR{\TC{String}\to(\VV{ts} \Hab
+  \TC{List}\:\TC{FType})\to(\VV{xs} \Hab \TC{List}\:\TC{FType})\to\\
+\TC{FArgList}\:\VV{xs}\to(\VV{ret} \Hab \TC{FType})\to\FN{mkFType}\:\VV{ts}\:\VV{ret}}\\ 
+\PA{\A\A\A\A\A}{ & \FN{mkFDef} & \VV{nm} & \DC{Nil} & \VV{accA} &
+  \VV{fs} & \VV{ret} & \\
+& & & \MRet{5}{\DC{IODo}\:(\DC{Foreign}\:(\DC{FFun}\:\VV{nm}\:\VV{accA}\:\VV{ret})\:\VV{fs})\:(\lambda\VV{a}.\DC{IOReturn}\:\VV{a})}\\ 
+ & \FN{mkFDef} & \VV{nm} & (\DC{Cons}\:\VV{t}\:\VV{ts}) & \VV{accA} &
+  \VV{fs} & \VV{ret} & \\
+& & & \MRet{5}{\lambda\VV{x}.\FN{mkFDef}\:\VV{nm}\:\VV{ts}\:(\DC{Cons}\:\VV{t}\:\VV{accA})\:(\DC{fCons}\:\VV{x}\:\VV{fs})\:\VV{ret}}\\ 
+}}}
+
+We can now make the appropriate \Idris{} function from a
+$\TC{ForeignFun}$ definition as follows:
+
 \DM{\AR{
 \FN{mkForeign}\:\Hab\:\AR{(\VV{f} \Hab \TC{ForeignFun})\to\FN{mkFType}\:\VV{f}}\\ 
 \PA{\A}{ & \FN{mkForeign} & (\DC{FFun}\:\VV{fn}\:\VV{args}\:\VV{ret}) & \Ret{\FN{mkFDef}\:\VV{fn}\:\VV{args}\:\DC{Nil}\:\DC{fNil}\:\VV{ret}}\\ 
 }}}
+
+Using these, we can now declare the existence of a foreign function
+called \texttt{putStr} --- we assume the existence of this in a C
+library, which simply outputs a string and returns \texttt{void}:
+
+\DM{\FN{printFn}\:=\:\DC{FFun}\:"putStr"\:(\DC{Cons}\:\DC{FStr}\:\DC{Nil})\:\DC{FUnit}}
+
+\noindent
+We now use $\FN{mkForeign}$ to turn this into an \Idris{} function:
+
+\DM{\AR{
+\FN{print}\:\Hab\:\AR{\TC{String}\to\TC{IO}\:()}\\ 
+\PA{}{ & \FN{print} & \Ret{\FN{mkForeign}\:\FN{printFn}}\\ 
+}}}
+
+A programmer writing a binding to a C library then need only use
+$\DC{FFun}$ and $\FN{mkForeign}$ to make a type safe \Idris{} binding
+to a C function.

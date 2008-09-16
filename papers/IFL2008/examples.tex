@@ -1,8 +1,68 @@
 \section{Examples}
 
-%Ordinary FP.
+Datatypes are defined using a similar syntax to Haskell. For simple or
+polymorphic types, we use the usual syntax. However, since type
+constructors and value constructors inhabit the same namespace, we
+must choose distinct names. Additionally, constructors need not begin
+with a capital letter. For example:
 
-%Lists, Vectors.
+\DM{
+\AR{
+\Data\hg\Nat\:=\:\Z\:\mid\suc\:\Nat\hg{\mbox{\texttt{-- natural numbers}}}\\
+%\Data\hg\TC{Tree}\:\va\:=\:\DC{Empty}\:\mid\:\DC{Node}\:(\TC{Tree}\:\va)\:\va\:(\TC{Tree}\:\va)\hg{\mbox{\texttt{-- binary trees}}}
+\Data\hg\TC{List}\:\va\:=\:\DC{Nil}\:\mid\:\DC{Cons}\:\va\:(\List\:\va)
+\hg{\mbox{\texttt{-- linked lists}}}}
+}
 
-%IO.
+Dependent types are declared using a syntax similar to Haskell's
+GADTs, for example in the following definition of vectors (lists with
+size) we give the type of $\Vect$ explicitly, where $\Type$ is the
+type of types, and the type of each constructor separately:
+
+\DM{\AR{
+\Data\hg\:\Vect\:\Hab\:\AR{\Type\to\Nat\to\Type\hg\Where}\\ 
+\begin{array}{rl}
+ & \Vnil\:\Hab\:\AR{\Vect\:\VV{A}\:\Z}\\ 
+ \mid & \Vcons\:\Hab\:\AR{\VV{A}\to\Vect\:\VV{A}\:\VV{k}\to\Vect\:\VV{A}\:(\suc\:\VV{k})}
+\end{array}
+}}
+
+Functions are defined by pattern matching. Top level types must always
+be given (expect for constants, i.e. functions with zero arguments)
+since full type inference for any dependently typed language is
+undecidable. Type annotations on $\LET$ or lambda bindings are
+generally not necessary, but may be given.
+
+For example, the following function is a dependent version of
+$\FN{zipWith}$, which applies a function to corresponding elements in a
+pair of vectors:
+
+\DM{\AR{
+\FN{zipWith}\:\Hab\:\AR{(\VV{f} \Hab \VV{A}\to\VV{B}\to\VV{C})\to\Vect\:\VV{A}\:\VV{n}\to\Vect\:\VV{B}\:\VV{n}\to\Vect\:\VV{C}\:\VV{n}}\\ 
+\PA{\A\A\A}{ & \FN{zipWith} & \VV{f} & \Vnil & \Vnil & \Ret{\Vnil}\\ 
+ & \FN{zipWith} & \VV{f} & (\Vcons\:\VV{x}\:\VV{xs}) & (\Vcons\:\VV{y}\:\VV{ys}) & \Ret{\Vcons\:(\VV{f}\:\VV{x}\:\VV{y})\:(\FN{zipWith}\:\VV{f}\:\VV{xs}\:\VV{ys})}\\ 
+}}}
+
+Note that we do not handle any cases where the vectors are difference
+sizes; the type ensures that such cases are not possible, since the
+input and output vectors are statically known to be the same size.
+
+In $\FN{zipWith}$, the variables $\vA$, $\vB$, $\vC$ and $\vn$ are
+\remph{implicit arguments} to $\FN{zipWith}$. The typechecker
+establishes, by generating and solving a unification problem, that
+$\vA$, $\vB$ and $\vC$ must have type $\Type$ and $\vn$ must have type
+$\Nat$. It is sometimes necessary to write such arguments explicitly,
+to help solve the unification problem, where these arguments
+themselves have dependent types. The type of $\FN{zipWith}$
+could therefore also be written as:
+
+\DM{
+\FN{zipWith}\:\Hab\:\AR{
+\{\vA,\vB,\vC\Hab\Type\}\to\{\vn\Hab\Nat\}\to\\
+(\VV{f} \Hab \VV{A}\to\VV{B}\to\VV{C})\to\Vect\:\VV{A}\:\VV{n}\to\Vect\:\VV{B}\:\VV{n}\to\Vect\:\VV{C}\:\VV{n}}\\ 
+}
+
+\noindent
+The use of braces $\{\}$ rather than brackets $()$ indicates that
+these arguments need not be given in calls to $\FN{zipWith}$.
 
