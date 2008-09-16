@@ -99,6 +99,7 @@ undone bits, after a Qed
 >     at ctxt ReflP = refine reflN defaultGoal ctxt
 >     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
 >     at ctxt (Believe t) = suspend_disbelief raw (ivor t) defaultGoal ctxt
+>     at ctxt (Use t) = prove_belief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Induction t) = induction (ivor t) defaultGoal ctxt
 >     at ctxt (Rewrite f t) = rewrite (ivor t) f defaultGoal ctxt
 >     at ctxt Compute = compute defaultGoal ctxt
@@ -111,6 +112,7 @@ undone bits, after a Qed
 > replN = Name Unknown $ toIvorName (UN "__eq_repl")
 > symN = Name Unknown $ toIvorName (UN "__eq_sym")
 > reflN = Name Unknown $ name "refl"
+> eqP x y = apply eqN [Placeholder,Placeholder,x,y]
 > believe x y = apply (Name Unknown (toIvorName (UN "__Suspend_Disbelief")))
 >                     [Placeholder,x,y]
 
@@ -171,5 +173,32 @@ suspending disbelief about value equalities, not polymorphic values.
 >                    when (viewType rty == Star) $
 >                         fail ((show arg1) ++ " is a type")
 >                    ctxt' <- rewrite rt True goal ctxt
+>                    rewriteDiffs ds goal ctxt'
+
+As above, but instead of just believing the value, insert subgoals for
+the required equality proofs
+
+> prove_belief :: Ctxt IvorFun -> ViewTerm -> Tactic
+> prove_belief raw val goal ctxt
+>     = do ty <- checkCtxt ctxt goal val
+>          gd <- goalData ctxt True goal
+>          let gtype = view (goalType gd)
+>          let vtype = viewType ty
+>          let (gfn, gargs) = (getApp gtype, getFnArgs gtype)
+>          let (vfn, vargs) = (getApp vtype, getFnArgs vtype)
+>          when (gfn/=vfn) $ fail ((show gfn) ++ " and " ++ (show vfn) ++ 
+>                                  " are different types")
+>          let diffs = filter (\ (x,y) -> x/=y) (zip gargs vargs)
+>          ctxt <- rewriteDiffs diffs goal ctxt
+>          fill val goal ctxt
+>    where rewriteDiffs [] goal ctxt = idTac goal ctxt
+>          rewriteDiffs ((arg1, arg2):ds) goal ctxt
+>               = do let claimTy = eqP arg1 arg2
+>                    claimName <- uniqueName ctxt (name "equality")
+>                    ctxt <- claim claimName claimTy goal ctxt
+>                    rty <- checkCtxt ctxt goal arg1
+>                    when (viewType rty == Star) $
+>                         fail ((show arg1) ++ " is a type")
+>                    ctxt' <- rewrite (Name Unknown claimName) True goal ctxt
 >                    rewriteDiffs ds goal ctxt'
 

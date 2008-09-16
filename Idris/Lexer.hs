@@ -62,6 +62,7 @@ data Token
       | TokenLockType
       | TokenDataType
       | TokenNoElim
+      | TokenPartial
       | TokenWhere
       | TokenType
       | TokenOB
@@ -116,6 +117,7 @@ data Token
       | TokenInduction
       | TokenFill
       | TokenBelieve
+      | TokenUse
       | TokenAbandon
       | TokenQED
       | TokenEOF
@@ -224,6 +226,7 @@ lexVar cont cs =
       ("data",rest) -> cont TokenDataType rest
       ("noElim",rest) -> cont TokenNoElim rest
       ("where",rest) -> cont TokenWhere rest
+      ("partial",rest) -> cont TokenPartial rest
 -- Types
       ("Int",rest) -> cont TokenIntType rest
       ("Char",rest) -> cont TokenCharType rest
@@ -260,6 +263,7 @@ lexSpecial cont cs =
       ("induction",rest) -> cont TokenInduction rest
       ("fill", rest) -> cont TokenFill rest
       ("believe", rest) -> cont TokenBelieve rest
+      ("use", rest) -> cont TokenUse rest
       ("abandon", rest) -> cont TokenAbandon rest
       ("qed", rest) -> cont TokenQED rest
       (thing,rest) -> lexError '%' rest

@@ -66,6 +66,7 @@ import Idris.Lib
       data            { TokenDataType }
       noelim          { TokenNoElim }
       where           { TokenWhere }
+      partial         { TokenPartial }
       refl            { TokenRefl }
       empty           { TokenEmptyType }
       unit            { TokenUnitType }
@@ -88,6 +89,7 @@ import Idris.Lib
       induction       { TokenInduction }
       fill            { TokenFill }
       believe         { TokenBelieve }
+      use             { TokenUse }
       abandon         { TokenAbandon }
       qed             { TokenQED }
       latex           { TokenLaTeX }
@@ -326,6 +328,7 @@ Tactic : intro Names { Intro $2 }
        | induction Term { Induction $2 }
        | fill Term { Fill $2 }
        | believe Term { Believe $2 }
+       | use Term { Use $2 }
        | abandon { Abandon }
        | qed { Qed }
 

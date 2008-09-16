@@ -152,6 +152,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Compute
 >              | Equiv RawTerm
 >              | Believe RawTerm
+>              | Use RawTerm
 >              | Undo
 >              | Abandon
 >              | Qed
