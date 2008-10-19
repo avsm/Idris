@@ -61,6 +61,10 @@ bind (IODo c p) k = IODo c (\x . (bind (p x) k));
 return : A -> (IO A);
 return x = IOReturn x;
 
+-- No code for this - only works in compiled code, certainly shouldn't
+-- be evaluted in pure code!
+unsafePerformIO : (IO A) -> A;
+
 putStr : String -> (IO ());
 putStr str = IODo (PutStr str) (\a . (IOReturn a));
 

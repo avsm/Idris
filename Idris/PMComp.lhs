@@ -280,6 +280,9 @@ bind : A -> (A -> B) -> B
 bind _ _ val fn ==> let newv = [[val]]
                         in [[fn newv]]
 
+similarly for unsafeBind
+unsafePerformIO becomes id
+
 IOReturn _ a ==> [[a]]
 IODo _ c k ==> [[k]] [[c]]
 
@@ -305,8 +308,15 @@ intermediate functions for when this isn't the case
 >                k' <- deIO k
 >                return $ Let (bname i) Star -- type irrelevant
 >                             v' (quickSimpl (App k' (Name Unknown (bname i))))
+>      | bind == (name "unsafeBind") 
+>           = do i <- get
+>                put (i+1)
+>                return $ Let (bname i) Star -- type irrelevant
+>                             v (quickSimpl (App k (Name Unknown (bname i))))
 > deIO (App (App (Name _ ret) _) a)
 >      | ret == (name "IOReturn") = deIO a
+> deIO (App (App (Name _ upio) _) a)
+>      | upio == (name "unsafePerformIO") = deIO a
 > deIO (App (App (App (Name _ iodo) _) c) k)
 >      | iodo == (name "IODo") 
 >         = do k' <- deIO k
