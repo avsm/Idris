@@ -24,17 +24,17 @@
 >         = case lookup n (defs++ldefs) of
 >             Just l -> l
 >             Nothing -> case ctxtLookup ctxt n of
->                          Just (IvorFun _ _ _ _ d) -> ty d (show n)
+>                          Just (IvorFun _ _ _ _ d _) -> ty d (show n)
 >                          Nothing -> "\\VV{" ++ show n ++ "}"
 >         where ty (DataDecl _) n = "\\TC{" ++ n ++ "}"          
 >               ty Constructor n = "\\DC{" ++ n ++ "}"
 >               ty _ n = "\\FN{" ++ n ++ "}"
 >               ldefs = case ctxtLookup ctxt (MN "latex" 0) of
->                         Just (IvorFun _ _ _ _ (LatexDefs ds)) -> ds
+>                         Just (IvorFun _ _ _ _ (LatexDefs ds) _) -> ds
 >                         Nothing -> []
 
 > instance LaTeX IvorFun where
->     latex ctxt defs (IvorFun nm ty _ _ decl) = latex ctxt defs decl
+>     latex ctxt defs (IvorFun nm ty _ _ decl _) = latex ctxt defs decl
 
 > instance LaTeX Decl where
 >     latex ctxt defs (DataDecl (Datatype id ty cons _))
@@ -46,9 +46,9 @@
 >        where conList [] = ""
 >              conList [a] = " & " ++ a ++ "\n"
 >              conList (a:as) = " & " ++ a ++ "\\\\ \n \\mid" ++ conList as 
->     latex ctxt defs (Fun f) = latex ctxt defs f
->     latex ctxt defs (TermDef n tm) = "\\DM{" ++ latex ctxt defs n ++ "\\:=\\:" ++ latex ctxt defs tm ++ "}"
->     latex ctxt defs (Fwd n ty) = "\\DM{" ++ latex ctxt defs n ++ "\\:\\Hab\\:\\AR{" ++ latex ctxt defs ty ++ "}}"
+>     latex ctxt defs (Fun f _) = latex ctxt defs f
+>     latex ctxt defs (TermDef n tm _) = "\\DM{" ++ latex ctxt defs n ++ "\\:=\\:" ++ latex ctxt defs tm ++ "}"
+>     latex ctxt defs (Fwd n ty _) = "\\DM{" ++ latex ctxt defs n ++ "\\:\\Hab\\:\\AR{" ++ latex ctxt defs ty ++ "}}"
 >     latex ctxt defs _ = "Can't LaTeXify this"
 >                                
 

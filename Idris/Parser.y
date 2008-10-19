@@ -93,6 +93,8 @@ import Idris.Lib
       abandon         { TokenAbandon }
       qed             { TokenQED }
       latex           { TokenLaTeX }
+      nocg            { TokenNoCG }
+      eval            { TokenEval }
 
 %nonassoc LAM
 %nonassoc let in
@@ -132,11 +134,19 @@ Declaration: Function { $1 }
            | Latex { RealDecl $1 }
 
 Function :: { ParseDecl }
-Function : Name ':' Type ';' { FunType $1 $3 }
+Function : Name ':' Type Flags ';' { FunType $1 $3 $4 }
          | Name ProofScript ';' { ProofScript $1 $2 }
-         | DefTerm '=' Term ';' { FunClause (mkDef $1) $3 }
+         | DefTerm '=' Term Flags ';' { FunClause (mkDef $1) $3 $4 }
          | DefTerm mightbe Term ';' '[' Name ']'
               { FunClauseP (mkDef $1) $3 $6 }
+
+Flags :: { [CGFlag] }
+Flags : { [] }
+      | Flag Flags { $1:$2 }
+
+Flag :: { CGFlag }
+Flag : nocg { NoCG }
+     | eval { CGEval }
 
 --         | Nameproof Script { ProofScript $2 }
 

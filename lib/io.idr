@@ -104,21 +104,19 @@ readIORef (MkIORef i) = readIORefPrim i;
 writeIORef : (IORef A) -> A -> (IO ());
 writeIORef (MkIORef i) val = writeIORefPrim i val;
 
-{-
-mkFType' : (List FType) -> FType -> #;
+mkFType' : (List FType) -> FType -> #   %nocg;
 mkFType' Nil ret = IO (i_ftype ret);
 mkFType' (Cons t ts) ret = (i_ftype t) -> (mkFType' ts ret);
 
-mkFType : ForeignFun -> #;
+mkFType : ForeignFun -> #    %nocg;
 mkFType (FFun fn args ret) = mkFType' args ret;
 
 mkFDef : String -> (ts:List FType) -> (xs:List FType) -> (FArgList xs) ->
-	 (ret:FType) -> (mkFType' ts ret);
+	 (ret:FType) -> (mkFType' ts ret)   %nocg;
 mkFDef nm Nil accA fs ret = IODo (Foreign (FFun nm accA ret) fs)
 				 (\a. (IOReturn a));
 mkFDef nm (Cons t ts) accA fs ret 
    = \x:(i_ftype t) . mkFDef nm ts (Cons t accA) (fCons x fs) ret;
 
-mkForeign : (f:ForeignFun) -> (mkFType f);
+mkForeign : (f:ForeignFun) -> (mkFType f)   %nocg;
 mkForeign (FFun fn args ret) = mkFDef fn args Nil fNil ret;
--}

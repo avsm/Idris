@@ -12,15 +12,15 @@
 Work out how many implicit arguments we need, then translate our definition
 into an ivor definition, with all the necessary placeholders added.
 
-> makeIvorFun ::  Ctxt IvorFun -> Decl -> Function -> IvorFun
-> makeIvorFun ctxt decl (Function n ty clauses) 
+> makeIvorFun ::  Ctxt IvorFun -> Decl -> Function -> [CGFlag] -> IvorFun
+> makeIvorFun ctxt decl (Function n ty clauses) flags
 >     = let (rty, imp) = addImpl ctxt ty
 >           ity = makeIvorTerm ctxt rty
 >           extCtxt = addEntry ctxt n (IvorFun undefined (Just ity) 
->                                              imp undefined decl)
+>                                              imp undefined decl flags)
 >           pclauses = map (mkPat extCtxt imp) clauses in
 >       IvorFun (toIvorName n) (Just ity) imp 
->                   (PattDef (Patterns pclauses)) decl
+>                   (PattDef (Patterns pclauses)) decl flags
 >   where mkPat ectx imp (id,(RawClause lhs rhs)) 
 >               = let lhs' = addPlaceholders ectx lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
@@ -36,34 +36,34 @@ into an ivor definition, with all the necessary placeholders added.
 >        Ctxt IvorFun -> -- new
 >        [Decl] -> Ctxt IvorFun
 > mif ctxt acc [] = acc
-> mif ctxt acc (decl@(Fun f):ds) 
->         = let fn = makeIvorFun (ctxt++acc) decl f in
+> mif ctxt acc (decl@(Fun f flags):ds) 
+>         = let fn = makeIvorFun (ctxt++acc) decl f flags in
 >               mif ctxt (addEntry acc (funId f) fn) ds
-> mif ctxt acc (decl@(Fwd n ty):ds) 
+> mif ctxt acc (decl@(Fwd n ty flags):ds) 
 >         = let (rty, imp) = addImpl (ctxt++acc) ty
 >               ity = makeIvorTerm (ctxt++acc) rty in
 >               mif ctxt (addEntry acc n (IvorFun (toIvorName n) (Just ity) 
->                                             imp Later decl)) ds
+>                                             imp Later decl flags)) ds
 > mif ctxt acc (decl@(DataDecl d):ds) 
 >         = addDataEntries ctxt acc decl d ds -- will call mif on ds
-> mif ctxt acc (decl@(TermDef n tm):ds) 
+> mif ctxt acc (decl@(TermDef n tm flags):ds) 
 >         = let (itmraw, imp) = addImpl (ctxt++acc) tm
 >               itm = makeIvorTerm (ctxt++acc) itmraw in
 >               mif ctxt (addEntry acc n 
 >                   (IvorFun (toIvorName n) Nothing imp 
->                            (SimpleDef itm) decl)) ds
+>                            (SimpleDef itm) decl flags)) ds
 > mif ctxt acc (decl@(LatexDefs ls):ds) 
 >         = mif ctxt (addEntry acc (MN "latex" 0) 
->                     (IvorFun undefined Nothing 0 undefined decl)) ds
+>                     (IvorFun undefined Nothing 0 undefined decl [])) ds
 > mif ctxt acc (decl@(Prf (Proof n _ scr)):ds) 
 >     = case ctxtLookup acc n of
 >          Nothing -> -- add the script and process the type later, should
 >                     -- be a metavariable
 >             mif ctxt (addEntry acc n
->               (IvorFun (toIvorName n) Nothing 0 (IProof scr) decl)) ds
->          Just (IvorFun _ (Just ty) imp _ _) -> 
+>               (IvorFun (toIvorName n) Nothing 0 (IProof scr) decl [])) ds
+>          Just (IvorFun _ (Just ty) imp _ _ _) -> 
 >             mif ctxt (addEntry acc n
->               (IvorFun (toIvorName n) (Just ty) imp (IProof scr) decl)) ds
+>               (IvorFun (toIvorName n) (Just ty) imp (IProof scr) decl [])) ds
 
 error "Not implemented"
 
@@ -76,10 +76,10 @@ Add an entry for the type id and for each of the constructors.
 >     let (tyraw, imp) = addImpl (ctxt++acc) tty
 >         tytm = makeIvorTerm (ctxt++acc) tyraw
 >         acctmp = addEntry (ctxt++acc) tid (IvorFun (toIvorName tid) (Just tytm) imp 
->                                   undefined decl)
+>                                   undefined decl [])
 >         ddef = makeInductive acctmp tid (getBinders tytm []) cons []
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
->                                  (DataDef ddef e) decl) in
+>                                  (DataDef ddef e) decl []) in
 >         addConEntries ctxt acc' cons ds
 
      Inductive (toIvorName tid) [] 
@@ -155,7 +155,7 @@ n is a parameter
 > addConEntries ctxt acc ((cid, ty):cs) ds 
 >     = let (tyraw, imp) = addImpl (ctxt++acc) ty
 >           tytm = makeIvorTerm (ctxt++acc) tyraw
->           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon Constructor) in
+>           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon Constructor []) in
 >           addConEntries ctxt acc' cs ds
 
 > addIvor :: Monad m => 
@@ -167,16 +167,21 @@ n is a parameter
 
 > addIvorDef :: Monad m =>
 >                Ctxt IvorFun -> Context -> (Id, IvorFun) -> m Context
-> addIvorDef raw ctxt (n,IvorFun name tyin _ def (LatexDefs _)) = return ctxt
-> addIvorDef raw ctxt (n,IvorFun name tyin _ def _) 
+> addIvorDef raw ctxt (n,IvorFun name tyin _ def (LatexDefs _) _) = return ctxt
+> addIvorDef raw ctxt (n,IvorFun name tyin _ def _ flags) 
 >     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> -- trace (show ps) $ 
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ctxt
 >                            else addMeta raw ctxt newdefs
->         SimpleDef tm -> {- trace (show tm) $ -} case tyin of
->                           Nothing -> addDef ctxt name tm
->                           Just ty -> addTypedDef ctxt name tm ty
+>         SimpleDef tm -> 
+>                         do tm' <- case (CGEval `elem` flags) of
+>                              False -> return tm
+>                              True -> do ctm <- check ctxt tm
+>                                         return (view (evalnew ctxt ctm))
+>                            case tyin of
+>                                 Nothing -> addDef ctxt name tm'
+>                                 Just ty -> addTypedDef ctxt name tm' ty
 >         DataDef ind e -> do 
 >                             c <- addDataNoElim ctxt ind
 >                           -- add once to fill in placeholders
@@ -193,7 +198,6 @@ n is a parameter
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
 >         _ -> return ctxt
 >    where unjust (Just x) = x
-
 
 > addMeta :: Monad m =>
 >            Ctxt IvorFun -> Context -> [(Name, ViewTerm)] -> m Context

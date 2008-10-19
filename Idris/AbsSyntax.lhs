@@ -34,11 +34,20 @@
 A program is a collection of datatype and function definitions.
 We store everything directly as a 'ViewTerm' from Ivor.
 
-> data Decl = DataDecl Datatype | Fwd Id RawTerm
->           | Fun Function | TermDef Id RawTerm | Constructor
+> data Decl = DataDecl Datatype | Fwd Id RawTerm [CGFlag]
+>           | Fun Function [CGFlag] | TermDef Id RawTerm [CGFlag] | Constructor
 >           | Prf Proof
 >           | LatexDefs [(Id,String)]
 >    deriving Show
+
+Flags for controlling compilation. In particular, some functions exist only
+run compile-time function generation, so we never want to generate code
+(e.g. generating foreign functiond defs).
+Also, some functions should be evaluated completely before code generation
+(e.g. for statically knowing the C function to compile)
+
+> data CGFlag = NoCG | CGEval
+>    deriving (Show, Eq)
 
 Function types and clauses are given separately, so we'll parse them
 separately then collect them together into a list of Decls
@@ -47,41 +56,42 @@ A FunClauseP is a clause which is probably the wrong type, but instructs
 the system to insert a hole for a proof that turns it into the right type.
 
 > data ParseDecl = RealDecl Decl
->                | FunType Id RawTerm
->                | FunClause RawTerm RawTerm
+>                | FunType Id RawTerm [CGFlag] 
+>                | FunClause RawTerm RawTerm [CGFlag]
 >                | FunClauseP RawTerm RawTerm Id
 >                | ProofScript Id [ITactic]
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
 > collectDecls pds = cds [] [] pds
 >   where cds rds fwds ((RealDecl d):ds) = cds (d:rds) fwds ds
->         cds rds fwds ((FunType n t):ds) = getClauses rds fwds n t [] ds
->         cds rds fwds ((FunClause (RVar n) ret):ds) 
->                 = cds ((TermDef n ret):rds) fwds ds
->         cds rds fwds ds@((FunClause app ret):_) 
+>         cds rds fwds ((FunType n t fl):ds) = getClauses rds fwds n t fl [] ds
+>         cds rds fwds ((FunClause (RVar n) ret fl):ds) 
+>                 = cds ((TermDef n ret fl):rds) fwds ds
+>         cds rds fwds ds@((FunClause app ret fl):_) 
 >             = case getFnName app of
->                 Just n -> case (lookup n fwds) of
->                             Nothing ->
->                                  fail $ "No type declaration for " ++ show n
->                             Just ty -> getClauses rds fwds n ty [] ds
+>                 Just n -> 
+>                    case (lookup n fwds) of
+>                      Nothing -> fail $ "No type declaration for " ++ show n
+>                      Just (ty,fl) -> getClauses rds fwds n ty fl [] ds
 >                 _ -> fail $ "Invalid pattern clause"
 >         cds rds fwds ((ProofScript n prf):ds)
 >             = case lookup n fwds of
 >                      Nothing ->
 >                          cds ((Prf (Proof n Nothing prf)):rds) fwds ds
->                      Just ty -> 
+>                      Just (ty, fl) -> 
 >                          cds ((Prf (Proof n (Just ty) prf)):rds) fwds ds
 >         cds rds fwds [] = return (reverse rds)
 
->         getClauses rds fwds n t clauses ((FunClause pat ret):ds)
+>         getClauses rds fwds n t fl clauses ((FunClause pat ret fl'):ds)
 >             | (RVar n) == getFn pat
->                 = getClauses rds fwds n t ((n, RawClause pat ret):clauses) ds
->         getClauses rds fwds n t clauses ((FunClauseP pat ret mv):ds)
+>                 = getClauses rds fwds n t fl ((n, RawClause pat ret):clauses) ds
+>         getClauses rds fwds n t fl clauses ((FunClauseP pat ret mv):ds)
 >             | (RVar n) == getFn pat
->                 = getClauses rds fwds n t ((n, RawClause pat (mkhret mv ret)):clauses) ds
->         getClauses rds fwds n t [] ds = cds ((Fwd n t):rds) ((n,t):fwds) ds
->         getClauses rds fwds n t clauses ds =
->             cds ((Fun (Function n t (reverse clauses))):rds) fwds ds
+>                 = getClauses rds fwds n t fl ((n, RawClause pat (mkhret mv ret)):clauses) ds
+>         getClauses rds fwds n t fl [] ds 
+>                = cds ((Fwd n t fl):rds) ((n,(t,fl)):fwds) ds
+>         getClauses rds fwds n t fl clauses ds =
+>             cds ((Fun (Function n t (reverse clauses)) fl):rds) fwds ds
 
 >         mkhret mv v = RBind (UN "value") (RLet v RPlaceholder) 
 >                             (RMetavar mv)
@@ -109,9 +119,9 @@ the system to insert a hole for a proof that turns it into the right type.
 >   deriving Show
 
 > getId :: Decl -> Id
-> getId (Fun f) = funId f
+> getId (Fun f _) = funId f
 > getId (DataDecl d) = tyId d
-> getId (TermDef n tm) = n
+> getId (TermDef n tm _) = n
 
 Raw terms, as written by the programmer with no implicit arguments added.
 
@@ -251,7 +261,6 @@ Pattern clauses
 > mkApp f [] = f
 > mkApp f (a:as) = mkApp (RApp f a) as
 
-
 For each raw definition, we'll translate it into something Ivor will understand
 with all the placeholders added. For this we'll need to know how many
 implicit arguments each function has.
@@ -261,7 +270,8 @@ implicit arguments each function has.
 >       ivorFType :: (Maybe ViewTerm),
 >       implicitArgs :: Int,
 >       ivorDef :: IvorDef,
->       rawDecl :: Decl -- handy to keep around for display
+>       rawDecl :: Decl, -- handy to keep around for display
+>       funFlags :: [CGFlag]
 >     }
 >    deriving Show
 
@@ -407,7 +417,7 @@ Convert a raw term to an ivor term, adding placeholders
 >     -- out of an application
 >     where ap ex (RVar n)
 >               = case ctxtLookup ctxt n of
->                   Just (IvorFun _ (Just ty) imp _ _) -> 
+>                   Just (IvorFun _ (Just ty) imp _ _ _) -> 
 >                     mkApp (RVar n) 
 >                               (mkImplicitArgs 
 >                                (map fst (fst (getBinders ty []))) imp ex)
@@ -465,7 +475,7 @@ in our list of explicit names to add, add it.
 
 > dump :: Ctxt IvorFun -> String
 > dump ctxt = concat $ map dumpFn (ctxtAlist ctxt)
->   where dumpFn (_,IvorFun n ty imp def _) =
+>   where dumpFn (_,IvorFun n ty imp def _ _) =
 >             show n ++ " : " ++ show ty ++ "\n" ++
 >             "   " ++ show imp ++ " implicit\n" ++
 >             show def ++ "\n\n"

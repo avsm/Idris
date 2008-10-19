@@ -20,7 +20,7 @@ trees. Ignore constructors, types, etc. Simple definitions are, of course,
 already simple case trees.
 
 > comp :: Ctxt IvorFun -> Context -> Id -> FilePath -> IO ()
-> comp raw ctxt nm ofile = do let pdefs = getAllPatternDefs ctxt
+> comp raw ctxt nm ofile = do let pdefs = getCompileDefs raw ctxt
 >                             let trans = makeTransforms raw ctxt
 >                             let pcomp = map (pmCompDef raw ctxt trans) pdefs
 >                             let scs = allSCs pcomp
@@ -34,11 +34,37 @@ already simple case trees.
 >                             xs' = allSCs xs in
 >                             scfuns ++ xs'
 
+Get all the definitions we want to compile (i.e., skipping NoCG ones)
+
+> getCompileDefs :: Ctxt IvorFun -> Context -> [(Name, (ViewTerm, Patterns))]
+> getCompileDefs raw ctxt = defs' [] (ctxtAlist raw) 
+>    where alldefs = getAllPatternDefs ctxt
+>          defs' acc [] = dropAll acc alldefs
+>          defs' acc ((n,ifun):ds) 
+>              = let flags = funFlags ifun 
+>                    inm = toIvorName n in
+>                case (NoCG `elem` flags) of
+>                     True -> {- trace ("Not compiling " ++ show n) -}
+>                                defs' (inm:acc) ds
+>                     _ -> defs' acc ds
+>          dropAll drops [] = []
+>          dropAll drops ((n,def):ds) | n `elem` drops = dropAll drops ds
+>                                     | otherwise = (n,def):(dropAll drops ds)
+
 > pmCompDef :: Ctxt IvorFun -> Context -> [Transform] ->
 >              (Name, (ViewTerm, Patterns)) -> 
 >              (Name, ([Name], SimpleCase))
 > pmCompDef raw ctxt trans (n, (ty,ps)) 
->              = (n, pmcomp raw ctxt n ty (transform ctxt trans ps))
+> --    = let flags = getFlags n raw in
+> --          case ((NoCG `elem` flags), (CGEval `elem` flags)) of 
+> --             (True, _) -> trace ("Not compiling " ++ show n) (n, [])
+> --             (False, False) -> 
+>       =            (n, pmcomp raw ctxt n ty (transform ctxt trans ps))
+
+     where getFlags n raw = case ctxtLookup raw n of
+                              Just i -> funFlags i
+                              Nothing -> []
+
 
 > compileAll :: Ctxt IvorFun -> Context -> FilePath -> 
 >               [(Name, SCFun)] -> IO ()

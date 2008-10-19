@@ -103,7 +103,6 @@ data Token
       | TokenUnitType
       | TokenUnderscore
       | TokenBang
-      | TokenLaTeX
 -- Tactics
       | TokenProof
       | TokenIntro
@@ -120,6 +119,10 @@ data Token
       | TokenUse
       | TokenAbandon
       | TokenQED
+-- Directives
+      | TokenLaTeX
+      | TokenNoCG
+      | TokenEval
       | TokenEOF
  deriving (Show, Eq)
 
@@ -249,6 +252,8 @@ lexVar cont cs =
 lexSpecial cont cs =
     case span isAllowed cs of
       ("latex",rest) -> cont TokenLaTeX rest
+      ("nocg",rest) -> cont TokenNoCG rest
+      ("eval",rest) -> cont TokenEval rest
 -- tactics
 -- FIXME: it'd be better to have a 'theorem proving' state so that these
 -- don't need the ugly syntax...
