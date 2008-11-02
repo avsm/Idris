@@ -24,6 +24,11 @@ data FArgList : (List FType) -> # where
   | fCons : {x:FType} -> (fx:i_ftype x) -> (fxs:FArgList xs) ->
 			 (FArgList (Cons x xs));
 
+fapp : {xs,ys:List FType} -> 
+       (FArgList xs) -> (FArgList ys) -> (FArgList (app xs ys));
+fapp fNil fxs = fxs;
+fapp (fCons fx fxs) fys = fCons fx (fapp fxs fys);
+
 data Command : # where
     PutStr : String -> Command
   | GetStr : Command
@@ -118,10 +123,12 @@ mkFType (FFun fn args ret) = mkFType' args ret;
 
 mkFDef : String -> (ts:List FType) -> (xs:List FType) -> (FArgList xs) ->
 	 (ret:FType) -> (mkFType' ts ret)   %nocg;
-mkFDef nm Nil accA fs ret = IODo (Foreign (FFun nm accA ret) fs)
+mkFDef nm Nil accA fs ret 
+   = IODo (Foreign (FFun nm accA ret) fs)
 				 (\a. (IOReturn a));
 mkFDef nm (Cons t ts) accA fs ret 
-   = \x:(i_ftype t) . mkFDef nm ts (Cons t accA) (fCons x fs) ret;
+   = \x:(i_ftype t) . mkFDef nm ts (app accA (Cons t Nil)) 
+				   (fapp fs (fCons x fNil)) ret;
 
 mkForeign : (f:ForeignFun) -> (mkFType f)   %nocg;
 mkForeign (FFun fn args ret) = mkFDef fn args Nil fNil ret;
