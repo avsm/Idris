@@ -5,6 +5,7 @@ data FType = FUnit | FInt | FStr | FPtr;
 i_ftype : FType -> #;
 i_ftype FInt = Int;
 i_ftype FStr = String;
+i_ftype FPtr = Ptr;
 i_ftype FUnit = ();
 
 data ForeignFun = FFun String (List FType) FType;

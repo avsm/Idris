@@ -38,6 +38,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | Fun Function [CGFlag] | TermDef Id RawTerm [CGFlag] | Constructor
 >           | Prf Proof
 >           | LatexDefs [(Id,String)]
+>           | CLib String | CInclude String
 >    deriving Show
 
 Flags for controlling compilation. In particular, some functions exist only
@@ -203,6 +204,7 @@ value.
 >               | StringType
 >               | IntType
 >               | FloatType
+>               | PtrType
 >               | Builtin String -- builtin type, eg Handle or Lock
 >    deriving Eq
 
@@ -215,6 +217,7 @@ value.
 >     show IntType = "Int"
 >     show FloatType = "Float"
 >     show StringType = "String"
+>     show PtrType = "Ptr"
 >     show (Builtin s) = s
 
 > data Op = Plus | Minus | Times | Divide | Concat | JMEq
@@ -402,6 +405,7 @@ ready for typechecking
 > toIvorConst StringType = Name Unknown (name "String")
 > toIvorConst IntType = Name Unknown (name "Int")
 > toIvorConst FloatType = Name Unknown (name "Float")
+> toIvorConst PtrType = Name Unknown (name "Ptr")
 > toIvorConst (Builtin ty) = Name Unknown (name ty)
 
 Convert a raw term to an ivor term, adding placeholders

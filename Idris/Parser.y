@@ -61,6 +61,7 @@ import Idris.Lib
       floattype       { TokenFloatType }
       stringtype      { TokenStringType }
       handletype      { TokenHandleType }
+      ptrtype         { TokenPtrType }
       locktype        { TokenLockType }
       type            { TokenType }
       data            { TokenDataType }
@@ -95,6 +96,8 @@ import Idris.Lib
       latex           { TokenLaTeX }
       nocg            { TokenNoCG }
       eval            { TokenEval }
+      cinclude        { TokenCInclude }
+      clib            { TokenCLib }
 
 %nonassoc LAM
 %nonassoc let in
@@ -112,7 +115,7 @@ import Idris.Lib
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype floattype stringtype int string float bool refl do type
-          empty unit '_' if then else handletype locktype metavar
+          empty unit '_' if then else ptrtype handletype locktype metavar
 
 
 %%
@@ -132,6 +135,8 @@ Declaration :: { ParseDecl }
 Declaration: Function { $1 }
            | Datatype { RealDecl (DataDecl $1) }
            | Latex { RealDecl $1 }
+           | cinclude string { RealDecl (CInclude $2) }
+           | clib string { RealDecl (CLib $2) }
 
 Function :: { ParseDecl }
 Function : Name ':' Type Flags ';' { FunType $1 $3 $4 }
@@ -285,6 +290,7 @@ Constant : type { TYPE }
          | stringtype { StringType }
          | inttype { IntType }
          | floattype { FloatType }
+         | ptrtype { PtrType }
          | handletype { Builtin "Handle" }
          | locktype { Builtin "Lock" }
          | int { Num $1 }

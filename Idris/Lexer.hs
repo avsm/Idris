@@ -60,6 +60,7 @@ data Token
       | TokenStringType
       | TokenHandleType
       | TokenLockType
+      | TokenPtrType
       | TokenDataType
       | TokenNoElim
       | TokenPartial
@@ -123,6 +124,8 @@ data Token
       | TokenLaTeX
       | TokenNoCG
       | TokenEval
+      | TokenCInclude
+      | TokenCLib
       | TokenEOF
  deriving (Show, Eq)
 
@@ -237,6 +240,7 @@ lexVar cont cs =
       ("String",rest) -> cont TokenStringType rest
       ("Lock",rest) -> cont TokenLockType rest
       ("Handle",rest) -> cont TokenHandleType rest
+      ("Ptr",rest) -> cont TokenPtrType rest
       ("refl",rest) -> cont TokenRefl rest
       ("include",rest) -> cont TokenInclude rest
       ("do",rest) -> cont TokenDo rest
@@ -254,6 +258,8 @@ lexSpecial cont cs =
       ("latex",rest) -> cont TokenLaTeX rest
       ("nocg",rest) -> cont TokenNoCG rest
       ("eval",rest) -> cont TokenEval rest
+      ("include",rest) -> cont TokenCInclude rest
+      ("lib",rest) -> cont TokenCLib rest
 -- tactics
 -- FIXME: it'd be better to have a 'theorem proving' state so that these
 -- don't need the ugly syntax...
