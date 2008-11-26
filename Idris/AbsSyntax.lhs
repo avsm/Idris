@@ -289,7 +289,13 @@ Name definitions Ivor-side.
 >              | Later -- forward declaration
 >    deriving Show
 
-> type Definitions = Ctxt IvorFun
+> data IdrisState = IState {
+>       idris_context :: Ctxt IvorFun, -- function definitions
+>       idris_decls :: [Decl] -- all checked declarations
+>     }
+
+> initState :: IdrisState
+> initState = IState newCtxt []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting

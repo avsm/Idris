@@ -19,12 +19,17 @@ Get every definition from the context. Convert them all to simple case
 trees. Ignore constructors, types, etc. Simple definitions are, of course, 
 already simple case trees.
 
-> comp :: Ctxt IvorFun -> Context -> Id -> FilePath -> IO ()
-> comp raw ctxt nm ofile = do let pdefs = getCompileDefs raw ctxt
->                             let trans = makeTransforms raw ctxt
->                             let pcomp = map (pmCompDef raw ctxt trans) pdefs
->                             let scs = allSCs pcomp
->                             compileAll raw ctxt ofile scs
+> comp :: IdrisState -> Context -> Id -> FilePath -> IO ()
+> comp ist ctxt nm ofile 
+>          = do let raw = idris_context ist
+>               let decls = idris_decls ist
+>               let pdefs = getCompileDefs raw ctxt
+>               let trans = makeTransforms raw ctxt
+>               let pcomp = map (pmCompDef raw ctxt trans) pdefs
+>               let declouts = filter (/="") (map epicDecl decls)
+>               let clink = filter (/="") (map epicLink decls)
+>               let scs = allSCs pcomp
+>               compileAll raw ctxt ofile clink declouts scs
 >    where allSCs [] = []
 >          allSCs ((x,(args,def)):xs) 
 >                       = -- trace (show (x,def)) $
@@ -33,6 +38,17 @@ already simple case trees.
 >                                             (n, scFun ctxt args sc)) lifted
 >                             xs' = allSCs xs in
 >                             scfuns ++ xs'
+
+Convert top level declarations to epic output.
+This is just for the directives to link in C headers, .o file, etc.
+
+> epicDecl :: Decl -> String
+> epicDecl (CInclude i) = "%include " ++ show i
+> epicDecl _ = ""
+
+> epicLink :: Decl -> String
+> epicLink (CLib l) = l
+> epicLink _ = ""
 
 Get all the definitions we want to compile (i.e., skipping NoCG ones)
 
@@ -67,14 +83,18 @@ Get all the definitions we want to compile (i.e., skipping NoCG ones)
 
 
 > compileAll :: Ctxt IvorFun -> Context -> FilePath -> 
+>               [String] -> -- options to pass to epic
+>               [String] -> -- raw epic output
 >               [(Name, SCFun)] -> IO ()
-> compileAll ctxt raw ofile scs = do
+> compileAll ctxt raw ofile clink outputs scs = do
 >      (efile, eH) <- tempfile
 >      prel <- readLibFile defaultLibPath "Prelude.e"
 >      hPutStrLn eH prel
+>      mapM_ (hPutStrLn eH) outputs
 >      mapM_ (writeDef eH) scs
 >      hClose eH
->      let cmd = "epic " ++ efile ++ " -o " ++ ofile
+>      let cmd = "epic " ++ efile ++ " -o " ++ ofile ++ " " ++
+>                concat (map (' ':) clink)
 >      exit <- system cmd
 >      removeFile efile
 >      if (exit /= ExitSuccess) 
@@ -119,6 +139,8 @@ TMP HACK until we do coercions on primitives properly
 
 >     | n == name "__toInt" =
 >         "__epic_toInt(" ++ writeSC' arg ++ ")"
+>     | n == name "__toString" =
+>         "__epic_toString(" ++ writeSC' arg ++ ")"
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
 >       where list [] = ""
 >             list [a] = writeSC' a

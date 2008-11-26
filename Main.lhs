@@ -34,15 +34,17 @@ Load things in this order:
 > main = do args <- getArgs
 >           let infile = args!!0
 >           ctxt <- addEquality emptyContext (name "Eq") (name "refl")
->           (ctxt, defs) <- processInput ctxt newCtxt "builtins.idr"
+>           (ctxt, defs) <- processInput ctxt initState "builtins.idr"
 >           ctxt <- prims ctxt
 >           (ctxt, defs) <- processInput ctxt defs "prelude.idr"
 >           (ctxt, defs) <- processInput ctxt defs infile
 >           repl defs ctxt
 
-> processInput :: Context -> Ctxt IvorFun -> FilePath ->
->                 IO (Context, Ctxt IvorFun)
-> processInput ctxt defs file = do
+> processInput :: Context -> IdrisState -> FilePath ->
+>                 IO (Context, IdrisState)
+> processInput ctxt ist file = do
+>     let defs = idris_context ist
+>     let decls = idris_decls ist
 >     prelude <- readLib defaultLibPath file
 >     let ptree = parse prelude file
 >     case ptree of
@@ -52,10 +54,10 @@ Load things in this order:
 >                             Success x -> return x
 >                             Failure err _ _ -> do putStrLn err
 >                                                   return ctxt
->                        return (ctxt, alldefs)
+>                        return (ctxt, (IState alldefs (decls++ds)))
 >       Failure err f ln -> fail err
 
-> data REPLRes = Quit | Continue | NewCtxt (Ctxt IvorFun) Context
+> data REPLRes = Quit | Continue | NewCtxt IdrisState Context
 
 Command; minimal abbreviation; function to run it; description; visibility
 
@@ -71,29 +73,38 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("help", "h", help, "Show help text",True),
 >       ("?", "?", help, "Show help text",True)]
 
-> type Command = Ctxt IvorFun -> Context -> [String] -> IO REPLRes
+> type Command = IdrisState -> Context -> [String] -> IO REPLRes
 
 > quit, tmtype, tcomp, texec, norm, help :: Command
 
 > quit _ _ _ = do return Quit
-> tmtype raw ctxt tms = do icheckType raw ctxt (unwords tms)
->                          return Continue
-> prove raw ctxt (nm:[]) = do ctxt' <- doProof raw ctxt (UN nm)
->                             return (NewCtxt raw ctxt')
-> ivor raw ctxt _ = do ctxt' <- doIvor ctxt
->                      return (NewCtxt raw ctxt')
-> latex raw ctxt (nm:defs) = do latexDump raw (latexDefs defs) (UN nm)
->                               return Continue
-> tcomp raw ctxt (top:[]) = do comp raw ctxt (UN top) top
->                              putStrLn $ "Output " ++ top
->                              return Continue
-> tcomp raw ctxt (top:exec:_) = do comp raw ctxt (UN top) exec
->                                  return Continue
-> texec raw ctxt _ = do comp raw ctxt (UN "main") "main"
->                       system "./main"
->                       return Continue
-> norm raw ctxt tms = do termInput False raw ctxt (unwords tms)
->                        return Continue
+> tmtype (IState raw _) ctxt tms = do icheckType raw ctxt (unwords tms)
+>                                     return Continue
+> prove ist ctxt (nm:[]) 
+>           = do let raw = idris_context ist
+>                ctxt' <- doProof raw ctxt (UN nm)
+>                return (NewCtxt ist ctxt')
+> ivor ist ctxt _ = do ctxt' <- doIvor ctxt
+>                      return (NewCtxt ist ctxt')
+> latex ist ctxt (nm:defs) 
+>           = do latexDump (idris_context ist) (latexDefs defs) (UN nm)
+>                return Continue
+> tcomp ist ctxt (top:[]) 
+>           = do let raw = idris_context ist
+>                comp ist ctxt (UN top) top
+>                putStrLn $ "Output " ++ top
+>                return Continue
+> tcomp ist ctxt (top:exec:_) 
+>           = do comp ist ctxt (UN top) exec
+>                return Continue
+> texec ist ctxt _ 
+>           = do comp ist ctxt (UN "main") "main"
+>                system "./main"
+>                return Continue
+> norm ist ctxt tms 
+>          = do let raw = idris_context ist
+>               termInput False raw ctxt (unwords tms)
+>               return Continue
 
 > help _ _ _ 
 >    = do putStrLn $ "\nIdris version " ++ version
@@ -107,9 +118,10 @@ Command; minimal abbreviation; function to run it; description; visibility
 >         putStrLn "\nCommands may be given the shortest unambiguous abbreviation (e.g. :q, :l)\n"
 >         return Continue
 
-> repl :: Ctxt IvorFun -> Context -> IO ()
-> repl raw ctxt = do inp <- readline ("Idris> ")
->                    res <- case inp of
+> repl :: IdrisState -> Context -> IO ()
+> repl ist@(IState raw decls) ctxt 
+>          = do inp <- readline ("Idris> ")
+>               res <- case inp of
 >                        Nothing -> return Continue
 >                        Just (':':command) -> 
 >                            do addHistory (':':command)
@@ -118,17 +130,17 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                            do termInput True raw ctxt exprinput
 >                               addHistory exprinput
 >                               return Continue
->                    case res of
->                      Continue -> repl raw ctxt
->                      NewCtxt raw' ctxt' -> repl raw' ctxt'
+>               case res of
+>                      Continue -> repl ist ctxt
+>                      NewCtxt ist' ctxt' -> repl ist' ctxt'
 >                      _ -> return ()
 
 >   where
 >      runCommand (c:args) ((_, abbr, fun, _, _):xs) 
->         | matchesAbbrev abbr c = fun raw ctxt args
+>         | matchesAbbrev abbr c = fun ist ctxt args
 >         | otherwise = runCommand (c:args) xs
 >      runCommand _ _ = do putStrLn "Unrecognised command"
->                          help raw ctxt []
+>                          help ist ctxt []
 >                          return Continue
 >      matchesAbbrev [] _ = True
 >      matchesAbbrev (a:xs) (c:cs) | a == c = matchesAbbrev xs cs

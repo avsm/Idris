@@ -65,6 +65,11 @@ into an ivor definition, with all the necessary placeholders added.
 >             mif ctxt (addEntry acc n
 >               (IvorFun (toIvorName n) (Just ty) imp (IProof scr) decl [])) ds
 
+Just pass these on to epic to do the right thing
+
+> mif ctxt acc ((CInclude _):ds) = mif ctxt acc ds
+> mif ctxt acc ((CLib _):ds) = mif ctxt acc ds
+
 error "Not implemented"
 
 Add an entry for the type id and for each of the constructors.

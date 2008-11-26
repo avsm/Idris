@@ -37,3 +37,6 @@ __epic_bool (x:Int) -> Data =
 
 __epic_toInt (x:String) -> Int = 
    foreign Int "atoi" (x:String)
+
+__epic_toString (x:Int) -> String = 
+   foreign String "intToStr" (x:Int)
