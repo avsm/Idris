@@ -357,50 +357,59 @@ ready for typechecking
 > toIvorName :: Id -> Name
 > toIvorName i = name (show i)
 
-> toIvor :: RawTerm -> ViewTerm
-> toIvor tm = evalState (toIvorS tm) 0
-
-> toIvorS :: RawTerm -> State Int ViewTerm
-> toIvorS (RVar n) = return $ Name Unknown (toIvorName n)
-> toIvorS (RApp f a) = do f' <- toIvorS f
->                         a' <- toIvorS a
->                         return (App f' a')
-> toIvorS (RBind (MN "X" 0) (Pi _ ty) sc) 
+> toIvor :: Id -> RawTerm -> ViewTerm
+> toIvor fname tm = evalState (toIvorS tm) (0,1)
+>   where
+>     toIvorS :: RawTerm -> State (Int, Int) ViewTerm
+>     toIvorS (RVar n) = return $ Name Unknown (toIvorName n)
+>     toIvorS (RApp f a) = do f' <- toIvorS f
+>                             a' <- toIvorS a
+>                             return (App f' a')
+>     toIvorS (RBind (MN "X" 0) (Pi _ ty) sc) 
 >            = do ty' <- toIvorS ty
 >                 sc' <- toIvorS sc
->                 i <- get
->                 put (i+1)
+>                 (i, x) <- get
+>                 put (i+1, x)
 >                 return $ Forall (toIvorName (MN "X" i)) ty' sc'
-> toIvorS (RBind n (Pi _ ty) sc) 
+>     toIvorS (RBind n (Pi _ ty) sc) 
 >            = do ty' <- toIvorS ty
 >                 sc' <- toIvorS sc
 >                 return $ Forall (toIvorName n) ty' sc'
-> toIvorS (RBind n (Lam ty) sc) 
+>     toIvorS (RBind n (Lam ty) sc) 
 >            = do ty' <- toIvorS ty
 >                 sc' <- toIvorS sc
 >                 return $ Lambda (toIvorName n) ty' sc'
-> toIvorS (RBind n (RLet val ty) sc) 
+>     toIvorS (RBind n (RLet val ty) sc) 
 >            = do ty' <- toIvorS ty
 >                 val' <- toIvorS val
 >                 sc' <- toIvorS sc
 >                 return $ Let (toIvorName n) ty' val' sc'
-> toIvorS (RConst c) = return $ toIvorConst c
-> toIvorS RPlaceholder = return Placeholder
-> toIvorS (RMetavar n) = return $ Metavar (toIvorName n)
-> toIvorS (RInfix JMEq l r) = do l' <- toIvorS l
->                                r' <- toIvorS r
->                                return $ apply (Name Unknown (opFn JMEq)) 
->                                           [Placeholder, Placeholder,l',r']
-> toIvorS (RInfix OpEq l r) = do l' <- toIvorS l
->                                r' <- toIvorS r
->                                return $ apply (Name Unknown (opFn OpEq))
->                                           [Placeholder,l',r']
-> toIvorS (RInfix op l r) = do l' <- toIvorS l
->                              r' <- toIvorS r
->                              return $ apply (Name Unknown (opFn op)) [l',r']
-> toIvorS (RDo dos) = do tm <- undo dos
->                        toIvorS tm
-> toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
+>     toIvorS (RConst c) = return $ toIvorConst c
+>     toIvorS RPlaceholder = return Placeholder
+>     toIvorS (RMetavar (UN "")) -- no name, so make on eup
+>                 = do (i, h) <- get
+>                      put (i, h+1)
+>                      return $ Metavar (toIvorName (mkName fname h))
+>     toIvorS (RMetavar n) = return $ Metavar (toIvorName n)
+>     toIvorS (RInfix JMEq l r) 
+>                 = do l' <- toIvorS l
+>                      r' <- toIvorS r
+>                      return $ apply (Name Unknown (opFn JMEq)) 
+>                                 [Placeholder, Placeholder,l',r']
+>     toIvorS (RInfix OpEq l r) 
+>                 = do l' <- toIvorS l
+>                      r' <- toIvorS r
+>                      return $ apply (Name Unknown (opFn OpEq))
+>                                 [Placeholder,l',r']
+>     toIvorS (RInfix op l r) 
+>                 = do l' <- toIvorS l
+>                      r' <- toIvorS r
+>                      return $ apply (Name Unknown (opFn op)) [l',r']
+>     toIvorS (RDo dos) = do tm <- undo dos
+>                            toIvorS tm
+>     toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
+>     mkName (UN n) i = UN (n++"_"++show i)
+>     mkName (MN n j) i = MN (n++"_"++show i) j
 
 > toIvorConst (Num x) = Constant x
 > toIvorConst (Str str) = Constant str
@@ -416,9 +425,9 @@ ready for typechecking
 
 Convert a raw term to an ivor term, adding placeholders
 
-> makeIvorTerm :: Ctxt IvorFun -> RawTerm -> ViewTerm
-> makeIvorTerm ctxt tm = let expraw = addPlaceholders ctxt tm in
->                            toIvor expraw
+> makeIvorTerm :: Id -> Ctxt IvorFun -> RawTerm -> ViewTerm
+> makeIvorTerm n ctxt tm = let expraw = addPlaceholders ctxt tm in
+>                              toIvor n expraw
 
 > addPlaceholders :: Ctxt IvorFun -> RawTerm -> RawTerm
 > addPlaceholders ctxt tm = ap [] tm
@@ -463,7 +472,7 @@ in our list of explicit names to add, add it.
 > getBinders sc acc = (reverse acc, sc)
 
 
-> undo :: [Do] -> State Int RawTerm
+> undo :: [Do] -> State (Int, Int) RawTerm
 > undo [] = fail "The last statement in a 'do' block must be an expression"
 > undo [DoExp last] = return last
 > undo ((DoBinding v' ty exp):ds)
@@ -475,8 +484,8 @@ in our list of explicit names to add, add it.
 > undo ((DoExp exp):ds)
 >          = -- bind exp (\_ . [[ds]])
 >            do ds' <- undo ds
->               i <- get
->               put (i+1)
+>               (i, h) <- get
+>               put (i+1, h)
 >               let k = RBind (MN "x" i) (Lam RPlaceholder) ds'
 >               return $ mkApp (RVar (UN "bind")) [RPlaceholder, RPlaceholder,
 >                                                  exp, k]

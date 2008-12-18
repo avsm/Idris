@@ -151,7 +151,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                Success tm -> execEval runio raw ctxt (tm, viewType tm)
 >                Failure err f ln -> putStrLn err
 >   where getTerm tm = do parsed <- parseTerm tm
->                         let itm = makeIvorTerm raw parsed
+>                         let itm = makeIvorTerm (UN "__main") raw parsed
 >                         check ctxt itm
 
 If it is an IO type, execute it, otherwise just eval it.
@@ -171,7 +171,7 @@ If it is an IO type, execute it, otherwise just eval it.
 > icheckType ivs ctxt tmin
 >         = case parseTerm tmin of 
 >               Success tm -> 
->                    do let itm = makeIvorTerm ivs tm
+>                    do let itm = makeIvorTerm (UN "__main") ivs tm
 >                       gtm <- check ctxt itm
 >                       putStrLn $ showImp False (unIvor ivs (viewType gtm))
 >               Failure err _ _ -> putStrLn err

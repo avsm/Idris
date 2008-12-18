@@ -15,7 +15,7 @@ into an ivor definition, with all the necessary placeholders added.
 > makeIvorFun ::  Ctxt IvorFun -> Decl -> Function -> [CGFlag] -> IvorFun
 > makeIvorFun ctxt decl (Function n ty clauses) flags
 >     = let (rty, imp) = addImpl ctxt ty
->           ity = makeIvorTerm ctxt rty
+>           ity = makeIvorTerm n ctxt rty
 >           extCtxt = addEntry ctxt n (IvorFun undefined (Just ity) 
 >                                              imp undefined decl flags)
 >           pclauses = map (mkPat extCtxt imp) clauses in
@@ -25,8 +25,8 @@ into an ivor definition, with all the necessary placeholders added.
 >               = let lhs' = addPlaceholders ectx lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
 >                          (fid, pats) ->
->                            let vpats = map toIvor pats
->                                vrhs = makeIvorTerm ectx rhs in
+>                            let vpats = map (toIvor n) pats
+>                                vrhs = makeIvorTerm n ectx rhs in
 >                                PClause vpats vrhs
 
 > makeIvorFuns :: Ctxt IvorFun -> [Decl] -> Ctxt IvorFun
@@ -41,14 +41,14 @@ into an ivor definition, with all the necessary placeholders added.
 >               mif ctxt (addEntry acc (funId f) fn) ds
 > mif ctxt acc (decl@(Fwd n ty flags):ds) 
 >         = let (rty, imp) = addImpl (ctxt++acc) ty
->               ity = makeIvorTerm (ctxt++acc) rty in
+>               ity = makeIvorTerm n (ctxt++acc) rty in
 >               mif ctxt (addEntry acc n (IvorFun (toIvorName n) (Just ity) 
 >                                             imp Later decl flags)) ds
 > mif ctxt acc (decl@(DataDecl d):ds) 
 >         = addDataEntries ctxt acc decl d ds -- will call mif on ds
 > mif ctxt acc (decl@(TermDef n tm flags):ds) 
 >         = let (itmraw, imp) = addImpl (ctxt++acc) tm
->               itm = makeIvorTerm (ctxt++acc) itmraw in
+>               itm = makeIvorTerm n (ctxt++acc) itmraw in
 >               mif ctxt (addEntry acc n 
 >                   (IvorFun (toIvorName n) Nothing imp 
 >                            (SimpleDef itm) decl flags)) ds
@@ -79,7 +79,7 @@ Add an entry for the type id and for each of the constructors.
 >                   Ctxt IvorFun
 > addDataEntries ctxt acc decl (Datatype tid tty cons e) ds = 
 >     let (tyraw, imp) = addImpl (ctxt++acc) tty
->         tytm = makeIvorTerm (ctxt++acc) tyraw
+>         tytm = makeIvorTerm tid (ctxt++acc) tyraw
 >         acctmp = addEntry (ctxt++acc) tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                   undefined decl [])
 >         ddef = makeInductive acctmp tid (getBinders tytm []) cons []
@@ -95,7 +95,7 @@ Add an entry for the type id and for each of the constructors.
 >        = Inductive (toIvorName tid) [] indices tty (reverse acc)
 > makeInductive ctxt cdec indices ((cid, cty):cs) acc
 >        = let (tyraw, imp) = addImpl ctxt cty
->              tytm = makeIvorTerm ctxt tyraw in
+>              tytm = makeIvorTerm cdec ctxt tyraw in
 >              makeInductive ctxt cdec
 >                            indices cs (((toIvorName cid),tytm):acc)
 
@@ -159,7 +159,7 @@ n is a parameter
 > addConEntries ctxt acc [] ds = mif ctxt acc ds
 > addConEntries ctxt acc ((cid, ty):cs) ds 
 >     = let (tyraw, imp) = addImpl (ctxt++acc) ty
->           tytm = makeIvorTerm (ctxt++acc) tyraw
+>           tytm = makeIvorTerm cid (ctxt++acc) tyraw
 >           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon Constructor []) in
 >           addConEntries ctxt acc' cs ds
 
@@ -174,7 +174,7 @@ n is a parameter
 >                Ctxt IvorFun -> Context -> (Id, IvorFun) -> m Context
 > addIvorDef raw ctxt (n,IvorFun name tyin _ def (LatexDefs _) _) = return ctxt
 > addIvorDef raw ctxt (n,IvorFun name tyin _ def _ flags) 
->     = trace ("Processing "++ show n) $ case def of
+>     = {- trace ("Processing "++ show n) $ -} case def of
 >         PattDef ps -> -- trace (show ps) $ 
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ctxt
