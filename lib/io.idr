@@ -132,3 +132,27 @@ mkFDef nm (Cons t ts) accA fs ret
 
 mkForeign : (f:ForeignFun) -> (mkFType f)   %nocg;
 mkForeign (FFun fn args ret) = mkFDef fn args Nil fNil ret;
+
+data File = FHandle Ptr;
+
+_fopen
+  = mkForeign (FFun "fileOpen" (Cons FStr (Cons FStr Nil)) FPtr) %eval;
+_fclose 
+  = mkForeign (FFun "fileClose" (Cons FPtr Nil) FUnit) %eval;
+_fread
+  = mkForeign (FFun "freadStr" (Cons FPtr Nil) FStr) %eval;
+_fwrite
+  = mkForeign (FFun "fputStr" (Cons FPtr (Cons FStr Nil)) FUnit) %eval;
+
+fopen : String -> String -> (IO File);
+fopen str mode = do { h <- _fopen str mode;
+		      return (FHandle h); };
+
+fclose : File -> (IO ());
+fclose (FHandle h) = _fclose h;
+
+fread : File -> (IO String);
+fread (FHandle h) = _fread h;
+
+fwrite : File -> String -> (IO ());
+fwrite (FHandle h) str = _fwrite h str;
