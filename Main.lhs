@@ -9,6 +9,7 @@
 > import System.Console.Readline
 > import Data.Typeable
 > import Char
+> import Control.Monad
 
 > import Idris.AbsSyntax
 > import Idris.MakeTerm
@@ -114,8 +115,9 @@ Command; minimal abbreviation; function to run it; description; visibility
 >           = do comp ist ctxt (UN top) exec
 >                return Continue
 > texec ist ctxt _ 
->           = do comp ist ctxt (UN "main") "main"
->                system "./main"
+>           = do res <- comp ist ctxt (UN "main") "main"
+>                when res (do system "./main"
+>                             return ())
 >                return Continue
 > norm ist ctxt tms 
 >          = do let raw = idris_context ist

@@ -19,7 +19,7 @@ Get every definition from the context. Convert them all to simple case
 trees. Ignore constructors, types, etc. Simple definitions are, of course, 
 already simple case trees.
 
-> comp :: IdrisState -> Context -> Id -> FilePath -> IO ()
+> comp :: IdrisState -> Context -> Id -> FilePath -> IO Bool
 > comp ist ctxt nm ofile 
 >          = do let raw = idris_context ist
 >               let decls = idris_decls ist
@@ -29,7 +29,11 @@ already simple case trees.
 >               let declouts = filter (/="") (map epicDecl decls)
 >               let clink = filter (/="") (map epicLink decls)
 >               let scs = allSCs pcomp
->               compileAll raw ctxt ofile clink declouts scs
+>               catch (do compileAll raw ctxt ofile clink declouts scs
+>                         return True)
+>                     (\e -> do putStrLn "Compilation error"
+>                               print e
+>                               return False)
 >    where allSCs [] = []
 >          allSCs ((x,(args,def)):xs) 
 >                       = -- trace (show (x,def)) $

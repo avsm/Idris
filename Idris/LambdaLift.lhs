@@ -188,6 +188,12 @@ IO operations and do notation as we go.
 > instance ToSC ViewTerm where
 >     toSC ctxt t = sc' t [] where
 >        sc' (Name _ n) args 
+>          | n == toIvorName (UN "__Prove_Anything")
+>            -- we can't actually use this value!
+>             = SCon (toIvorName (UN "__FAKE")) 0 
+>          | n == toIvorName (UN "__Suspend_Disbelief") -- arbitrary refl
+>             = scapply (SCon (toIvorName (UN "refl")) 0) args -- can't actually use this either
+>          | otherwise
 >             = case getConstructorTag ctxt n of
 >                   Just i -> scapply (SCon n i) args
 >                   Nothing -> case nameType ctxt n of

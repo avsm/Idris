@@ -26,5 +26,7 @@ __eq_sym A a a p = refl _;
 -- Used by the 'believe' tactic to make a temporary proof. Programs
 -- using this are not to be trusted!
 
+__Prove_Anything : {A:#} -> A;
 __Suspend_Disbelief : (m,n:A) -> (m = n);
+
 
