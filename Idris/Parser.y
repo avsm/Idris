@@ -66,6 +66,7 @@ import Idris.Lib
       type            { TokenType }
       data            { TokenDataType }
       noelim          { TokenNoElim }
+      collapsible     { TokenCollapsible }
       where           { TokenWhere }
       partial         { TokenPartial }
       refl            { TokenRefl }
@@ -185,9 +186,17 @@ Datatype : data DataOpts Name DType Constructors ';'
 -- Currently just whether to generate an elim rule, this'll need to be
 -- a list of options if we ever expand this.
 
-DataOpts :: { Bool }
-DataOpts : { True }
-         | '[' noelim ']' { False }
+DataOpts :: { [TyOpt] }
+DataOpts : { [] }
+         | '[' DataOptList ']' { $2 }
+
+DataOptList :: { [TyOpt] }
+DataOptList : DataOpt { [$1] }
+            | DataOpt ',' DataOptList { $1:$3 }
+
+DataOpt :: { TyOpt }
+DataOpt : noelim { NoElim }
+        | collapsible { Collapsible }
 
 Name :: { Id }
 Name : name { $1 }

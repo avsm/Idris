@@ -3,6 +3,7 @@
 > module Idris.Latex(latexDump,latexDefs) where
 
 > import Idris.AbsSyntax
+> import Debug.Trace
 
 > latexDefs :: [String] -> [(Id,String)]
 > latexDefs [] = []

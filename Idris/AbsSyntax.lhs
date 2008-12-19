@@ -101,9 +101,15 @@ the system to insert a hole for a proof that turns it into the right type.
 >                           tyId :: Id,
 >                           tyType :: RawTerm,
 >                           tyConstructors :: [(Id, RawTerm)],
->                           tyHasElim :: Bool
+>                           tyOpts :: [TyOpt]
 >                          }
 >   deriving Show
+
+> data TyOpt = NoElim | Collapsible
+>   deriving (Show, Eq)
+
+> tyHasElim dt = not (elem NoElim (tyOpts dt))
+> collapsible dt = elem Collapsible (tyOpts dt)
 
 > data Function = Function {
 >                           funId :: Id,

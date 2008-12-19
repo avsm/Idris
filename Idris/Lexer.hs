@@ -63,6 +63,7 @@ data Token
       | TokenPtrType
       | TokenDataType
       | TokenNoElim
+      | TokenCollapsible
       | TokenPartial
       | TokenWhere
       | TokenType
@@ -231,6 +232,7 @@ lexVar cont cs =
       ("proof",rest) -> cont TokenProof rest
       ("data",rest) -> cont TokenDataType rest
       ("noElim",rest) -> cont TokenNoElim rest
+      ("collapsible",rest) -> cont TokenCollapsible rest
       ("where",rest) -> cont TokenWhere rest
       ("partial",rest) -> cont TokenPartial rest
 -- Types

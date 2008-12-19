@@ -84,7 +84,7 @@ Add an entry for the type id and for each of the constructors.
 >                                   undefined decl [])
 >         ddef = makeInductive acctmp tid (getBinders tytm []) cons []
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
->                                  (DataDef ddef e) decl []) in
+>                              (DataDef ddef (not (elem NoElim e))) decl []) in
 >         addConEntries ctxt acc' cons ds
 
      Inductive (toIvorName tid) [] 
@@ -119,7 +119,7 @@ a parameter, there can be no more (or we mess up the declared type). Hence
 >         newinds = map snd newinds'
 >         newty = remAllPs newps ty
 >         newind = Inductive tname (ps++newps) newinds ty (remPs newps cons) in
->         -- trace (show ind ++ "\n" ++ show newind ++ "\n" ++ show newps) $
+>           -- trace (show ind ++ "\n" ++ show newind ++ "\n" ++ show newps) $
 >             newind
 >   where isParam [] _ = True
 >         isParam (c:cs) (pos, (n,ty))
