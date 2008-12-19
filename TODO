@@ -1,0 +1,12 @@
+* Collapsible data structures.
+   - Translate to unit.
+   - Implement non-linear pattern matching.
+   - Auto generated 'build' function, a partial function which
+     constructs an instance of a collapsible type, given
+     indices. Likely to rely on non-linear matching. Such functions
+     must be compile time only.
+      + Have a way of marking functions as compile time metaprograms
+        only. So they can be used to generate programs, but not run,
+        and probably shouldn't be allowed in types.
+   - tactic which automatically builds instances of collapsible
+     functions where possible.
