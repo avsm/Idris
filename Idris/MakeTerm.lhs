@@ -163,52 +163,65 @@ n is a parameter
 >           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon Constructor []) in
 >           addConEntries ctxt acc' cs ds
 
+Add definitions to the Ivor Context. Return the new context and a list
+of things we need to define to complete the program (i.e. metavariables)
+
 > addIvor :: Monad m => 
 >            Ctxt IvorFun -> -- all definitions, including prelude
 >            Ctxt IvorFun -> -- just the ones we haven't added to Ivor yet
->            Context -> m Context
-> addIvor all defs ctxt = foldM (addIvorDef all) ctxt 
+>            Context -> m (Context, [(Name, ViewTerm)])
+> addIvor all defs ctxt = foldM (addIvorDef all) (ctxt, [])
 >                               (reverse (ctxtAlist defs))
 
 > addIvorDef :: Monad m =>
->                Ctxt IvorFun -> Context -> (Id, IvorFun) -> m Context
-> addIvorDef raw ctxt (n,IvorFun name tyin _ def (LatexDefs _) _) = return ctxt
-> addIvorDef raw ctxt (n,IvorFun name tyin _ def _ flags) 
+>                Ctxt IvorFun -> (Context, [(Name, ViewTerm)]) -> 
+>                (Id, IvorFun) -> 
+>               m (Context, [(Name, ViewTerm)])
+> addIvorDef raw (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _) 
+>                = return (ctxt, metas)
+> addIvorDef raw (ctxt, metas) (n,IvorFun name tyin _ def _ flags) 
 >     = {- trace ("Processing "++ show n) $ -} case def of
 >         PattDef ps -> -- trace (show ps) $ 
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
->                          if (null newdefs) then return ctxt
->                            else addMeta raw ctxt newdefs
+>                          if (null newdefs) then return (ctxt, metas)
+>                            else addMeta raw ctxt metas newdefs
 >         SimpleDef tm -> 
 >                         do tm' <- case (CGEval `elem` flags) of
 >                              False -> return tm
 >                              True -> do ctm <- check ctxt tm
 >                                         return (view (evalnew ctxt ctm))
->                            case tyin of
+>                            ctxt <- case tyin of
 >                                 Nothing -> addDef ctxt name tm'
 >                                 Just ty -> addTypedDef ctxt name tm' ty
+>                            return (ctxt, metas)
 >         DataDef ind e -> do 
 >                             c <- addDataNoElim ctxt ind
 >                           -- add once to fill in placeholders
->                             if e then do
+>                             ctxt <- if e then do
 >                                     d <- getInductive c name 
 >                           -- add again after we work out the parameters
 >                                     addData ctxt (mkParams d)
 >                                  else return c
+>                             return (ctxt, metas)
 >                           -- addDataNoElim ctxt (mkParams d)
 >                           -- trace (show (mkParams d)) $ return c
->         IProof scr -> runScript raw ctxt n scr
+>         IProof scr -> do ctxt <- runScript raw ctxt n scr
+>                          return (ctxt, filter (\ (x,y) -> x /= toIvorName n)
+>                                        metas)
 >         Later -> case tyin of
->                    Just ty -> declare ctxt name ty
+>                    Just ty -> do ctxt <- declare ctxt name ty
+>                                  return (ctxt, metas)
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
->         _ -> return ctxt
+>         _ -> return (ctxt, metas)
 >    where unjust (Just x) = x
 
 > addMeta :: Monad m =>
->            Ctxt IvorFun -> Context -> [(Name, ViewTerm)] -> m Context
-> addMeta raw ctxt newdefs
+>            Ctxt IvorFun -> Context -> 
+>           [(Name, ViewTerm)] -> [(Name, ViewTerm)] -> 
+>            m (Context, [(Name, ViewTerm)])
+> addMeta raw ctxt metas newdefs
 >       = trace ("Metavariables are:\n" ++  concat (map showDef newdefs))
->            $ return ctxt
+>            $ return (ctxt, metas ++ newdefs)
 >    where
 >          showDef (n,ty) = "  " ++ show n ++ " : " ++ dumpMeta (unIvor raw ty)
 >                           ++ "\n"

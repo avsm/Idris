@@ -291,11 +291,12 @@ Name definitions Ivor-side.
 
 > data IdrisState = IState {
 >       idris_context :: Ctxt IvorFun, -- function definitions
->       idris_decls :: [Decl] -- all checked declarations
+>       idris_decls :: [Decl], -- all checked declarations
+>       idris_metavars :: [(Name, ViewTerm)] -- things still to prove
 >     }
 
 > initState :: IdrisState
-> initState = IState newCtxt []
+> initState = IState newCtxt [] []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting
@@ -356,6 +357,9 @@ ready for typechecking
 
 > toIvorName :: Id -> Name
 > toIvorName i = name (show i)
+
+> fromIvorName :: Name -> Id
+> fromIvorName i = UN (show i)
 
 > toIvor :: Id -> RawTerm -> ViewTerm
 > toIvor fname tm = evalState (toIvorS tm) (0,1)

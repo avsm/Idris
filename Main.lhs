@@ -50,11 +50,11 @@ Load things in this order:
 >     case ptree of
 >       Success ds -> do let defs' = makeIvorFuns defs ds
 >                        let alldefs = defs++defs'
->                        ctxt <- case (addIvor alldefs defs' ctxt) of
+>                        (ctxt, metas) <- case (addIvor alldefs defs' ctxt) of
 >                             Success x -> return x
 >                             Failure err _ _ -> do putStrLn err
->                                                   return ctxt
->                        return (ctxt, (IState alldefs (decls++ds)))
+>                                                   return (ctxt, [])
+>                        return (ctxt, (IState alldefs (decls++ds) metas))
 >       Failure err f ln -> fail err
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context
@@ -65,6 +65,8 @@ Command; minimal abbreviation; function to run it; description; visibility
 >    = [("quit", "q", quit, "Exits the top level",True),
 >       ("type", "t", tmtype, "Print the type of a term",True),
 >       ("prove", "p", prove, "Begin a proof of an undefined name",True),
+>       ("metavars", "m", metavars, 
+>                    "Show metavariables still to be proved",True),
 >       ("ivor", "i", ivor, "Drop into the Ivor shell",True),
 >       ("compile", "c", tcomp, "Compile a definition (of type IO ()", True),
 >       ("execute", "e", texec, "Compile and execute 'main'", True),
@@ -75,15 +77,29 @@ Command; minimal abbreviation; function to run it; description; visibility
 
 > type Command = IdrisState -> Context -> [String] -> IO REPLRes
 
-> quit, tmtype, tcomp, texec, norm, help :: Command
+> quit, tmtype, prove, metavars, tcomp, texec, norm, help :: Command
 
 > quit _ _ _ = do return Quit
-> tmtype (IState raw _) ctxt tms = do icheckType raw ctxt (unwords tms)
->                                     return Continue
+> tmtype (IState raw _ _) ctxt tms = do icheckType raw ctxt (unwords tms)
+>                                       return Continue
 > prove ist ctxt (nm:[]) 
 >           = do let raw = idris_context ist
 >                ctxt' <- doProof raw ctxt (UN nm)
->                return (NewCtxt ist ctxt')
+>                let imv = filter (\ (x,y) -> x /= toIvorName (UN nm))
+>                              (idris_metavars ist)
+>                let ist' = ist { idris_metavars = imv }
+>                return (NewCtxt ist' ctxt')
+> prove ist ctxt _ = do putStrLn "What do you want to prove?"
+>                       return Continue
+> metavars ist ctxt _
+>           = do let vars = idris_metavars ist
+>                if (null vars)
+>                   then putStrLn "All proofs complete."
+>                   else 
+>                     do putStr "Metavariables to be proved:\n\t"
+>                        print (map fst vars)
+>                        putStr "\n"
+>                return Continue
 > ivor ist ctxt _ = do ctxt' <- doIvor ctxt
 >                      return (NewCtxt ist ctxt')
 > latex ist ctxt (nm:defs) 
@@ -119,7 +135,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >         return Continue
 
 > repl :: IdrisState -> Context -> IO ()
-> repl ist@(IState raw decls) ctxt 
+> repl ist@(IState raw decls metas) ctxt 
 >          = do inp <- readline ("Idris> ")
 >               res <- case inp of
 >                        Nothing -> return Continue
