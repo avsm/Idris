@@ -134,6 +134,11 @@ mkFDef nm (Cons t ts) accA fs ret
 mkForeign : (f:ForeignFun) -> (mkFType f)   %nocg;
 mkForeign (FFun fn args ret) = mkFDef fn args Nil fNil ret;
 
+_isNull = mkForeign (FFun "isNull" (Cons FPtr Nil) FInt) %eval;
+
+isNull : Ptr -> Bool;
+isNull ptr = if_then_else ((unsafePerformIO (_isNull ptr))==0) False True;
+
 data File = FHandle Ptr;
 
 _fopen
@@ -157,3 +162,4 @@ fread (FHandle h) = _fread h;
 
 fwrite : File -> String -> (IO ());
 fwrite (FHandle h) str = _fwrite h str;
+

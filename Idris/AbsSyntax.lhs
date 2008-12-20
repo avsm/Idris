@@ -170,6 +170,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Equiv RawTerm
 >              | Believe RawTerm
 >              | Use RawTerm
+>              | Decide RawTerm
 >              | Undo
 >              | Abandon
 >              | Qed

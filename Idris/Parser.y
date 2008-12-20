@@ -92,6 +92,7 @@ import Idris.Lib
       fill            { TokenFill }
       believe         { TokenBelieve }
       use             { TokenUse }
+      decide          { TokenDecide }
       abandon         { TokenAbandon }
       qed             { TokenQED }
       latex           { TokenLaTeX }
@@ -354,6 +355,7 @@ Tactic : intro Names { Intro $2 }
        | fill Term { Fill $2 }
        | believe Term { Believe $2 }
        | use Term { Use $2 }
+       | decide Term { Decide $2 }
        | abandon { Abandon }
        | qed { Qed }
 

@@ -8,6 +8,7 @@
 
 > import Ivor.Shell
 > import Ivor.TT
+> import Ivor.Construction
 
 > import Debug.Trace
 
@@ -100,6 +101,7 @@ undone bits, after a Qed
 >     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
 >     at ctxt (Believe t) = suspend_disbelief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Use t) = prove_belief raw (ivor t) defaultGoal ctxt
+>     at ctxt (Decide t) = isItJust (ivor t) defaultGoal ctxt
 >     at ctxt (Induction t) = induction (ivor t) defaultGoal ctxt
 >     at ctxt (Rewrite f t) = rewrite (ivor t) f defaultGoal ctxt
 >     at ctxt Compute = compute defaultGoal ctxt

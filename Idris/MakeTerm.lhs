@@ -180,7 +180,7 @@ of things we need to define to complete the program (i.e. metavariables)
 > addIvorDef raw (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _) 
 >                = return (ctxt, metas)
 > addIvorDef raw (ctxt, metas) (n,IvorFun name tyin _ def _ flags) 
->     = {- trace ("Processing "++ show n) $ -} case def of
+>     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> -- trace (show ps) $ 
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return (ctxt, metas)

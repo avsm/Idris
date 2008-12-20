@@ -119,6 +119,7 @@ data Token
       | TokenFill
       | TokenBelieve
       | TokenUse
+      | TokenDecide
       | TokenAbandon
       | TokenQED
 -- Directives
@@ -277,6 +278,7 @@ lexSpecial cont cs =
       ("fill", rest) -> cont TokenFill rest
       ("believe", rest) -> cont TokenBelieve rest
       ("use", rest) -> cont TokenUse rest
+      ("decide", rest) -> cont TokenDecide rest
       ("abandon", rest) -> cont TokenAbandon rest
       ("qed", rest) -> cont TokenQED rest
       (thing,rest) -> lexError '%' rest
