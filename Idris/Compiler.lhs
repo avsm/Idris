@@ -37,9 +37,9 @@ already simple case trees.
 >    where allSCs [] = []
 >          allSCs ((x,(args,def)):xs) 
 >                       = -- trace (show (x,def)) $
->                         let lifted = lambdaLift ctxt x args def
+>                         let lifted = lambdaLift ctxt ist x args def
 >                             scfuns = map (\ (n,args,sc) -> 
->                                             (n, scFun ctxt args sc)) lifted
+>                                          (n, scFun ctxt ist args sc)) lifted
 >                             xs' = allSCs xs in
 >                             scfuns ++ xs'
 
@@ -100,7 +100,7 @@ Get all the definitions we want to compile (i.e., skipping NoCG ones)
 >      let cmd = "epic " ++ efile ++ " -o " ++ ofile ++ " " ++
 >                concat (map (' ':) clink)
 >      exit <- system cmd
->      removeFile efile
+>      -- removeFile efile
 >      if (exit /= ExitSuccess) 
 >         then fail "EPIC FAIL"
 >         else return ()
@@ -156,6 +156,7 @@ TMP HACK until we do coercions on primitives properly
 >                             ++ "}"
 >   writeSC' (SInfix op l r) = boolOp op (writeOp op (writeSC' l) (writeSC' r))
 >   writeSC' (SConst c) = writeConst c
+>   writeSC' (SLazy b) = "lazy(" ++ writeSC' b ++ ")"
 >   writeSC' SUnit = "42"
 >   writeSC' SError = "error \"error\""
 

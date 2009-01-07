@@ -145,12 +145,15 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RRefl
 >    deriving (Show, Eq)
 
-> data RBinder = Pi Plicit RawTerm
+> data RBinder = Pi Plicit Laziness RawTerm
 >              | Lam RawTerm
 >              | RLet RawTerm RawTerm
 >    deriving (Show, Eq)
 
 > data Plicit = Im | Ex
+>    deriving (Show, Eq)
+
+> data Laziness = Lazy | Eager
 >    deriving (Show, Eq)
 
 > data Do = DoBinding Id RawTerm RawTerm
@@ -176,6 +179,13 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Qed
 >     deriving (Show, Eq)
 
+> getLazy :: RawTerm -> [Int]
+> getLazy tm = gl' 0 tm
+>   where gl' i (RBind n (Pi _ Lazy _) sc) = i:(gl' (i+1) sc)
+>         gl' i (RBind n (Pi Ex Eager _) sc) = gl' (i+1) sc
+>         gl' i (RBind n (Pi Im Eager _) sc) = gl' i sc
+>         gl' i x = []
+
 > getFn :: RawTerm -> RawTerm
 > getFn (RApp f a) = getFn f
 > getFn (RAppImp _ f a) = getFn f
@@ -183,11 +193,11 @@ Raw terms, as written by the programmer with no implicit arguments added.
 
 > getArgTypes :: RawTerm -> [(Id,RawTerm)]
 > getArgTypes tm = gat tm [] where
->     gat (RBind n (Pi _ ty) sc) acc = gat sc ((n,ty):acc)
+>     gat (RBind n (Pi _ _ ty) sc) acc = gat sc ((n,ty):acc)
 >     gat sc acc = reverse acc
 
 > getRetType :: RawTerm -> RawTerm
-> getRetType (RBind n (Pi _ ty) sc) = getRetType sc
+> getRetType (RBind n (Pi _ _ ty) sc) = getRetType sc
 > getRetType x = x
 
 > getFnName f = case getFn f of
@@ -281,7 +291,8 @@ implicit arguments each function has.
 >       implicitArgs :: Int,
 >       ivorDef :: IvorDef,
 >       rawDecl :: Decl, -- handy to keep around for display
->       funFlags :: [CGFlag]
+>       funFlags :: [CGFlag],
+>       lazyArgs :: [Int]
 >     }
 >    deriving Show
 
@@ -336,12 +347,12 @@ Bool says whether to pi bind unknown names
 >           addImplB env (RAppImp _ f a)
 >                    = do addImplB env f
 >                         addImplB env a
->           addImplB env (RBind n (Pi Im ty) sc)
+>           addImplB env (RBind n (Pi Im _ ty) sc)
 >                    = do (nms, tot) <- get
 >                         put (nms, tot+1)
 >                         addImplB env ty
 >                         addImplB (n:env) sc
->           addImplB env (RBind n (Pi Ex ty) sc)
+>           addImplB env (RBind n (Pi Ex _ ty) sc)
 >                    = do addImplB env ty
 >                         addImplB (n:env) sc
 >           addImplB env (RBind n (Lam ty) sc)
@@ -357,7 +368,7 @@ Bool says whether to pi bind unknown names
 >           addImplB env _ = return ()
 >           pibind :: [Id] -> RawTerm -> RawTerm
 >           pibind [] raw = raw
->           pibind (n:ns) raw = RBind n (Pi Im RPlaceholder) (pibind ns raw)
+>           pibind (n:ns) raw = RBind n (Pi Im Eager RPlaceholder) (pibind ns raw)
 
 Convert a raw term with all the implicit things added into an ivor term
 ready for typechecking
@@ -376,13 +387,13 @@ ready for typechecking
 >     toIvorS (RApp f a) = do f' <- toIvorS f
 >                             a' <- toIvorS a
 >                             return (App f' a')
->     toIvorS (RBind (MN "X" 0) (Pi _ ty) sc) 
+>     toIvorS (RBind (MN "X" 0) (Pi _ _ ty) sc) 
 >            = do ty' <- toIvorS ty
 >                 sc' <- toIvorS sc
 >                 (i, x) <- get
 >                 put (i+1, x)
 >                 return $ Forall (toIvorName (MN "X" i)) ty' sc'
->     toIvorS (RBind n (Pi _ ty) sc) 
+>     toIvorS (RBind n (Pi _ _ ty) sc) 
 >            = do ty' <- toIvorS ty
 >                 sc' <- toIvorS sc
 >                 return $ Forall (toIvorName n) ty' sc'
@@ -447,7 +458,7 @@ Convert a raw term to an ivor term, adding placeholders
 >     -- out of an application
 >     where ap ex (RVar n)
 >               = case ctxtLookup ctxt n of
->                   Just (IvorFun _ (Just ty) imp _ _ _) -> 
+>                   Just (IvorFun _ (Just ty) imp _ _ _ _) -> 
 >                     mkApp (RVar n) 
 >                               (mkImplicitArgs 
 >                                (map fst (fst (getBinders ty []))) imp ex)
@@ -455,8 +466,8 @@ Convert a raw term to an ivor term, adding placeholders
 >           ap ex (RExpVar n) = RVar n
 >           ap ex (RAppImp n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
 >           ap ex (RApp f a) = (RApp (ap ex f) (ap [] a))
->           ap ex (RBind n (Pi p ty) sc)
->               = RBind n (Pi p (ap [] ty)) (ap [] sc)
+>           ap ex (RBind n (Pi p l ty) sc)
+>               = RBind n (Pi p l (ap [] ty)) (ap [] sc)
 >           ap ex (RBind n (Lam ty) sc)
 >               = RBind n (Lam (ap [] ty)) (ap [] sc)
 >           ap ex (RBind n (RLet val ty) sc)
@@ -505,7 +516,7 @@ in our list of explicit names to add, add it.
 
 > dump :: Ctxt IvorFun -> String
 > dump ctxt = concat $ map dumpFn (ctxtAlist ctxt)
->   where dumpFn (_,IvorFun n ty imp def _ _) =
+>   where dumpFn (_,IvorFun n ty imp def _ _ _) =
 >             show n ++ " : " ++ show ty ++ "\n" ++
 >             "   " ++ show imp ++ " implicit\n" ++
 >             show def ++ "\n\n"
@@ -550,7 +561,7 @@ Now built-in operators
 >            Nothing -> unwind (RVar (mkRName v)) args
 >     unI (App f a) args = unI f ((unI a []):args)
 >     unI (Lambda v ty sc) args = unwind (RBind (mkRName v) (Lam (unI ty [])) (unI sc [])) args
->     unI (Forall v ty sc) args = unwind (RBind (mkRName v) (Pi Ex (unI ty [])) (unI sc [])) args
+>     unI (Forall v ty sc) args = unwind (RBind (mkRName v) (Pi Ex Eager (unI ty [])) (unI sc [])) args
 >     unI (Let v ty val sc) args = unwind (RBind (mkRName v) 
 >                                          (RLet (unI val []) (unI ty [])) 
 >                                          (unI sc [])) args
@@ -591,7 +602,7 @@ boolean flag (true for showing them)
 >     showP p (RBind n (Lam ty) sc)
 >           = bracket p 2 $ 
 >             "\\ " ++ show n ++ " : " ++ showP 10 ty ++ " . " ++ showP 10 sc
->     showP p (RBind n (Pi im ty) sc)
+>     showP p (RBind n (Pi im _ ty) sc)
 >           | internal n && not imp -- hack for spotting unused names quickly!
 >              = bracket p 2 $ showP 1 ty ++ " -> " ++ showP 10 sc
 >           | otherwise

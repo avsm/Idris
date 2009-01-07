@@ -64,6 +64,7 @@ import Idris.Lib
       ptrtype         { TokenPtrType }
       locktype        { TokenLockType }
       type            { TokenType }
+      lazybracket     { TokenLazyBracket }
       data            { TokenDataType }
       noelim          { TokenNoElim }
       collapsible     { TokenCollapsible }
@@ -103,8 +104,8 @@ import Idris.Lib
 
 %nonassoc LAM
 %nonassoc let in
-%nonassoc '!'
-%left '(' '{'
+%nonassoc '!' '@'
+%left '(' '{' lazybracket
 %left '+' '-'
 %left '*' '/'
 %left concat
@@ -262,7 +263,7 @@ MaybeAType : { RPlaceholder}
 
 Type :: { RawTerm }
 Type : '{' Names MaybeAType '}' arrow Type
-               { doBind (Pi Im) (map (\x -> (x, $3)) $2) $6 }
+               { doBind (Pi Im Eager) (map (\x -> (x, $3)) $2) $6 }
      | Term { $1 }
 
 
@@ -272,9 +273,11 @@ NoAppTerm : Name { RVar $1 }
           | metavar { RMetavar $1 }
           | '!' Name { RExpVar $2 }
           | NoAppTerm arrow NoAppTerm { RBind (MN "X" 0)
-                                        (Pi Ex $1) $3 }
+                                        (Pi Ex Eager $1) $3 }
           | '(' TypedBinds ')' arrow NoAppTerm
-                { doBind (Pi Ex) $2 $5 }
+                { doBind (Pi Ex Eager) $2 $5 }
+          | lazybracket TypedBinds ')' arrow NoAppTerm
+                { doBind (Pi Ex Lazy) $2 $5 }
 --          | '{' TypedBinds '}' arrow NoAppTerm
 --                { doBind (Pi Im) $2 $5 }
           | Constant { RConst $1 }
@@ -385,7 +388,7 @@ mkCon :: RawTerm -> ConParse -> (Id,RawTerm)
 mkCon _ (Full n t) = (n,t)
 mkCon ty (Simple n args) = (n, mkConTy args ty)
    where mkConTy [] ty = ty
-         mkConTy (a:as) ty = RBind (MN "X" 0) (Pi Ex a) (mkConTy as ty)
+         mkConTy (a:as) ty = RBind (MN "X" 0) (Pi Ex Eager a) (mkConTy as ty)
 
 mkDef (n, tms) = mkImpApp (RVar n) tms
    where mkImpApp f [] = f
@@ -407,7 +410,7 @@ mkTyApp n ty = mkApp (RVar n) (getTyArgs ty)
 
 mkTyParams :: [Id] -> RawTerm
 mkTyParams [] = RConst TYPE
-mkTyParams (x:xs) = RBind x (Pi Ex (RConst TYPE)) (mkTyParams xs)
+mkTyParams (x:xs) = RBind x (Pi Ex Eager (RConst TYPE)) (mkTyParams xs)
 
 }
 

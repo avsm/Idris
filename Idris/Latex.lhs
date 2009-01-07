@@ -25,17 +25,17 @@
 >         = case lookup n (defs++ldefs) of
 >             Just l -> l
 >             Nothing -> case ctxtLookup ctxt n of
->                          Just (IvorFun _ _ _ _ d _) -> ty d (show n)
+>                          Just (IvorFun _ _ _ _ d _ _) -> ty d (show n)
 >                          Nothing -> "\\VV{" ++ show n ++ "}"
 >         where ty (DataDecl _) n = "\\TC{" ++ n ++ "}"          
 >               ty Constructor n = "\\DC{" ++ n ++ "}"
 >               ty _ n = "\\FN{" ++ n ++ "}"
 >               ldefs = case ctxtLookup ctxt (MN "latex" 0) of
->                         Just (IvorFun _ _ _ _ (LatexDefs ds) _) -> ds
+>                         Just (IvorFun _ _ _ _ (LatexDefs ds) _ _) -> ds
 >                         Nothing -> []
 
 > instance LaTeX IvorFun where
->     latex ctxt defs (IvorFun nm ty _ _ decl _) = latex ctxt defs decl
+>     latex ctxt defs (IvorFun nm ty _ _ decl _ _) = latex ctxt defs decl
 
 > instance LaTeX Decl where
 >     latex ctxt defs (DataDecl (Datatype id ty cons _))
@@ -111,7 +111,7 @@ Main bit for terms
 >        showP p (RBind n (Lam ty) sc)
 >           = bracket p 2 $ 
 >             "\\lambda\\VV{" ++ show n ++ "}." ++ showP 10 sc
->        showP p (RBind n (Pi Ex ty) sc)
+>        showP p (RBind n (Pi Ex _ ty) sc)
 >           | internal n -- hack for spotting unused names quickly!
 >              = bracket p 2 $ showP 1 ty ++ "\\to" ++ showP 10 sc
 >           | otherwise
@@ -121,7 +121,7 @@ Main bit for terms
 >          where internal (UN ('_':'_':_)) = True
 >                internal (MN _ _) = True
 >                internal _ = False
->        showP p (RBind n (Pi Im ty) sc)
+>        showP p (RBind n (Pi Im _ ty) sc)
 >              = bracket p 2 $ showP 10 sc
 >        showP p (RBind n (RLet val ty) sc)
 >           = bracket p 2 $

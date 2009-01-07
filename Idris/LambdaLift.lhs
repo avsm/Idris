@@ -25,6 +25,7 @@ output of the lambda lifter
 >             | SInfix Op SCBody SCBody
 >             | SIOOp SCIO
 >             | SConst Constant
+>             | SLazy SCBody
 >             | SError
 >    deriving Show
 
@@ -71,9 +72,9 @@ name, arguments, body
 
 > data LiftState = SCS Int [(Name, [Name], SimpleCase)] 
 
-> lambdaLift :: Context -> Name -> [Name] -> 
+> lambdaLift :: Context -> IdrisState -> Name -> [Name] -> 
 >               SimpleCase -> [(Name, [Name], SimpleCase)]
-> lambdaLift ctxt root args sc 
+> lambdaLift ctxt ist root args sc 
 >        = let -- scEta = expandCons ctxt sc -- Forcing does this! If we
 >              -- do it again, we undo some of the work forcing has done since
 >              -- we've reduced arity there.
@@ -170,38 +171,38 @@ applied.
 Second step, turn the lambda lifted SimpleCases into SCFuns, translating 
 IO operations and do notation as we go.
 
-> scFun :: Context -> [Name] -> SimpleCase -> SCFun
-> scFun ctxt args lifted = SCFun args (toSC ctxt lifted)
+> scFun :: Context -> IdrisState -> [Name] -> SimpleCase -> SCFun
+> scFun ctxt ist args lifted = SCFun args (toSC ctxt ist lifted)
 
 > class ToSC a where
->     toSC :: Context -> a -> SCBody
+>     toSC :: Context -> IdrisState -> a -> SCBody
 
 > instance ToSC SimpleCase where
->     toSC c ErrorCase = SError
->     toSC c Impossible = SError
->     toSC c (Tm vt) = toSC c vt
->     toSC c (SCase vt alts) = SCCase (toSC c vt) (map toSCa alts)
->        where toSCa (Alt n i ns sc) = SAlt n i ns (toSC c sc)
->              toSCa (ConstAlt v sc) = SConstAlt v (toSC c sc)
->              toSCa (Default sc)  = SDefault (toSC c sc)
+>     toSC c ist ErrorCase = SError
+>     toSC c ist Impossible = SError
+>     toSC c ist (Tm vt) = toSC c ist vt
+>     toSC c ist (SCase vt alts) = SCCase (toSC c ist vt) (map toSCa alts)
+>        where toSCa (Alt n i ns sc) = SAlt n i ns (toSC c ist sc)
+>              toSCa (ConstAlt v sc) = SConstAlt v (toSC c ist sc)
+>              toSCa (Default sc)  = SDefault (toSC c ist sc)
 
 > instance ToSC ViewTerm where
->     toSC ctxt t = sc' t [] where
+>     toSC ctxt ist t = sc' t [] where
 >        sc' (Name _ n) args 
 >          | n == toIvorName (UN "__Prove_Anything")
 >            -- we can't actually use this value!
 >             = SCon (toIvorName (UN "__FAKE")) 0 
 >          | n == toIvorName (UN "__Suspend_Disbelief") -- arbitrary refl
->             = scapply (SCon (toIvorName (UN "refl")) 0) args -- can't actually use this either
+>             = scapply ist (SCon (toIvorName (UN "refl")) 0) args -- can't actually use this either
 >          | otherwise
 >             = case getConstructorTag ctxt n of
->                   Just i -> scapply (SCon n i) args
+>                   Just i -> scapply ist (SCon n i) args
 >                   Nothing -> case nameType ctxt n of
 >                                      Just TypeCon -> SUnit
->                                      _ -> scapply (SVar n) args
+>                                      _ -> scapply ist (SVar n) args
 >        sc' (App f a) args = sc' f ((sc' a []):args)
 >        sc' (Let n ty val x) args 
->                = scapply (SLet n (sc' val []) (sc' x [])) args
+>                = scapply ist (SLet n (sc' val []) (sc' x [])) args
 >        sc' (Constant c) [] 
 >            = case (cast c)::Maybe Int of
 >                 Just i -> SConst (Num i)
@@ -211,20 +212,39 @@ IO operations and do notation as we go.
 
 scapply deals with special cases for infix operators, IO, etc.
 
-> scapply :: SCBody -> [SCBody] -> SCBody
+> scapply :: IdrisState -> SCBody -> [SCBody] -> SCBody
 
 Infix operators
 
-> scapply (SVar n) [x,y]
+> scapply ist (SVar n) [x,y]
 >         | Just op <- getOp n allOps = SInfix op x y
-> scapply (SVar n) [_,_,_,_]
+> scapply ist (SVar n) [_,_,_,_]
 >         | n == opFn JMEq = SUnit
-> scapply (SVar n) [_,x,y]
+> scapply ist (SVar n) [_,x,y]
 >         | n == opFn OpEq = SInfix OpEq x y
+
+> scapply ist f [] = f
+
+> scapply ist (SVar n) args
+>         = let raw = idris_context ist in
+>           case ctxtLookup raw (fromIvorName n) of
+>             Nothing -> SApp (SVar n) args
+>             Just ifn -> let ia = implicitArgs ifn
+>                             lz = lazyArgs ifn 
+>                             args' = makeLazy (map (ia+) lz) args in
+> --                        if (not (null lz))
+> --                            then trace (show args ++ "\n" ++ show args') $ SApp (SVar n) args'
+>                             -- else 
+>                             SApp (SVar n) args'
 
 Everything else
 
-> scapply f [] = f
-> scapply f args = SApp f args
+> scapply ist f args = SApp f args
+
+> makeLazy :: [Int] -> [SCBody] -> [SCBody]
+> makeLazy lz args = zipWith ml' 
+>                       (map (\x -> elem x lz) [0..(length args-1)]) args
+>   where ml' True arg = SLazy arg
+>         ml' False arg = arg
 
 

@@ -147,6 +147,9 @@ undone bits, after a Qed
 > doIvor ctxt = do s <- runShell "Ivor> " (newShell ctxt)
 >                  return (getContext s)
 
+
+-------- Specialised tactics for Idris --------
+
 Given a term of type T args and a goal of type T args', look for the
 first difference between args and args', and rewrite by
 Suspend_Disbelief arg arg'. Keep doing this until the value solves the goal,
@@ -204,3 +207,7 @@ the required equality proofs
 >                    ctxt' <- rewrite (Name Unknown claimName) True goal ctxt
 >                    rewriteDiffs ds goal ctxt'
 
+XXX: Auto-rewrite: user can add rewrite rules, auto-rewrite repeatedly
+rewrites by these rules until there's no more to rewrite, or until a
+threshold is reached. Effectively looking for some kind of normal
+form. Can we do this in any reasonable way?

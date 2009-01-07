@@ -2,6 +2,8 @@
 
 -- IO
 
+__epic_id (x:Any) -> Any = x
+
 __epic_putStr (x:String) -> Unit =
     foreign Unit "putStr" (x:String)
 

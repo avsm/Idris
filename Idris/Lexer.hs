@@ -67,6 +67,7 @@ data Token
       | TokenPartial
       | TokenWhere
       | TokenType
+      | TokenLazyBracket
       | TokenOB
       | TokenCB
       | TokenOCB
@@ -173,6 +174,7 @@ lexer cont (':':cs) = cont TokenColon cs
 lexer cont (';':cs) = cont TokenSemi cs
 lexer cont (',':cs) = cont TokenComma cs
 lexer cont ('\\':cs) = cont TokenLambda cs
+lexer cont ('|':'(':cs) = cont TokenLazyBracket cs
 lexer cont ('|':cs) = cont TokenBar cs
 lexer cont ('.':cs) = cont TokenDot cs
 lexer cont ('#':cs) = cont TokenType cs
