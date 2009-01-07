@@ -84,7 +84,7 @@ Add an entry for the type id and for each of the constructors.
 >                                   undefined decl [] [])
 >         ddef = makeInductive acctmp tid (getBinders tytm []) cons []
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
->                                  (DataDef ddef e) decl []) in
+>                              (DataDef ddef (not (elem NoElim e))) decl [] []) in
 >         addConEntries ctxt acc' cons ds
 
      Inductive (toIvorName tid) [] 
