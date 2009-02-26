@@ -62,6 +62,7 @@ data Token
       | TokenLockType
       | TokenPtrType
       | TokenDataType
+      | TokenUsing
       | TokenNoElim
       | TokenCollapsible
       | TokenPartial
@@ -234,6 +235,7 @@ lexVar cont cs =
 -- Keywords
       ("proof",rest) -> cont TokenProof rest
       ("data",rest) -> cont TokenDataType rest
+      ("using",rest) -> cont TokenUsing rest
       ("noElim",rest) -> cont TokenNoElim rest
       ("collapsible",rest) -> cont TokenCollapsible rest
       ("where",rest) -> cont TokenWhere rest

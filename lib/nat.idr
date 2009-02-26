@@ -11,6 +11,14 @@ mult (S k) y = plus y (mult k y);
 eq_resp_S : (m=n) -> ((S m) = (S n));
 eq_resp_S (refl n) = refl (S n);
 
+intToNat : Int -> Nat;
+
+in' : Bool -> Nat -> Int -> Nat;
+in' True n i = n;
+in' False n i = S (intToNat (i-1));
+
+intToNat n = in' (n<=0) O n;
+
 ----------- plus theorems -----------
 
 plus_nO : (n:Nat) -> ((plus n O) = n);

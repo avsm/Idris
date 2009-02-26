@@ -9,6 +9,7 @@
 > import Debug.Trace
 > import Data.Typeable
 > import Data.Maybe
+> import Data.List
 
 > import Ivor.TT
 > import Ivor.Primitives
@@ -38,6 +39,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | Fun Function [CGFlag] | TermDef Id RawTerm [CGFlag] | Constructor
 >           | Prf Proof
 >           | LatexDefs [(Id,String)]
+>           | Using [(Id, RawTerm)] [Decl] -- default implicit args
 >           | CLib String | CInclude String
 >    deriving Show
 
@@ -61,6 +63,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >                | FunClause RawTerm RawTerm [CGFlag]
 >                | FunClauseP RawTerm RawTerm Id
 >                | ProofScript Id [ITactic]
+>                | PUsing [(Id,RawTerm)] [ParseDecl]
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
 > collectDecls pds = cds [] [] pds
@@ -81,6 +84,11 @@ the system to insert a hole for a proof that turns it into the right type.
 >                          cds ((Prf (Proof n Nothing prf)):rds) fwds ds
 >                      Just (ty, fl) -> 
 >                          cds ((Prf (Proof n (Just ty) prf)):rds) fwds ds
+>         cds rds fwds ((PUsing uses pds):ds) = 
+>                case (cds [] [] pds) of
+>                   Success d ->
+>                       cds ((Using uses d):rds) fwds ds
+>                   failure -> failure
 >         cds rds fwds [] = return (reverse rds)
 
 >         getClauses rds fwds n t fl clauses ((FunClause pat ret fl'):ds)
@@ -101,8 +109,11 @@ the system to insert a hole for a proof that turns it into the right type.
 >                           tyId :: Id,
 >                           tyType :: RawTerm,
 >                           tyConstructors :: [(Id, RawTerm)],
+>                           tyImplicits :: [(Id, RawTerm)],
 >                           tyOpts :: [TyOpt]
 >                          }
+>               | Latatype { tyId :: Id,
+>                            tyType :: RawTerm } -- forward declaration
 >   deriving Show
 
 > data TyOpt = NoElim | Collapsible
@@ -305,6 +316,7 @@ Name definitions Ivor-side.
 >              | DataDef !Inductive Bool -- data type definition, generate elim
 >              | IProof [ITactic]
 >              | Later -- forward declaration
+>              | LataDef -- forward declared data
 >    deriving Show
 
 > data IdrisState = IState {
@@ -325,14 +337,30 @@ but not P. We also don't want names which appear in the return type, since
 they'll never be inferrable at the call site.
 
 > addImpl :: Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
-> addImpl = addImpl' True 
+> addImpl = addImpl' True []
+
+> addImplWith :: [(Id, RawTerm)] -> Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
+> addImplWith = addImpl' True
 
 Bool says whether to pi bind unknown names
+Also take a mapping of names to types ('using') --- if any name we need to 
+bind is  in the list, use the given type. Also sort the resulting bindings 
+so that they are in the same order as in 'using', and appear after any
+other introduced bindings.
 
-> addImpl' :: Bool -> Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
-> addImpl' pi ctxt raw 
+Need to do it twice, in case the first pass added names in the indices
+(from using)
+
+> addImpl' :: Bool -> [(Id, RawTerm)] -> Ctxt IvorFun -> 
+>             RawTerm -> (RawTerm, Int) 
+> addImpl' pi using ctxt raw 
 >             = let (newargs, totimp) = execState (addImplB [] raw) ([],0) in
->                   if pi then (pibind newargs raw, totimp)
+>                   if pi then 
+>                      let added = pibind (mknew newargs) raw in
+>                         if null using
+>                             then (added, totimp)
+>                             else let (added', totimp') = addImpl' True [] ctxt added in
+>                                   (added', totimp')
 >                      else (raw, totimp)
 >     where addImplB :: [Id] -> RawTerm -> State ([Id], Int) ()
 >           addImplB env (RVar i)
@@ -366,9 +394,26 @@ Bool says whether to pi bind unknown names
 >                    = do addImplB env l
 >                         addImplB env r
 >           addImplB env _ = return ()
->           pibind :: [Id] -> RawTerm -> RawTerm
+
+>           mknew :: [Id] -> [(Id, RawTerm)]
+>           mknew args = map fst (sortBy ordIdx (map addTy args))
+
+>           ordIdx (a, x) (b, y) = compare x y
+
+>           addTy n = case lookupIdx n using of
+>                        Just (t, i) -> ((n,t), i)
+>                        _ -> ((n,RPlaceholder), -1)
+>           pibind :: [(Id, RawTerm)] -> RawTerm -> RawTerm
 >           pibind [] raw = raw
->           pibind (n:ns) raw = RBind n (Pi Im Eager RPlaceholder) (pibind ns raw)
+>           pibind ((n, ty):ns) raw = RBind n (Pi Im Eager ty) (pibind ns raw)
+
+Is this, or something like it, in the Haskell libraries?
+
+> lookupIdx :: Eq a => a -> [(a,b)] -> Maybe (b, Int)
+> lookupIdx x xs = li' 0 x xs
+>    where li' i x [] = Nothing
+>          li' i x ((y,v):ys) | x == y = Just (v, i)
+>                             | otherwise = li' i x ys
 
 Convert a raw term with all the implicit things added into an ivor term
 ready for typechecking

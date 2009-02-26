@@ -145,6 +145,8 @@ TMP HACK until we do coercions on primitives properly
 >         "__epic_toInt(" ++ writeSC' arg ++ ")"
 >     | n == name "__toString" =
 >         "__epic_toString(" ++ writeSC' arg ++ ")"
+>     | n == name "unsafeNative" =
+>         "__epic_native(" ++ writeSC' arg ++ ")"
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
 >       where list [] = ""
 >             list [a] = writeSC' a
@@ -230,6 +232,7 @@ this on tag, we know the type. Check 'FType' in io.idr.
 > fToEpic (SCon _ 1) = "Int"
 > fToEpic (SCon _ 2) = "String"
 > fToEpic (SCon _ 3) = "Ptr"
+> fToEpic _ = "Any" -- idris data type
 
 > tempfile :: IO (FilePath, Handle)
 > tempfile = do env <- environment "TMPDIR"

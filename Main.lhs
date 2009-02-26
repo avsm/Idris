@@ -225,8 +225,10 @@ If it is an IO type, execute it, otherwise just eval it.
 >                        then Just $ Name DataCon (name "True")
 >                        else Just $ Name DataCon (name "False")
 >           _ -> Just $ Name DataCon (name "False")
-> constEq [_, x, y] = if (x == y) then Just $ Name DataCon (name "True")
->                        else Just $ Name DataCon (name "False")
+
+ constEq [_, x, y] = if (x == y) then Just $ Name DataCon (name "True")
+                        else Just $ Name DataCon (name "False")
+
 > constEq _ = Nothing
 
 > intlt :: [ViewTerm] -> Maybe ViewTerm

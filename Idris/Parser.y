@@ -66,6 +66,7 @@ import Idris.Lib
       type            { TokenType }
       lazybracket     { TokenLazyBracket }
       data            { TokenDataType }
+      using           { TokenUsing }
       noelim          { TokenNoElim }
       collapsible     { TokenCollapsible }
       where           { TokenWhere }
@@ -138,6 +139,7 @@ Declaration :: { ParseDecl }
 Declaration: Function { $1 }
            | Datatype { RealDecl (DataDecl $1) }
            | Latex { RealDecl $1 }
+           | Using '{' Program '}' { PUsing $1 $3 }
            | cinclude string { RealDecl (CInclude $2) }
            | clib string { RealDecl (CLib $2) }
 
@@ -182,8 +184,13 @@ ArgTerms : { [] }
       | '{' Name '=' Term '}' ArgTerms { ($4, Just $2):$6 }
 
 Datatype :: { Datatype }
-Datatype : data DataOpts Name DType Constructors ';'
-             { Datatype $3 $4 (map (mkCon (mkTyApp $3 $4)) $5) $2 }
+Datatype : data DataOpts Name DefinedData
+             { mkDatatype $3 $4 $2 }
+
+DefinedData :: { Either RawTerm ((RawTerm, [(Id, RawTerm)]), [ConParse]) }
+DefinedData : DType Constructors ';' { Right ($1,$2) }
+            | ':' Type ';' { Left $2 }
+            | ';' { Left (RConst TYPE) }
 
 -- Currently just whether to generate an elim rule, this'll need to be
 -- a list of options if we ever expand this.
@@ -318,10 +325,18 @@ Terms :: { [RawTerm] }
 Terms : { [] }
       | NoAppTerm Terms { $1:$2 }
 
-DType :: { RawTerm }
-DType : ':' Type where { $2 }
-      | '=' { RConst TYPE }
-      | VarList '=' { mkTyParams $1 }
+DType :: { (RawTerm, [(Id, RawTerm)]) }
+DType : ':' Type Using where { ($2, $3) }
+      | '=' { (RConst TYPE, []) }
+      | VarList '=' { (mkTyParams $1, []) }
+
+Using :: { [(Id, RawTerm)] }
+      : { [] }
+      | using '(' UseList ')' { $3 }
+        
+UseList :: { [(Id, RawTerm)] }
+        : Name ':' Type { [($1, $3)] }
+        | Name ':' Type ',' UseList { ($1,$3):$5 }
 
 VarList :: { [Id] }
 VarList : Name { [$1] }
@@ -411,6 +426,13 @@ mkTyApp n ty = mkApp (RVar n) (getTyArgs ty)
 mkTyParams :: [Id] -> RawTerm
 mkTyParams [] = RConst TYPE
 mkTyParams (x:xs) = RBind x (Pi Ex Eager (RConst TYPE)) (mkTyParams xs)
+
+mkDatatype :: Id -> Either RawTerm ((RawTerm, [(Id, RawTerm)]), [ConParse]) -> 
+                    [TyOpt] -> Datatype
+mkDatatype n (Right ((t, using), cons)) opts
+    = Datatype n t (map (mkCon (mkTyApp n t)) cons) using opts
+mkDatatype n (Left t) opts
+    = Latatype n t
 
 }
 

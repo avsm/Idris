@@ -42,3 +42,7 @@ __epic_toInt (x:String) -> Int =
 
 __epic_toString (x:Int) -> String = 
    foreign String "intToStr" (x:Int)
+
+__epic_native (x:Fun) -> Ptr =
+   foreign Ptr "getNative" (x:Fun)
+

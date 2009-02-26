@@ -1,12 +1,16 @@
 include "list.idr";
 
-data FType = FUnit | FInt | FStr | FPtr;
+-- FAny is to allow C functions to build up Idris data
+-- types. Obviously this needs care...
+
+data FType = FUnit | FInt | FStr | FPtr | FAny #;
 
 i_ftype : FType -> #;
 i_ftype FInt = Int;
 i_ftype FStr = String;
 i_ftype FPtr = Ptr;
 i_ftype FUnit = ();
+i_ftype (FAny ty) = ty;
 
 data ForeignFun = FFun String (List FType) FType;
 
@@ -57,19 +61,36 @@ Response (Foreign t args) = i_ftype (f_retType t);
 data IO : # -> # where
    IOReturn : A -> (IO A)
  | IODo : (c:Command) -> ((Response c) -> (IO A)) -> (IO A);
+--  | IOError : String -> (IO A);
 
 data IORef A = MkIORef Int;
 
 bind : (IO A) -> (A -> (IO B)) -> (IO B);
 bind (IOReturn a) k = k a;
 bind (IODo c p) k = IODo c (\x . (bind (p x) k));
+-- bind (IOError str) k = IOError str;
 
 return : A -> (IO A);
 return x = IOReturn x;
 
+data IOException = IOExcept String; 
+
+data IOe : # -> # where
+   IOK : (IO A) -> (IOe A)
+ | IOError : String -> (IOe A);
+
+{-
+catch : (IOe A) -> (IOException -> (IO A)) -> (IO A);
+catch (IOK action) = action;
+catch (IOError str) handler = handler (IOExcept str);
+-}
+
 -- No code for this - only works in compiled code, certainly shouldn't
 -- be evaluted in pure code!
 unsafePerformIO : (IO A) -> A;
+
+-- get the rts representation of a value
+unsafeNative : A -> Ptr;
 
 putStr : String -> (IO ());
 putStr str = IODo (PutStr str) (\a . (IOReturn a));
@@ -163,3 +184,8 @@ fread (FHandle h) = _fread h;
 fwrite : File -> String -> (IO ());
 fwrite (FHandle h) str = _fwrite h str;
 
+sequence : (List (IO a)) -> (IO (List a));
+sequence Nil = return Nil;
+sequence (Cons x xs) = do { a <- x;
+			    as <- sequence xs;
+			    return (Cons a as); };

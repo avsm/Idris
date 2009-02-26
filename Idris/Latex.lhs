@@ -38,7 +38,7 @@
 >     latex ctxt defs (IvorFun nm ty _ _ decl _ _) = latex ctxt defs decl
 
 > instance LaTeX Decl where
->     latex ctxt defs (DataDecl (Datatype id ty cons _))
+>     latex ctxt defs (DataDecl (Datatype id ty cons _ _))
 >           = "\\DM{\\AR{\n\\Data\\hg\\:" ++ 
 >             latex ctxt defs id ++ "\\:\\Hab\\:\\AR{" ++
 >             latex ctxt defs ty ++ "\\hg\\Where}\\\\ \n\\begin{array}{rl}\n" ++ 

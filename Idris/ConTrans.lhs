@@ -8,6 +8,8 @@ Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 > import Idris.AbsSyntax
 > import Ivor.TT
 
+> import Debug.Trace
+
 Algorithm is approximately:
 
 1. Make sure all constructors are fully applied. This means all transformations
@@ -45,8 +47,32 @@ Test transforms: VNil A => VNil
 > compTrans (Trans n1 f) (Trans n2 g)
 >           = Trans (n1 ++ " -> " ++ n2) (g.f)
 
+Look at all the definitions in the context, and make the relevant constructor
+transformations for forcing, detagging and collapsing.
+
 > makeTransforms :: Ctxt IvorFun -> Context -> [Transform]
-> makeTransforms raw ctxt = [testTrans]
+> makeTransforms raw ctxt = mkT' (getAllInductives ctxt) [testTrans]
+>   where mkT' [] acc = acc
+>         mkT' (x:xs) acc = mkT' xs ((makeTransform ctxt x)++acc)
+
+Make all the transformations for a type
+
+Step 1. [Not done] Forcing
+   On each constructor, find namess that appear constructor 
+   guarded in that constructor's return type. Any argument with these
+   names is forceable.
+Step 2: [Not done] Detagging
+   Check if there is an argument position in the return type which has a
+   different constructor at the head on each constructor. If so,
+   remove the tags on all constructor.
+Step 3: [Not done] Collapsing
+   If the only remaining arguments in all constructors are recursive (i.e.
+   return the type we're working with), translate all to Unit.
+   If this doesn't apply, undo step 2.
+
+
+> makeTransform :: Context -> (Name, Inductive) -> [Transform]
+> makeTransform ctxt ity = []
 
 Apply all transforms in order to a term, eta expanding constructors first.
 
