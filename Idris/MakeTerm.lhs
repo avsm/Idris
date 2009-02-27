@@ -212,7 +212,7 @@ of things we need to define to complete the program (i.e. metavariables)
 >         LataDef -> case tyin of
 >                       Just ty -> do ctxt <- declareData ctxt name ty
 >                                     return (ctxt, metas)
->         DataDef ind e -> do 
+>         DataDef ind e -> do
 >                             c <- addDataNoElim ctxt ind
 >                           -- add once to fill in placeholders
 >                             ctxt <- if e then do

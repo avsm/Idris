@@ -413,7 +413,7 @@ Is this, or something like it, in the Haskell libraries?
 > lookupIdx x xs = li' 0 x xs
 >    where li' i x [] = Nothing
 >          li' i x ((y,v):ys) | x == y = Just (v, i)
->                             | otherwise = li' i x ys
+>                             | otherwise = li' (i+1) x ys
 
 Convert a raw term with all the implicit things added into an ivor term
 ready for typechecking
