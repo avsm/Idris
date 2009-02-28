@@ -140,6 +140,7 @@ Declaration: Function { $1 }
            | Datatype { RealDecl (DataDecl $1) }
            | Latex { RealDecl $1 }
            | Using '{' Program '}' { PUsing $1 $3 }
+           | DoUsing '{' Program '}' { PDoUsing $1 $3 } 
            | cinclude string { RealDecl (CInclude $2) }
            | clib string { RealDecl (CLib $2) }
 
@@ -333,6 +334,9 @@ DType : ':' Type Using where { ($2, $3) }
 Using :: { [(Id, RawTerm)] }
       : { [] }
       | using '(' UseList ')' { $3 }
+
+DoUsing ::{ (Id,Id) }
+        : do using '(' Name ',' Name ')' { ($4,$6) }
         
 UseList :: { [(Id, RawTerm)] }
         : Name ':' Type { [($1, $3)] }

@@ -40,6 +40,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | Prf Proof
 >           | LatexDefs [(Id,String)]
 >           | Using [(Id, RawTerm)] [Decl] -- default implicit args
+>           | DoUsing Id Id [Decl] -- bind and return names
 >           | CLib String | CInclude String
 >    deriving Show
 
@@ -64,6 +65,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >                | FunClauseP RawTerm RawTerm Id
 >                | ProofScript Id [ITactic]
 >                | PUsing [(Id,RawTerm)] [ParseDecl]
+>                | PDoUsing (Id, Id) [ParseDecl]
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
 > collectDecls pds = cds [] [] pds
@@ -88,6 +90,11 @@ the system to insert a hole for a proof that turns it into the right type.
 >                case (cds [] [] pds) of
 >                   Success d ->
 >                       cds ((Using uses d):rds) fwds ds
+>                   failure -> failure
+>         cds rds fwds ((PDoUsing (ub,ur) pds):ds) = 
+>                case (cds [] [] pds) of
+>                   Success d ->
+>                       cds ((DoUsing ub ur d):rds) fwds ds
 >                   failure -> failure
 >         cds rds fwds [] = return (reverse rds)
 
@@ -424,8 +431,14 @@ ready for typechecking
 > fromIvorName :: Name -> Id
 > fromIvorName i = UN (show i)
 
-> toIvor :: Id -> RawTerm -> ViewTerm
-> toIvor fname tm = evalState (toIvorS tm) (0,1)
+> data UndoInfo = UI Id Int -- bind, bind implicit
+>                    Id Int -- return, return implicit
+
+> defDo = UI (UN "bind") 2
+>            (UN "return") 1 -- IO monad
+
+> toIvor :: UndoInfo -> Id -> RawTerm -> ViewTerm
+> toIvor ui fname tm = evalState (toIvorS tm) (0,1)
 >   where
 >     toIvorS :: RawTerm -> State (Int, Int) ViewTerm
 >     toIvorS (RVar n) = return $ Name Unknown (toIvorName n)
@@ -472,7 +485,7 @@ ready for typechecking
 >                 = do l' <- toIvorS l
 >                      r' <- toIvorS r
 >                      return $ apply (Name Unknown (opFn op)) [l',r']
->     toIvorS (RDo dos) = do tm <- undo dos
+>     toIvorS (RDo dos) = do tm <- undo ui dos
 >                            toIvorS tm
 >     toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
 >     mkName (UN n) i = UN (n++"_"++show i)
@@ -492,9 +505,9 @@ ready for typechecking
 
 Convert a raw term to an ivor term, adding placeholders
 
-> makeIvorTerm :: Id -> Ctxt IvorFun -> RawTerm -> ViewTerm
-> makeIvorTerm n ctxt tm = let expraw = addPlaceholders ctxt tm in
->                              toIvor n expraw
+> makeIvorTerm :: UndoInfo -> Id -> Ctxt IvorFun -> RawTerm -> ViewTerm
+> makeIvorTerm ui n ctxt tm = let expraw = addPlaceholders ctxt tm in
+>                                 toIvor ui n expraw
 
 > addPlaceholders :: Ctxt IvorFun -> RawTerm -> RawTerm
 > addPlaceholders ctxt tm = ap [] tm
@@ -539,23 +552,23 @@ in our list of explicit names to add, add it.
 > getBinders sc acc = (reverse acc, sc)
 
 
-> undo :: [Do] -> State (Int, Int) RawTerm
-> undo [] = fail "The last statement in a 'do' block must be an expression"
-> undo [DoExp last] = return last
-> undo ((DoBinding v' ty exp):ds)
+> undo :: UndoInfo -> [Do] -> State (Int, Int) RawTerm
+> undo ui [] = fail "The last statement in a 'do' block must be an expression"
+> undo ui [DoExp last] = return last
+> undo ui@(UI bind bindimpl _ _) ((DoBinding v' ty exp):ds)
 >          = -- bind exp (\v' . [[ds]])
->            do ds' <- undo ds
+>            do ds' <- undo ui ds
 >               let k = RBind v' (Lam ty) ds'
->               return $ mkApp (RVar (UN "bind")) [RPlaceholder, RPlaceholder,
->                                                  exp, k]
-> undo ((DoExp exp):ds)
+>               return $ mkApp (RVar bind) 
+>                          ((take bindimpl (repeat RPlaceholder)) ++ [exp, k])
+> undo ui@(UI bind bindimpl _ _) ((DoExp exp):ds)
 >          = -- bind exp (\_ . [[ds]])
->            do ds' <- undo ds
+>            do ds' <- undo ui ds
 >               (i, h) <- get
 >               put (i+1, h)
 >               let k = RBind (MN "x" i) (Lam RPlaceholder) ds'
->               return $ mkApp (RVar (UN "bind")) [RPlaceholder, RPlaceholder,
->                                                  exp, k]
+>               return $ mkApp (RVar bind) 
+>                          ((take bindimpl (repeat RPlaceholder)) ++ [exp, k])
 
 > testCtxt = addEntry newCtxt (UN "Vect") undefined
 
