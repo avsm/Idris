@@ -14,6 +14,7 @@ into an ivor definition, with all the necessary placeholders added.
 
 > makeIvorFun ::  [(Id, RawTerm)] -> UndoInfo ->
 >                 Ctxt IvorFun -> Decl -> Function -> [CGFlag] -> IvorFun
+
 > makeIvorFun using ui ctxt decl (Function n ty clauses) flags
 >     = let (rty, imp) = addImplWith using ctxt ty
 >           ity = makeIvorTerm ui n ctxt rty

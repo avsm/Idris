@@ -67,7 +67,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("type", "t", tmtype, "Print the type of a term",True),
 >       ("prove", "p", prove, "Begin a proof of an undefined name",True),
 >       ("metavars", "m", metavars, 
->                    "Show metavariables still to be proved",True),
+>                    "Show remaining proof obligations",True),
 >       ("ivor", "i", ivor, "Drop into the Ivor shell",True),
 >       ("compile", "c", tcomp, "Compile a definition (of type IO ()", True),
 >       ("execute", "e", texec, "Compile and execute 'main'", True),
@@ -97,7 +97,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                if (null vars)
 >                   then putStrLn "All proofs complete."
 >                   else 
->                     do putStr "Metavariables to be proved:\n\t"
+>                     do putStr "Proof obligations:\n\t"
 >                        print (map fst vars)
 >                        putStr "\n"
 >                return Continue

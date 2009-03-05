@@ -101,7 +101,7 @@ undone bits, after a Qed
 >     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
 >     at ctxt (Believe t) = suspend_disbelief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Use t) = prove_belief raw (ivor t) defaultGoal ctxt
->     at ctxt (Decide t) = isItJust (ivor t) defaultGoal ctxt
+>     at ctxt (Decide t) = decide raw t defaultGoal ctxt
 >     at ctxt (Induction t) = induction (ivor t) defaultGoal ctxt
 >     at ctxt (Rewrite f t) = rewrite (ivor t) f defaultGoal ctxt
 >     at ctxt Compute = compute defaultGoal ctxt
@@ -206,6 +206,19 @@ the required equality proofs
 >                         fail ((show arg1) ++ " is a type")
 >                    ctxt' <- rewrite (Name Unknown claimName) True goal ctxt
 >                    rewriteDiffs ds goal ctxt'
+
+decide; given a goal of the form X a b c, and a function x of type
+x : a:A -> b:B -> c:C -> (Maybe (X a b c), apply the function to
+a b c, and send the result to Ivor's isItJust tactic
+
+> decide :: Ctxt IvorFun -> RawTerm -> Tactic
+> decide raw dproc goal ctxt = do
+>    gd <- goalData ctxt True goal
+>    let idgoal = unIvor raw ((view.goalType) gd)
+>    let args = getExplicitArgs idgoal
+>    let dapp = makeIvorTerm defDo (UN "__prf") raw (mkApp dproc args)
+>    isItJust dapp goal ctxt
+
 
 XXX: Auto-rewrite: user can add rewrite rules, auto-rewrite repeatedly
 rewrites by these rules until there's no more to rewrite, or until a

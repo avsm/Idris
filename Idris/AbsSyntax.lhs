@@ -228,6 +228,12 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >          args acc (RAppImp _ f a) = args (a:acc) f
 >          args acc f = acc
 
+> getExplicitArgs :: RawTerm -> [RawTerm]
+> getExplicitArgs x = args [] x
+>    where args acc (RApp f a) = args (a:acc) f
+>          args acc (RAppImp _ f a) = args acc f
+>          args acc f = acc
+
 Binders; Pi (either implicit or explicitly written), Lambda and Let with
 value.
 

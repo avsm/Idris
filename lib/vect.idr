@@ -22,7 +22,7 @@ append (VCons x xs) ys = VCons x (append xs ys);
 
 -- Membership predicate for vectors, and means to compute one.
 
-using (i:Fin n, xs:Vect A n) {
+using (A:#, n:Nat, i:Fin n, x:A, y:A, xs:Vect A n) {
 
   data ElemIs : (Fin n) -> A -> (Vect A n) -> # where
      first : (ElemIs fO x (VCons x xs))
