@@ -78,8 +78,11 @@ Get all the definitions we want to compile (i.e., skipping NoCG ones)
 > --    = let flags = getFlags n raw in
 > --          case ((NoCG `elem` flags), (CGEval `elem` flags)) of 
 > --             (True, _) -> trace ("Not compiling " ++ show n) (n, [])
-> --             (False, False) -> 
->       =            (n, pmcomp raw ctxt n ty (transform ctxt trans ps))
+> --             (False, False)e -> 
+>       =  let transpm = transform ctxt trans ps 
+>              compiledp = pmcomp raw ctxt n ty transpm in
+>            -- trace (show n ++ "\n" ++ show compiledp)
+>              (n, compiledp)
 
      where getFlags n raw = case ctxtLookup raw n of
                               Just i -> funFlags i

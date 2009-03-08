@@ -8,6 +8,7 @@ Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 > import Idris.AbsSyntax
 > import Ivor.TT
 
+> import Maybe
 > import Debug.Trace
 
 Algorithm is approximately:
@@ -27,7 +28,7 @@ A transformation is a function converting a ViewTerm to a new form.
 > data Transform = Trans String (ViewTerm -> ViewTerm)
 
 > transform :: Context -> [Transform] -> Patterns -> Patterns
-> transform ctxt ts (Patterns ps) = Patterns $ map doTrans ps
+> transform ctxt ts (Patterns ps) = Patterns $ (map doTrans ps)
 >    where doTrans (PClause args ret) 
 >              = PClause (map (applyTransforms ctxt ts) args)
 >                        (applyTransforms ctxt ts ret)
@@ -51,7 +52,7 @@ Look at all the definitions in the context, and make the relevant constructor
 transformations for forcing, detagging and collapsing.
 
 > makeTransforms :: Ctxt IvorFun -> Context -> [Transform]
-> makeTransforms raw ctxt = mkT' (getAllInductives ctxt) [testTrans]
+> makeTransforms raw ctxt = mkT' (getAllInductives ctxt) []
 >   where mkT' [] acc = acc
 >         mkT' (x:xs) acc = mkT' xs ((makeTransform ctxt x)++acc)
 
@@ -72,7 +73,57 @@ Step 3: [Not done] Collapsing
 
 
 > makeTransform :: Context -> (Name, Inductive) -> [Transform]
-> makeTransform ctxt ity = []
+> makeTransform ctxt (n, ity) 
+>    = let cons = constructors ity
+>          forceable = map (\ (x,y) -> (x, force ctxt y, Ivor.TT.getArgTypes y)) cons
+>          detaggable = False -- TODO
+>          recursive = [] -- TODO
+>               in
+>          -- trace (show n ++ "FORCING \n\t" ++ show forceable) $
+>            mapMaybe forceTrans forceable
+
+> forceTrans :: (Name, [Name], [(Name, ViewTerm)]) -> Maybe Transform
+> forceTrans (x, [], _) = Nothing
+> forceTrans (n, forced, tys) 
+>      = Just (Trans ((show n)++"_FORCE") (mkForce (length tys)))
+
+If a term is n applied to (length tys) arguments, change it to
+n applied to arguments minus the ones in forceable positions
+
+>    where mkForce num tm
+>             | Name nty con <- getApp tm
+>                 = let fn = getApp tm
+>                       args = getFnArgs tm 
+>                       nargs = zip (map fst tys) args in
+>                   if con == n && length args == num then
+>                       let app = apply (Name nty con) (map snd (filter notForced nargs)) in
+>                           -- trace (show (app, con, nargs)) 
+>                           app
+>                       else tm
+>          mkForce _ tm = tm
+>          notForced (f, tm) = not (f `elem` forced)
+
+
+Given a constructor type, return all the names bound in it which
+need not be stored (i.e. need not be bound)
+
+> force :: Context -> ViewTerm -> [Name]
+> force ctxt tm = let rt = getReturnType tm
+>                     rtargs = getFnArgs rt in
+>                     concat (map conGuarded rtargs)
+>     where isVar n | elem n boundnames = True
+>                   | otherwise =
+>                         case nameType ctxt n of
+>                         Just _ -> False
+>                         _ -> True
+>           boundnames = map fst (Ivor.TT.getArgTypes tm)
+>           conGuarded t = cg [] t
+>           cg acc (Name Bound x) | isVar x = x:acc -- variable name
+>           cg acc (Name Free x) | isVar x = x:acc -- variable name
+>           cg acc (Name DataCon _) = acc
+>           cg acc (Name t x) = []
+>           cg acc (App f a) = cg (acc++(cg [] a)) f
+>           cg acc _ = []
 
 Apply all transforms in order to a term, eta expanding constructors first.
 

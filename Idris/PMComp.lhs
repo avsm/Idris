@@ -313,11 +313,13 @@ intermediate functions for when this isn't the case
 >                put (i+1)
 >                return $ Let (bname i) Star -- type irrelevant
 >                             v (quickSimpl (App k (Name Unknown (bname i))))
-> deIO (App (App (Name _ ret) _) a)
+> -- deIO (App (App (Name _ ret) _) a) -- (without forcing)
+> deIO (App (Name _ ret) a) -- (with forcing)
 >      | ret == (name "IOReturn") = deIO a
 > deIO (App (App (Name _ upio) _) a)
 >      | upio == (name "unsafePerformIO") = deIO a
-> deIO (App (App (App (Name _ iodo) _) c) k)
+> -- deIO (App (App (App (Name _ iodo) _) c) k) -- (without forcing)
+> deIO (App (App (Name _ iodo) c) k) -- (with forcing)
 >      | iodo == (name "IODo") 
 >         = do k' <- deIO k
 >              c' <- deIO c
