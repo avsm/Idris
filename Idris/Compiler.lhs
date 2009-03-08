@@ -24,7 +24,8 @@ already simple case trees.
 >          = do let raw = idris_context ist
 >               let decls = idris_decls ist
 >               let pdefs = getCompileDefs raw ctxt
->               let trans = makeTransforms raw ctxt
+>               let trans = makeConTransforms raw ctxt
+>               -- let trans = makeArgTransforms raw ctxt ctrans
 >               let pcomp = map (pmCompDef raw ctxt trans) pdefs
 >               let declouts = filter (/="") (map epicDecl decls)
 >               let clink = filter (/="") (map epicLink decls)
@@ -56,9 +57,13 @@ This is just for the directives to link in C headers, .o file, etc.
 
 Get all the definitions we want to compile (i.e., skipping NoCG ones)
 
+Get the user specified pattern definition, if it exists, not the Ivor
+expanded one (i.e. with the placeholders as the user specified) so
+that we avoid pattern matching where the programmer didn't ask us to.
+
 > getCompileDefs :: Ctxt IvorFun -> Context -> [(Name, (ViewTerm, Patterns))]
 > getCompileDefs raw ctxt = defs' [] (ctxtAlist raw) 
->    where alldefs = getAllPatternDefs ctxt
+>    where alldefs = map getOrig (getAllPatternDefs ctxt)
 >          defs' acc [] = dropAll acc alldefs
 >          defs' acc ((n,ifun):ds) 
 >              = let flags = funFlags ifun 
@@ -70,18 +75,34 @@ Get all the definitions we want to compile (i.e., skipping NoCG ones)
 >          dropAll drops [] = []
 >          dropAll drops ((n,def):ds) | n `elem` drops = dropAll drops ds
 >                                     | otherwise = (n,def):(dropAll drops ds)
+>          getOrig (n, (ty, ps)) = (n, (ty, ps))
 
-> pmCompDef :: Ctxt IvorFun -> Context -> [Transform] ->
+                  = case ctxtLookup raw (mkRName n) of
+                      (Just ifun) ->
+                          case (ivorDef ifun) of
+                            PattDef ps' -> (n, (ty, (mergePats ps ps')))
+                            _ -> (n, (ty, ps))
+                      _ -> (n, (ty, ps))
+
+> mergePats :: Patterns -> Patterns -> Patterns
+> mergePats (Patterns ps) (Patterns ps') = Patterns (mp ps ps')
+>   where
+>     mp [] [] = []
+>     mp ((PClause a r):ps) ((PClause a' r'):ps') =
+>             (PClause a' r):(mp ps ps')
+
+> pmCompDef :: Ctxt IvorFun -> Context -> 
+>              [Transform] ->
 >              (Name, (ViewTerm, Patterns)) -> 
 >              (Name, ([Name], SimpleCase))
-> pmCompDef raw ctxt trans (n, (ty,ps)) 
+> pmCompDef raw ctxt ctrans (n, (ty,ps)) 
 > --    = let flags = getFlags n raw in
 > --          case ((NoCG `elem` flags), (CGEval `elem` flags)) of 
 > --             (True, _) -> trace ("Not compiling " ++ show n) (n, [])
 > --             (False, False)e -> 
->       =  let transpm = transform ctxt trans ps 
+>       =  let transpm = transform ctxt ctrans n ps 
 >              compiledp = pmcomp raw ctxt n ty transpm in
->            -- trace (show n ++ "\n" ++ show compiledp)
+>              -- trace (show n ++ "\n" ++ show transpm)
 >              (n, compiledp)
 
      where getFlags n raw = case ctxtLookup raw n of

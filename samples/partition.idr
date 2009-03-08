@@ -61,3 +61,17 @@ listToVect (Cons x xs) = VCons x (listToVect xs);
 qsortInt : (Vect Int n) -> (Vect Int n);
 qsortInt xs = qsort (\x, y . x<y) xs;
 
+showV : (Vect Int n) -> String;
+showV VNil = "END";
+showV (VCons i xs) = __toString i ++ ", " ++ showV xs;
+
+numbers : (x:Int) -> (List Int);
+
+naux : Bool -> (List Int) -> Int -> (List Int);
+naux True v i = v;
+naux False v i = Cons i (numbers (i-1));
+
+numbers x = naux (x<=0) Nil x;
+
+main : IO ();
+main = putStrLn (showV (qsortInt (listToVect (numbers 100))));

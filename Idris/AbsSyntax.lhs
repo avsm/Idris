@@ -320,6 +320,23 @@ implicit arguments each function has.
 >     }
 >    deriving Show
 
+Get all the pattern definitions. Get the user specified one, not the
+Ivor expanded one (i.e. with the placeholders as the user specified) so
+that we avoid pattern matching where the programmer didn't ask us to.
+
+> getRawPatternDefs :: Ctxt IvorFun -> Context ->
+>                      [(Name, (ViewTerm, Patterns))]
+> getRawPatternDefs raw ctxt = gdefs (ctxtAlist raw) where
+>     gdefs [] = []
+>     gdefs ((n, ifun):ds)
+>        = let iname = ivorFName ifun in
+>             case (ivorFType ifun, ivorDef ifun) of
+>               (Just ty, PattDef ps) -> 
+>                   (iname, (ty,ps)):(gdefs ds)
+>               _ -> case getPatternDef ctxt iname of
+>                      Just (ty,ps) -> (iname, (ty,ps)):(gdefs ds)
+>                      _ -> gdefs ds
+
 Name definitions Ivor-side.
 
 > data IvorDef = PattDef !Patterns -- pattern matching function

@@ -2,7 +2,8 @@
 
 Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 
-> module Idris.ConTrans(makeTransforms, applyTransforms, transform, 
+> module Idris.ConTrans(makeConTransforms, makeArgTransforms,
+>                       applyTransforms, transform, 
 >                       Transform) where
 
 > import Idris.AbsSyntax
@@ -27,11 +28,17 @@ A transformation is a function converting a ViewTerm to a new form.
 
 > data Transform = Trans String (ViewTerm -> ViewTerm)
 
-> transform :: Context -> [Transform] -> Patterns -> Patterns
-> transform ctxt ts (Patterns ps) = Patterns $ (map doTrans ps)
+To do this uniformly, turn a pattern def into an application of the lhs, 
+then turn it back into a pclause
+
+> transform :: Context -> [Transform] -> Name -> Patterns -> Patterns
+> transform ctxt ts n (Patterns ps) = Patterns $ (map doTrans ps)
 >    where doTrans (PClause args ret) 
->              = PClause (map (applyTransforms ctxt ts) args)
->                        (applyTransforms ctxt ts ret)
+>              = let lhs = apply (Name Unknown n) args
+>                    lhs' = applyTransforms ctxt ts lhs
+>                    ret' = applyTransforms ctxt ts ret
+>                    args' = getFnArgs lhs' in
+>                    PClause args' ret'
 
 Test transforms: VNil A => VNil
                  VCons a k x xs => VCons x xs
@@ -51,10 +58,18 @@ Test transforms: VNil A => VNil
 Look at all the definitions in the context, and make the relevant constructor
 transformations for forcing, detagging and collapsing.
 
-> makeTransforms :: Ctxt IvorFun -> Context -> [Transform]
-> makeTransforms raw ctxt = mkT' (getAllInductives ctxt) []
+> makeConTransforms :: Ctxt IvorFun -> Context -> [Transform]
+> makeConTransforms raw ctxt = mkT' (getAllInductives ctxt) []
 >   where mkT' [] acc = acc
 >         mkT' (x:xs) acc = mkT' xs ((makeTransform ctxt x)++acc)
+
+Apply the constructor transforms before making hte function transforms
+so that we don't needlessly keep arguments dropped by forcing.
+
+> makeArgTransforms :: Ctxt IvorFun -> Context -> [Transform] -> [Transform]
+> makeArgTransforms raw ctxt ctrans = mkP' (getRawPatternDefs raw ctxt) ctrans
+>   where mkP' [] acc = acc
+>         mkP' (x:xs) acc = mkP' xs ((makePTransform raw ctxt ctrans x)++acc)
 
 Make all the transformations for a type
 
@@ -124,6 +139,83 @@ need not be stored (i.e. need not be bound)
 >           cg acc (Name t x) = []
 >           cg acc (App f a) = cg (acc++(cg [] a)) f
 >           cg acc _ = []
+
+If an argument position is a placeholder in all clauses in the idris
+definition, and the corresponding argument position in the Ivor definition
+is either a pattern or unused (modulo recursion), do this to it:
+
+[[x]] => x 
+[[complex term]] => _
+
+> getPlaceholders :: Context -> Name -> Patterns -> Patterns -> [Int]
+> getPlaceholders ctxt n (Patterns ps) (Patterns ivps) 
+>        = getPlPos [0..(args ps)-1] ps ivps
+>    where
+>      getPlPos acc [] [] = acc
+>      getPlPos acc ((PClause args r):ps) ((PClause args' r'):ps')
+>          = getPlPos (filter (plArg args args' r') acc) ps ps'
+>      plArg args args' r' x 
+>            = args!!x == Placeholder && recGuard x n (args'!!x) r'
+>      args ((PClause args r):_) = length args
+>      args [] = 0
+
+>      recGuard :: Int -> Name -> ViewTerm -> ViewTerm -> Bool
+
+z must be used only as part of the ith argument to a call to fn. Anywhere
+else, it can't be dropped.
+
+>      recGuard i fn (Name _ z) ret 
+>          | Nothing <- nameType ctxt z
+>        = let res = rgOK ret in
+>           trace ("GUARD " ++ show (i,fn,z,ret,res)) 
+>            res                    
+>        where rgOK ap@(App f a) = nthOK (getApp ap) (getFnArgs ap)
+>              rgOK (Name _ x) = x /= z
+>              rgOK (Lambda _ _ sc) = rgOK sc
+>              rgOK (Let _ _ val sc) = rgOK val && rgOK sc
+>              rgOK _ = True
+
+>              nthOK (Name _ x) args
+>                    | x == fn = and (map nOK (zip [0..] args))
+>              nthOK f args = rgOK f && (and (map rgOK args))
+>              nOK (argno, arg) | argno == i = True
+>              nOK (_,arg) = rgOK arg
+>      recGuard i fn tm ret = 
+>           trace ("GUARD OK " ++ show (i,fn,tm,ret)) True
+
+True -- Complex term, just drop it.
+
+> makePTransform :: Ctxt IvorFun -> Context -> [Transform] ->
+>                   (Name, (ViewTerm, Patterns)) -> [Transform]
+> makePTransform raw ctxt ctrans (n, (ty, patsin)) 
+>   = let pats = transform ctxt ctrans n patsin in
+>       case getPatternDef ctxt n of
+>        Just (_, idpats) ->
+>            let numargs = args pats
+>                placeholders = getPlaceholders ctxt n pats idpats in 
+>             trace (show (placeholders, n)) $
+>                if (null placeholders) 
+>                 then []
+>                 else [Trans (show n ++ "_dropargs") 
+>                             (doDrop placeholders numargs n)]
+>        _ -> []
+>    where
+>      args (Patterns ((PClause args r):_)) = length args
+>      args _ = 0
+
+>      doDrop pls num n tm
+>         | Name nty fname <- getApp tm
+>             = let fn = getApp tm
+>                   args = getFnArgs tm in
+>               if fname == n && length args == num then
+>                   apply (Name nty fname) 
+>                         (map (simplArg pls) (zip [0..] args))
+>                   else tm
+>      doDrop _ _ _ tm = tm
+>      -- simplArg pls (a, n@(Name _ _)) = n
+>      simplArg pls (a, t) | a `elem` pls = Placeholder
+>                          | otherwise = t
+
 
 Apply all transforms in order to a term, eta expanding constructors first.
 
