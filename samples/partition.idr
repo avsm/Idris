@@ -1,13 +1,6 @@
 include "nat.idr";
 include "list.idr";
-
-data Vect : # -> Nat -> # where
-   VNil : Vect a O
- | VCons : a -> (Vect a k) -> (Vect a (S k));
-
-append : (Vect a n) -> (Vect a m) -> (Vect a (plus n m));
-append VNil xs = xs;
-append (VCons x xs) ys = VCons x (append xs ys);
+include "vect.idr";
 
 data Partition : # -> Nat -> # where
    mkPartition : (left:Vect a l) -> 

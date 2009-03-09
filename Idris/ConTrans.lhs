@@ -10,6 +10,8 @@ Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 > import Ivor.TT
 
 > import Maybe
+> import List
+
 > import Debug.Trace
 
 Algorithm is approximately:
@@ -74,7 +76,7 @@ so that we don't needlessly keep arguments dropped by forcing.
 
 Make all the transformations for a type
 
-Step 1. [Not done] Forcing
+Step 1. Forcing
    On each constructor, find namess that appear constructor 
    guarded in that constructor's return type. Any argument with these
    names is forceable.
@@ -87,16 +89,38 @@ Step 3: [Not done] Collapsing
    return the type we're working with), translate all to Unit.
    If this doesn't apply, undo step 2.
 
-
 > makeTransform :: Context -> (Name, Inductive) -> [Transform]
 > makeTransform ctxt (n, ity) 
 >    = let cons = constructors ity
->          forceable = map (\ (x,y) -> (x, force ctxt y, Ivor.TT.getArgTypes y)) cons
->          detaggable = False -- TODO
->          recursive = [] -- TODO
+>          forceable = nub (map (\ (x,y) -> (x, force ctxt y, Ivor.TT.getArgTypes y)) cons)
+>          detaggable = pdisjoint ctxt (map (getFnArgs.getReturnType) (map snd cons))
+>          recursive = nub (map (\ (x,y) -> (x, recArgs n y, Ivor.TT.getArgTypes y)) cons)
+>          collapsible = detaggable && all droppedAll (combine forceable recursive)
 >               in
->          -- trace (show n ++ "FORCING \n\t" ++ show forceable) $
->            mapMaybe forceTrans forceable
+>          -- trace (show n ++ " " ++ show collapsible ++ " " ++ show (forceable, recursive)) $ -- FORCING \n\t" ++ show forceable) 
+>            if collapsible then
+>                map collapseTrans cons
+>                else mapMaybe forceTrans forceable
+
+Combine assumes constructors are in each list in the same order. Since they
+were built the same way, this is okay. Just combines the forceable and
+recursive arguments, so we can see if this gets all of them
+
+>   where combine [] [] = []
+>         combine ((con, d, all):cs) ((con',d',all'):cs')
+>             | con == con' = (con, nub (d++d'), all):(combine cs cs')
+>         droppedAll (con, d, args) = length d == length args
+
+> collapseTrans :: (Name, ViewTerm) -> Transform
+> collapseTrans (c, ty) = Trans ((show c)++"_COLLAPSE")
+>                            (mkCollapse (length (Ivor.TT.getArgTypes ty)))
+>    where mkCollapse num tm
+>             | Name nty con <- getApp tm
+>                 = let args = getFnArgs tm in
+>                       if con == c && length args == num then
+>                          Placeholder -- lose the lot
+>                          else tm
+>          mkCollapse _ tm = tm
 
 > forceTrans :: (Name, [Name], [(Name, ViewTerm)]) -> Maybe Transform
 > forceTrans (x, [], _) = Nothing
@@ -140,6 +164,39 @@ need not be stored (i.e. need not be bound)
 >           cg acc (Name t x) = []
 >           cg acc (App f a) = cg (acc++(cg [] a)) f
 >           cg acc _ = []
+
+Given a constructor type, return all the names bound in it which
+are to recursive arguments of the datatype.
+(TODO: Higher order recursive arguments too.)
+
+> recArgs :: Name -> ViewTerm -> [Name]
+> recArgs tyname tm = map fst (filter isRec (Ivor.TT.getArgTypes tm))
+>     where isRec (n, ty)
+>                 | Name _ apn <- getApp ty
+>                    = apn == tyname
+>           isRec _ = False
+
+
+Return whether constructor types are pairwise disjoint in their indices
+--- takes a list of indices for each constructor
+
+> pdisjoint :: Context -> [[ViewTerm]] -> Bool
+> pdisjoint c [] = True
+> pdisjoint c [x] = True
+> pdisjoint c (x:xs) = pdisjoint c xs && (pdisjointWith x xs)
+>   where pdisjointWith x [] = True
+>         pdisjointWith x (y:ys) = disjoint (zip x y) && pdisjointWith x ys
+
+Is there an argument position with a difference constructor at the head?
+
+>         disjoint xs = or (map disjointCon xs)
+>         disjointCon (x, y)
+>              | Name _ xn <- getApp x
+>              , Name _ yn <- getApp y
+>                 = case (nameType c xn, nameType c yn) of
+>                     (Just DataCon, Just DataCon) -> x /= y
+>                     _ -> False
+>         disjointCon _ = False
 
 If an argument position is a placeholder in all clauses in the idris
 definition, and the corresponding argument position in the Ivor definition

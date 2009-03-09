@@ -102,7 +102,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 > --             (False, False)e -> 
 >       =  let transpm = transform ctxt ctrans n ps 
 >              compiledp = pmcomp raw ctxt n ty transpm in
->              -- trace (show n ++ "\n" ++ show transpm)
+>             -- trace (show n ++ "\n" ++ show transpm)
 >              (n, compiledp)
 
      where getFlags n raw = case ctxtLookup raw n of
