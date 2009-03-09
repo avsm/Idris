@@ -48,9 +48,20 @@ Time functions
 FIXME: These use System.Time which is deprecated. Find out what to use
 these days instead...
 
-> getTime = getClockTime
-> diffTime = diffClockTimes
-> showTime = show
+> picosec = 1000000000000
+> mins = picosec*60
+> hours = mins*60
+> days = hours*24
+
+> getTime :: IO Integer 
+> getTime = do (TOD sec pico) <- getClockTime
+>              return $ sec*picosec+pico
+> diffTime t1 t2 = t1-t2
+> showTime t = show (t `div` picosec) ++ "." ++ 
+>              (zeros (take 6 (show (t `mod` picosec)))) ++
+>              " seconds"
+>          -- add leading zeros
+>    where zeros t = (take (6 - length t) (repeat '0')) ++ t 
 
 > processInput :: Context -> IdrisState -> FilePath ->
 >                 IO (Context, IdrisState)
