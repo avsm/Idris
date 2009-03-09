@@ -231,7 +231,7 @@ is either a pattern or unused (modulo recursion), do this to it:
 
 > getPlaceholders :: Context -> Name -> Patterns -> Patterns -> [Int]
 > getPlaceholders ctxt n (Patterns ps) (Patterns ivps) 
->        = getPlPos [0..(args ps)-1] ps ivps
+>        = getPlPos (noDiscriminate [0..(args ps)-1] ps) ps ivps
 >    where
 >      getPlPos acc [] [] = acc
 >      getPlPos acc ((PClause args r):ps) ((PClause args' r'):ps')
@@ -240,6 +240,26 @@ is either a pattern or unused (modulo recursion), do this to it:
 >            = args!!x == Placeholder && recGuard x n r' (namesIn (args'!!x))
 >      args ((PClause args r):_) = length args
 >      args [] = 0
+
+Remove argument positions from the list where those arguments are needed
+to discriminate. i.e., make sure the patterns are still pairwise disjoint 
+after removing them.
+
+>      noDiscriminate :: [Int] -> [PClause] -> [Int]
+>      noDiscriminate phs ps = indiscriminate phs (map pargs ps)
+>          where pargs (PClause args _) = args
+
+Drop argument x, from all patterns, see if they are still pairwise disjoint.
+If so, x can remain a placeholder position.
+
+>      indiscriminate (x:xs) pats 
+>         = let pats' = map (blot x) pats
+>               ok = pdisjoint ctxt pats' in
+>              if ok then x:(indiscriminate xs pats') -- remove
+>                    else indiscriminate xs pats -- don't remove
+>      indiscriminate [] _ = []
+
+>      blot i xs = take (i-1) xs ++ Placeholder:(drop (i+1) xs)
 
 >      recGuard :: Int -> Name -> ViewTerm -> [Name] -> Bool
 

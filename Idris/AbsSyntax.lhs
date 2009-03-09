@@ -328,6 +328,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >                      [(Name, (ViewTerm, Patterns))]
 > getRawPatternDefs raw ctxt = gdefs (ctxtAlist raw) where
 >     gdefs [] = []
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(LatexDefs _)) _ _):ds) = gdefs ds
 >     gdefs ((n, ifun):ds)
 >        = let iname = ivorFName ifun in
 >             case (ivorFType ifun, ivorDef ifun) of
