@@ -5,11 +5,14 @@
 
 > import System
 > import System.Environment
+> import System.Time
+> import System.Locale
 > import System.IO
 > import System.Console.Readline
 > import Data.Typeable
 > import Char
 > import Control.Monad
+> import List
 
 > import Idris.AbsSyntax
 > import Idris.MakeTerm
@@ -41,11 +44,20 @@ Load things in this order:
 >           (ctxt, defs) <- processInput ctxt defs infile
 >           repl defs ctxt
 
+Time functions
+FIXME: These use System.Time which is deprecated. Find out what to use
+these days instead...
+
+> getTime = getClockTime
+> diffTime = diffClockTimes
+> showTime = show
+
 > processInput :: Context -> IdrisState -> FilePath ->
 >                 IO (Context, IdrisState)
 > processInput ctxt ist file = do
 >     let defs = idris_context ist
 >     let decls = idris_decls ist
+>     let opts = idris_options ist
 >     prelude <- readLib defaultLibPath file
 >     let ptree = parse prelude file
 >     case ptree of
@@ -55,7 +67,7 @@ Load things in this order:
 >                             Success x -> return x
 >                             Failure err _ _ -> do putStrLn err
 >                                                   return (ctxt, [])
->                        return (ctxt, (IState alldefs (decls++ds) metas))
+>                        return (ctxt, (IState alldefs (decls++ds) metas opts))
 >       Failure err f ln -> fail err
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context
@@ -73,16 +85,17 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("execute", "e", texec, "Compile and execute 'main'", True),
 >       ("latex", "l", latex, "Print definition as LaTeX",False),
 >       ("normalise", "n", norm, "Normalise a term (without executing)", True),
+>       ("options","o", options, "Set options", True),
 >       ("help", "h", help, "Show help text",True),
 >       ("?", "?", help, "Show help text",True)]
 
 > type Command = IdrisState -> Context -> [String] -> IO REPLRes
 
-> quit, tmtype, prove, metavars, tcomp, texec, norm, help :: Command
+> quit, tmtype, prove, metavars, tcomp, texec, norm, help, options :: Command
 
 > quit _ _ _ = do return Quit
-> tmtype (IState raw _ _) ctxt tms = do icheckType raw ctxt (unwords tms)
->                                       return Continue
+> tmtype (IState raw _ _ _) ctxt tms = do icheckType raw ctxt (unwords tms)
+>                                         return Continue
 > prove ist ctxt (nm:[]) 
 >           = do let raw = idris_context ist
 >                ctxt' <- doProof raw ctxt (UN nm)
@@ -115,14 +128,30 @@ Command; minimal abbreviation; function to run it; description; visibility
 >           = do comp ist ctxt (UN top) exec
 >                return Continue
 > texec ist ctxt _ 
->           = do res <- comp ist ctxt (UN "main") "main"
+>           = do time <- getTime
+>                res <- comp ist ctxt (UN "main") "main"
+>                ctime <- getTime
+>                let cdiff = diffTime ctime time
+>                when (ShowRunTime `elem` (idris_options ist))
+>                     (putStrLn $ "Compile time: " ++ showTime cdiff ++ "\n")
 >                when res (do system "./main"
 >                             return ())
+>                rtime <- getTime
+>                let rdiff = diffTime rtime ctime
+>                when (ShowRunTime `elem` (idris_options ist))
+>                     (putStrLn $ "\nRun time: " ++ showTime rdiff)
 >                return Continue
 > norm ist ctxt tms 
 >          = do let raw = idris_context ist
 >               termInput False raw ctxt (unwords tms)
 >               return Continue
+> options ist ctxt []
+>          = do putStrLn $ "Options: " ++ show (idris_options ist)
+>               return Continue
+> options ist ctxt tms 
+>          = do let opts = idris_options ist
+>               let ist' = ist { idris_options = processOpts opts tms }
+>               return $ NewCtxt ist' ctxt
 
 > help _ _ _ 
 >    = do putStrLn $ "\nIdris version " ++ version
@@ -137,7 +166,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >         return Continue
 
 > repl :: IdrisState -> Context -> IO ()
-> repl ist@(IState raw decls metas) ctxt 
+> repl ist@(IState raw decls metas opts) ctxt 
 >          = do inp <- readline ("Idris> ")
 >               res <- case inp of
 >                        Nothing -> return Continue
@@ -193,6 +222,19 @@ If it is an IO type, execute it, otherwise just eval it.
 >                       gtm <- check ctxt itm
 >                       putStrLn $ showImp False (unIvor ivs (viewType gtm))
 >               Failure err _ _ -> putStrLn err
+
+
+> processOpts :: [Opt] -> [String] -> [Opt]
+> processOpts opts [] = opts
+> processOpts opts (x:xs) = processOpts (processOpt opts x) xs
+
+> processOpt opts "f-" = nub (NoErasure:opts)
+> processOpt opts "r+" = nub (ShowRunTime:opts)
+
+> processOpt opts "f+" = (nub opts) \\ [NoErasure]
+> processOpt opts "r-" = (nub opts) \\ [ShowRunTime]
+
+
 
 > prims c = do c <- addPrimitive c (name "Int")
 >              c <- addPrimitive c (name "Float")

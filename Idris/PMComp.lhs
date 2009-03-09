@@ -28,10 +28,12 @@ fallthrough when a function is known to be total, and ErrorCAse otherwise.
 
 > data CS = CS Int
 
-> pmcomp :: Ctxt IvorFun -> Context -> Name -> ViewTerm -> Patterns -> 
+> pmcomp :: Ctxt IvorFun -> Context -> 
+>           Bool -> -- erasure on
+>           Name -> ViewTerm -> Patterns -> 
 >           ([Name], SimpleCase)
-> pmcomp raw ctxt n ty (Patterns ps) 
->       = pm' n (map mkPat (deIOpats ps))
+> pmcomp raw ctxt erase n ty (Patterns ps) 
+>       = pm' n (map mkPat (deIOpats erase ps))
 >    where mkPat (PClause args rv) 
 >            = Clause (map ((toPat ctxt).(toPattern ctxt)) args) rv
 >          pm' n ps = evalState (doCaseComp raw ctxt ps) (CS 0)
@@ -291,21 +293,23 @@ intermediate functions for when this isn't the case
 
 > bname i = name (show (MN "bname" i))
 
-> deIOpats :: [PClause] -> [PClause]
-> deIOpats cs = evalState (dp cs) 0
+> deIOpats :: Bool -> [PClause] -> [PClause]
+> deIOpats erase cs = evalState (dp cs) 0
 >     where dp [] = return []
->           dp ((PClause args rv):ps) = do args' <- mapM deIO args
->                                          rv' <- deIO rv
+>           dp ((PClause args rv):ps) = do args' <- mapM (deIO erase) args
+>                                          rv' <- deIO erase rv
 >                                          ps' <- dp ps
 >                                          return ((PClause args' rv'):ps')
 
-> deIO :: ViewTerm -> State Int ViewTerm
-> deIO (App (App (App (App (Name _ bind) _) _) v) k)
+> deIO :: Bool -> ViewTerm -> State Int ViewTerm
+> deIO erase t = deIO' t where
+
+>  deIO' (App (App (App (App (Name _ bind) _) _) v) k)
 >      | bind == (name "bind") 
 >           = do i <- get
 >                put (i+1)
->                v' <- deIO v
->                k' <- deIO k
+>                v' <- deIO' v
+>                k' <- deIO' k
 >                return $ Let (bname i) Star -- type irrelevant
 >                             v' (quickSimpl (App k' (Name Unknown (bname i))))
 >      | bind == (name "unsafeBind") 
@@ -313,26 +317,31 @@ intermediate functions for when this isn't the case
 >                put (i+1)
 >                return $ Let (bname i) Star -- type irrelevant
 >                             v (quickSimpl (App k (Name Unknown (bname i))))
-> -- deIO (App (App (Name _ ret) _) a) -- (without forcing)
-> deIO (App (Name _ ret) a) -- (with forcing)
->      | ret == (name "IOReturn") = deIO a
-> deIO (App (App (Name _ upio) _) a)
->      | upio == (name "unsafePerformIO") = deIO a
-> -- deIO (App (App (App (Name _ iodo) _) c) k) -- (without forcing)
-> deIO (App (App (Name _ iodo) c) k) -- (with forcing)
->      | iodo == (name "IODo") 
->         = do k' <- deIO k
->              c' <- deIO c
+>  deIO' (App (App (Name _ ret) _) a) -- (without forcing)
+>      | (not erase) && ret == (name "IOReturn") = deIO' a
+>  deIO' (App (Name _ ret) a) -- (with forcing)
+>      | erase && ret == (name "IOReturn") = deIO' a
+>  deIO' (App (App (Name _ upio) _) a)
+>      | upio == (name "unsafePerformIO") = deIO' a
+>  deIO' (App (App (App (Name _ iodo) _) c) k) -- (without forcing)
+>      | (not erase) && iodo == (name "IODo") 
+>         = do k' <- deIO' k
+>              c' <- deIO' c
 >              return (quickSimpl (App k' c'))
-> deIO (App f a) = do f' <- deIO f
->                     a' <- deIO a
->                     return (App f' a')
-> deIO (Lambda n ty sc) = do sc' <- deIO sc
->                            return (Lambda n ty sc')
-> deIO (Let n ty v sc) = do v' <- deIO v
->                           sc' <- deIO sc
->                           return (Let n ty v' sc')
-> deIO x = return x
+>  deIO' (App (App (Name _ iodo) c) k) -- (with forcing)
+>      | erase && iodo == (name "IODo") 
+>         = do k' <- deIO' k
+>              c' <- deIO' c
+>              return (quickSimpl (App k' c'))
+>  deIO' (App f a) = do f' <- deIO' f
+>                       a' <- deIO' a
+>                       return (App f' a')
+>  deIO' (Lambda n ty sc) = do sc' <- deIO' sc
+>                              return (Lambda n ty sc')
+>  deIO' (Let n ty v sc) = do v' <- deIO' v
+>                             sc' <- deIO' sc
+>                             return (Let n ty v' sc')
+>  deIO' x = return x
 
 Simplify the common case in bind/IODo
 

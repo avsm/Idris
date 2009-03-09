@@ -349,14 +349,18 @@ Name definitions Ivor-side.
 >              | LataDef -- forward declared data
 >    deriving Show
 
+> data Opt = NoErasure | ShowRunTime
+>    deriving (Show, Eq)
+
 > data IdrisState = IState {
 >       idris_context :: Ctxt IvorFun, -- function definitions
 >       idris_decls :: [Decl], -- all checked declarations
->       idris_metavars :: [(Name, ViewTerm)] -- things still to prove
+>       idris_metavars :: [(Name, ViewTerm)], -- things still to prove
+>       idris_options :: [Opt] -- global options
 >     }
 
 > initState :: IdrisState
-> initState = IState newCtxt [] []
+> initState = IState newCtxt [] [] [ShowRunTime]
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting

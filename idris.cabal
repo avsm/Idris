@@ -41,7 +41,9 @@ Library
                          Idris.ConTrans, RunIO
 
         Build-depends:   base>3, containers, array, parsec, mtl,
-                         readline, ivor, directory, haskell98
+                         readline, ivor, directory, haskell98,
+                         old-time, old-locale
+				
         Extensions:      MagicHash, UndecidableInstances, OverlappingInstances
 
 Executable     idris

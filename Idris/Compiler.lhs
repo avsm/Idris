@@ -23,10 +23,12 @@ already simple case trees.
 > comp ist ctxt nm ofile 
 >          = do let raw = idris_context ist
 >               let decls = idris_decls ist
+>               let erasure = not $ NoErasure `elem` (idris_options ist)
 >               let pdefs = getCompileDefs raw ctxt
 >               let ctrans = makeConTransforms raw ctxt
->               let trans = makeArgTransforms raw ctxt ctrans
->               let pcomp = map (pmCompDef raw ctxt trans) pdefs
+>               let trans = if erasure then makeArgTransforms raw ctxt ctrans
+>                              else []
+>               let pcomp = map (pmCompDef raw ctxt erasure trans) pdefs
 >               let declouts = filter (/="") (map epicDecl decls)
 >               let clink = filter (/="") (map epicLink decls)
 >               let scs = allSCs pcomp
@@ -92,16 +94,17 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >             (PClause a' r):(mp ps ps')
 
 > pmCompDef :: Ctxt IvorFun -> Context -> 
+>              Bool -> -- erasure on
 >              [Transform] ->
 >              (Name, (ViewTerm, Patterns)) -> 
 >              (Name, ([Name], SimpleCase))
-> pmCompDef raw ctxt ctrans (n, (ty,ps)) 
+> pmCompDef raw ctxt erase ctrans (n, (ty,ps)) 
 > --    = let flags = getFlags n raw in
 > --          case ((NoCG `elem` flags), (CGEval `elem` flags)) of 
 > --             (True, _) -> trace ("Not compiling " ++ show n) (n, [])
 > --             (False, False)e -> 
 >       =  let transpm = transform ctxt ctrans n ps 
->              compiledp = pmcomp raw ctxt n ty transpm in
+>              compiledp = pmcomp raw ctxt erase n ty transpm in
 >             -- trace (show n ++ "\n" ++ show transpm)
 >              (n, compiledp)
 
