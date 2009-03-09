@@ -24,8 +24,8 @@ already simple case trees.
 >          = do let raw = idris_context ist
 >               let decls = idris_decls ist
 >               let pdefs = getCompileDefs raw ctxt
->               let trans = makeConTransforms raw ctxt
->               -- let trans = makeArgTransforms raw ctxt ctrans
+>               let ctrans = makeConTransforms raw ctxt
+>               let trans = makeArgTransforms raw ctxt ctrans
 >               let pcomp = map (pmCompDef raw ctxt trans) pdefs
 >               let declouts = filter (/="") (map epicDecl decls)
 >               let clink = filter (/="") (map epicLink decls)

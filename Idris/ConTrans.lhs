@@ -69,7 +69,8 @@ so that we don't needlessly keep arguments dropped by forcing.
 > makeArgTransforms :: Ctxt IvorFun -> Context -> [Transform] -> [Transform]
 > makeArgTransforms raw ctxt ctrans = mkP' (getRawPatternDefs raw ctxt) ctrans
 >   where mkP' [] acc = acc
->         mkP' (x:xs) acc = mkP' xs ((makePTransform raw ctxt ctrans x)++acc)
+>         mkP' (x:xs) acc 
+>              = mkP' xs ((makePTransform raw ctxt (ctrans++acc) x)++acc)
 
 Make all the transformations for a type
 
@@ -155,19 +156,20 @@ is either a pattern or unused (modulo recursion), do this to it:
 >      getPlPos acc ((PClause args r):ps) ((PClause args' r'):ps')
 >          = getPlPos (filter (plArg args args' r') acc) ps ps'
 >      plArg args args' r' x 
->            = args!!x == Placeholder && recGuard x n (args'!!x) r'
+>            = args!!x == Placeholder && recGuard x n r' (namesIn (args'!!x))
 >      args ((PClause args r):_) = length args
 >      args [] = 0
 
->      recGuard :: Int -> Name -> ViewTerm -> ViewTerm -> Bool
+>      recGuard :: Int -> Name -> ViewTerm -> [Name] -> Bool
 
 z must be used only as part of the ith argument to a call to fn. Anywhere
 else, it can't be dropped.
 
->      recGuard i fn (Name _ z) ret 
+>      recGuard i fn ret zs = and (map (recGuard' i fn ret) zs)
+>      recGuard' i fn ret z 
 >          | Nothing <- nameType ctxt z
 >        = let res = rgOK ret in
->           trace ("GUARD " ++ show (i,fn,z,ret,res)) 
+>           -- trace ("GUARD " ++ show (i,fn,z,ret,res)) 
 >            res                    
 >        where rgOK ap@(App f a) = nthOK (getApp ap) (getFnArgs ap)
 >              rgOK (Name _ x) = x /= z
@@ -180,8 +182,9 @@ else, it can't be dropped.
 >              nthOK f args = rgOK f && (and (map rgOK args))
 >              nOK (argno, arg) | argno == i = True
 >              nOK (_,arg) = rgOK arg
->      recGuard i fn tm ret = 
->           trace ("GUARD OK " ++ show (i,fn,tm,ret)) True
+>      recGuard' i fn ret z = True
+
+-          trace ("GUARD OK " ++ show (i,fn,tm,ret)) True
 
 True -- Complex term, just drop it.
 
@@ -190,10 +193,11 @@ True -- Complex term, just drop it.
 > makePTransform raw ctxt ctrans (n, (ty, patsin)) 
 >   = let pats = transform ctxt ctrans n patsin in
 >       case getPatternDef ctxt n of
->        Just (_, idpats) ->
->            let numargs = args pats
+>        Just (_, idpatsin) ->
+>            let idpats = transform ctxt ctrans n idpatsin
+>                numargs = args pats
 >                placeholders = getPlaceholders ctxt n pats idpats in 
->             trace (show (placeholders, n)) $
+>             -- trace (show (placeholders, n)) $
 >                if (null placeholders) 
 >                 then []
 >                 else [Trans (show n ++ "_dropargs") 
@@ -237,7 +241,9 @@ Apply all transforms in order to a term, eta expanding constructors first.
 >     ec ap@(App f a) 
 >         | Just (ar, con, args) <- needsExp (App f a)
 >              = etaExp ar con args
->     ec (App f a) = App f (ec a)
+>     ec ap@(App _ _) = let f = getApp ap
+>                           args = getFnArgs ap in
+>                           apply f (map ec args)
 >     ec (Lambda n ty sc) = Lambda n (ec ty) (ec sc)
 
 That's all the terms we care about.
@@ -257,7 +263,8 @@ even when compiling, it's just for the sake of having constructors fully
 applied.
 
 >     etaExp ar con args 
->         = let newargs = map (\n -> (toIvorName (MN "exp" n)))
+>         = -- trace ("ETA " ++ show (ar,con,args)) $ 
+>             let newargs = map (\n -> (toIvorName (MN "exp" n)))
 >                            [1..(ar-(length args))] in
 >               addLam newargs (apply con (args++(map (Name Unknown) newargs)))
 >     addLam [] t = t
