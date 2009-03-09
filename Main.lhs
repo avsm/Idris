@@ -21,6 +21,7 @@
 > import Idris.Latex
 > import Idris.Compiler
 > import Idris.Prover
+> import Idris.ConTrans
 
 > import RunIO
 
@@ -78,7 +79,8 @@ these days instead...
 >                             Success x -> return x
 >                             Failure err _ _ -> do putStrLn err
 >                                                   return (ctxt, [])
->                        return (ctxt, (IState alldefs (decls++ds) metas opts))
+>                        let ist = addTransforms (IState alldefs (decls++ds) metas opts []) ctxt
+>                        return (ctxt, ist)
 >       Failure err f ln -> fail err
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context
@@ -96,17 +98,19 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("execute", "e", texec, "Compile and execute 'main'", True),
 >       ("latex", "l", latex, "Print definition as LaTeX",False),
 >       ("normalise", "n", norm, "Normalise a term (without executing)", True),
+>       ("definition", "d", showdef, "Show the erased version of a function or type", True),
 >       ("options","o", options, "Set options", True),
 >       ("help", "h", help, "Show help text",True),
 >       ("?", "?", help, "Show help text",True)]
 
 > type Command = IdrisState -> Context -> [String] -> IO REPLRes
 
-> quit, tmtype, prove, metavars, tcomp, texec, norm, help, options :: Command
+> quit, tmtype, prove, metavars, tcomp, texec :: Command 
+> norm, help, options, showdef :: Command
 
 > quit _ _ _ = do return Quit
-> tmtype (IState raw _ _ _) ctxt tms = do icheckType raw ctxt (unwords tms)
->                                         return Continue
+> tmtype (IState raw _ _ _ _) ctxt tms = do icheckType raw ctxt (unwords tms)
+>                                           return Continue
 > prove ist ctxt (nm:[]) 
 >           = do let raw = idris_context ist
 >                ctxt' <- doProof raw ctxt (UN nm)
@@ -164,7 +168,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >               return Continue
 > options ist ctxt tms 
 >          = do let opts = idris_options ist
->               let ist' = ist { idris_options = processOpts opts tms }
+>               let ist' = addTransforms (ist { idris_options = processOpts opts tms }) ctxt
 >               return $ NewCtxt ist' ctxt
 
 > help _ _ _ 
@@ -180,7 +184,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >         return Continue
 
 > repl :: IdrisState -> Context -> IO ()
-> repl ist@(IState raw decls metas opts) ctxt 
+> repl ist@(IState raw decls metas opts trans) ctxt 
 >          = do inp <- readline ("Idris> ")
 >               res <- case inp of
 >                        Nothing -> return Continue
@@ -249,6 +253,43 @@ If it is an IO type, execute it, otherwise just eval it.
 > processOpt opts "r-" = (nub opts) \\ [ShowRunTime]
 
 > processOpt opts _ = opts -- silently ignore (FIXME)
+
+Look up the name as a pattern definition, then as an inductive, and show
+the appropriate thing, after applying the relevant transformations.
+
+> showdef ist ctxt []
+>      = do putStrLn "Please give a name"
+>           return Continue
+> showdef ist ctxt (n:_)
+>     = do case getPatternDef ctxt (name n) of
+>            Just (ty, pats) -> showPats n (transform ctxt 
+>                                              (idris_transforms ist)
+>                                               (name n) pats)
+>            _ -> case getInductive ctxt (name n) of
+>                   Just ind -> showInductive n ctxt (idris_transforms ist) 
+>                                               (constructors ind)
+>                   _ -> putStrLn $ n ++ " not defined"
+>          return Continue
+
+> showPats :: String -> Patterns -> IO ()
+> showPats n (Patterns ps) = putStrLn $ concat (map (\x -> showp' x ++ "\n") ps)
+>   where showp' (PClause args ty) 
+>                    = n ++ " " ++ concat (map (\x -> showarg (show x)) args) ++ "= " ++ show ty
+>         showarg x = if (' ' `elem` x) then "(" ++ x ++ ") " else x ++ " "
+
+> showInductive :: String -> Context -> [Transform] -> 
+>                  [(Name, ViewTerm)] -> IO ()
+> showInductive n ctxt trans cons 
+>    = do putStrLn $ n ++ " constructors:"
+>         putStrLn $ concat (map (\x -> "  " ++ showc x ++ "\n") cons)
+>  where showc (n, ty) = let atys = Ivor.TT.getArgTypes ty 
+>                            args = map mkName atys
+>                            app = apply (Name DataCon n) args in
+>                            show (applyTransforms ctxt trans app)
+>        mkName (n, ty) = Name Unknown (name (showarg (useName (show n) ty)))
+>        useName ('_':'_':_) ty = show ty
+>        useName n ty = n ++ " : " ++ show ty
+>        showarg x = if (' ' `elem` x) then "(" ++ x ++ ")" else x
 
 > prims c = do c <- addPrimitive c (name "Int")
 >              c <- addPrimitive c (name "Float")

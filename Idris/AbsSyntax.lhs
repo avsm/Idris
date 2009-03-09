@@ -349,6 +349,10 @@ Name definitions Ivor-side.
 >              | LataDef -- forward declared data
 >    deriving Show
 
+A transformation is a function converting a ViewTerm to a new form.
+
+> data Transform = Trans String (ViewTerm -> ViewTerm)
+
 > data Opt = NoErasure | ShowRunTime
 >    deriving (Show, Eq)
 
@@ -356,11 +360,12 @@ Name definitions Ivor-side.
 >       idris_context :: Ctxt IvorFun, -- function definitions
 >       idris_decls :: [Decl], -- all checked declarations
 >       idris_metavars :: [(Name, ViewTerm)], -- things still to prove
->       idris_options :: [Opt] -- global options
+>       idris_options :: [Opt], -- global options
+>       idris_transforms :: [Transform] -- optimisations
 >     }
 
 > initState :: IdrisState
-> initState = IState newCtxt [] [] [ShowRunTime]
+> initState = IState newCtxt [] [] [ShowRunTime] []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting

@@ -1,6 +1,6 @@
 > {-# OPTIONS_GHC -fglasgow-exts #-}
 
-> module Idris.Compiler(comp) where
+> module Idris.Compiler(comp, addTransforms) where
 
 > import Idris.AbsSyntax
 > import Idris.PMComp
@@ -19,15 +19,22 @@ Get every definition from the context. Convert them all to simple case
 trees. Ignore constructors, types, etc. Simple definitions are, of course, 
 already simple case trees.
 
+> addTransforms :: IdrisState -> Context -> IdrisState
+> addTransforms ist ctxt 
+>      = let raw = idris_context ist
+>            erasure = not $ NoErasure `elem` (idris_options ist) 
+>            ctrans = makeConTransforms raw ctxt
+>            trans = if erasure then makeArgTransforms raw ctxt ctrans
+>                       else [] in
+>              ist { idris_transforms = trans }
+
 > comp :: IdrisState -> Context -> Id -> FilePath -> IO Bool
 > comp ist ctxt nm ofile 
 >          = do let raw = idris_context ist
 >               let decls = idris_decls ist
 >               let erasure = not $ NoErasure `elem` (idris_options ist)
 >               let pdefs = getCompileDefs raw ctxt
->               let ctrans = makeConTransforms raw ctxt
->               let trans = if erasure then makeArgTransforms raw ctxt ctrans
->                              else []
+>               let trans = idris_transforms ist
 >               let pcomp = map (pmCompDef raw ctxt erasure trans) pdefs
 >               let declouts = filter (/="") (map epicDecl decls)
 >               let clink = filter (/="") (map epicLink decls)

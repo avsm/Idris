@@ -3,8 +3,7 @@
 Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 
 > module Idris.ConTrans(makeConTransforms, makeArgTransforms,
->                       applyTransforms, transform, 
->                       Transform) where
+>                       applyTransforms, transform) where
 
 > import Idris.AbsSyntax
 > import Ivor.TT
@@ -25,10 +24,6 @@ forcing, detagging and collapsing to every data structure.
 3. Apply rules on LHS and RHS of all definitions.
 
 Do all this before any pattern match compilation or lambda lifting.
-
-A transformation is a function converting a ViewTerm to a new form.
-
-> data Transform = Trans String (ViewTerm -> ViewTerm)
 
 To do this uniformly, turn a pattern def into an application of the lhs, 
 then turn it back into a pclause
