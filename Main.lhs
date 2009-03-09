@@ -59,10 +59,10 @@ these days instead...
 >              return $ sec*picosec+pico
 > diffTime t1 t2 = t1-t2
 > showTime t = show (t `div` picosec) ++ "." ++ 
->              (zeros (take 6 (show (t `mod` picosec)))) ++
+>              (take 6 (zeros (show (t `mod` picosec)))) ++
 >              " seconds"
 >          -- add leading zeros
->    where zeros t = (take (6 - length t) (repeat '0')) ++ t 
+>    where zeros t = (take (12 - length t) (repeat '0')) ++ t 
 
 > processInput :: Context -> IdrisState -> FilePath ->
 >                 IO (Context, IdrisState)

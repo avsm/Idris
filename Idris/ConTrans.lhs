@@ -55,19 +55,30 @@ Test transforms: VNil A => VNil
 Look at all the definitions in the context, and make the relevant constructor
 transformations for forcing, detagging and collapsing.
 
+HACK: We do three passes, to pick up collapsible things from the last pass to 
+help. This still won't get everything right.
+If Ivor returned things in the order they were defined this wouldn't
+be necessary - better fix Ivor.
+
 > makeConTransforms :: Ctxt IvorFun -> Context -> [Transform]
-> makeConTransforms raw ctxt = mkT' (getAllInductives ctxt) []
->   where mkT' [] acc = acc
->         mkT' (x:xs) acc = mkT' xs ((makeTransform ctxt x)++acc)
+> makeConTransforms raw ctxt 
+>    = let pass1 = mkT' (getAllInductives ctxt) [] []
+>          pass2 = mkT' (getAllInductives ctxt) [] pass1 in
+>          mkT' (getAllInductives ctxt) [] pass2
+>   where mkT' [] acc p1 = acc
+>         mkT' (x:xs) acc p1 = mkT' xs ((makeTransform ctxt x (p1++acc))++acc) p1
 
 Apply the constructor transforms before making hte function transforms
 so that we don't needlessly keep arguments dropped by forcing.
 
 > makeArgTransforms :: Ctxt IvorFun -> Context -> [Transform] -> [Transform]
-> makeArgTransforms raw ctxt ctrans = mkP' (getRawPatternDefs raw ctxt) ctrans
->   where mkP' [] acc = acc
->         mkP' (x:xs) acc 
->              = mkP' xs ((makePTransform raw ctxt (ctrans++acc) x)++acc)
+> makeArgTransforms raw ctxt ctrans 
+>    = let pass1 = mkP' (getRawPatternDefs raw ctxt) ctrans []
+>          pass2 = mkP' (getRawPatternDefs raw ctxt) ctrans pass1 in
+>          mkP' (getRawPatternDefs raw ctxt) ctrans pass2
+>   where mkP' [] acc p1 = acc
+>         mkP' (x:xs) acc p1 
+>              = mkP' xs ((makePTransform raw ctxt (ctrans++p1++acc) x)++acc) p1
 
 Make all the transformations for a type
 
@@ -75,26 +86,31 @@ Step 1. Forcing
    On each constructor, find namess that appear constructor 
    guarded in that constructor's return type. Any argument with these
    names is forceable.
-Step 2: [Not done] Detagging
+   If the type of the argument is collapsible, it's also forceable.
+Step 2: Detagging
    Check if there is an argument position in the return type which has a
    different constructor at the head on each constructor. If so,
    remove the tags on all constructor.
-Step 3: [Not done] Collapsing
+Step 3: Collapsing
    If the only remaining arguments in all constructors are recursive (i.e.
-   return the type we're working with), translate all to Unit.
+   return the type we're working with) or themselves collapsible, 
+   translate all to Unit.
    If this doesn't apply, undo step 2.
 
-> makeTransform :: Context -> (Name, Inductive) -> [Transform]
-> makeTransform ctxt (n, ity) 
+Using the transforms so far (in acc) - we can also eliminate arguments
+which are themselves collapsible.
+
+> makeTransform :: Context -> (Name, Inductive) -> [Transform] -> [Transform]
+> makeTransform ctxt (n, ity) acc
 >    = let cons = constructors ity
->          forceable = nub (map (\ (x,y) -> (x, force ctxt y, Ivor.TT.getArgTypes y)) cons)
+>          forceable = nub (map (\ (x,y) -> (x, force ctxt y acc, Ivor.TT.getArgTypes y)) cons)
 >          detaggable = pdisjoint ctxt (map (getFnArgs.getReturnType) (map snd cons))
->          recursive = nub (map (\ (x,y) -> (x, recArgs n y, Ivor.TT.getArgTypes y)) cons)
+>          recursive = nub (map (\ (x,y) -> (x, recArgs n y acc, Ivor.TT.getArgTypes y)) cons)
 >          collapsible = detaggable && all droppedAll (combine forceable recursive)
 >               in
 >          -- trace (show n ++ " " ++ show collapsible ++ " " ++ show (forceable, recursive)) $ -- FORCING \n\t" ++ show forceable) 
 >            if collapsible then
->                map collapseTrans cons
+>                map (collapseTrans n) cons
 >                else mapMaybe forceTrans forceable
 
 Combine assumes constructors are in each list in the same order. Since they
@@ -106,8 +122,15 @@ recursive arguments, so we can see if this gets all of them
 >             | con == con' = (con, nub (d++d'), all):(combine cs cs')
 >         droppedAll (con, d, args) = length d == length args
 
-> collapseTrans :: (Name, ViewTerm) -> Transform
-> collapseTrans (c, ty) = Trans ((show c)++"_COLLAPSE")
+Horrible hack, sorry. It's an easy way to tell if a constructor is 
+from a collapsible type...
+
+> isCollapsible x t = (show x++"_COLLAPSE") `elem` (transNames t)
+> transNames = map tname
+>    where tname (Trans n _) = n
+
+> collapseTrans :: Name -> (Name, ViewTerm) -> Transform
+> collapseTrans n (c, ty) = Trans ((show n)++"_COLLAPSE")
 >                            (mkCollapse (length (Ivor.TT.getArgTypes ty)))
 >    where mkCollapse num tm
 >             | Name nty con <- getApp tm
@@ -142,10 +165,12 @@ n applied to arguments minus the ones in forceable positions
 Given a constructor type, return all the names bound in it which
 need not be stored (i.e. need not be bound)
 
-> force :: Context -> ViewTerm -> [Name]
-> force ctxt tm = let rt = getReturnType tm
->                     rtargs = getFnArgs rt in
->                     concat (map conGuarded rtargs)
+> force :: Context -> ViewTerm -> [Transform] -> [Name]
+> force ctxt tm acc = let rt = getReturnType tm
+>                         atypes = Ivor.TT.getArgTypes tm
+>                         rtargs = getFnArgs rt in
+>                         concat (map conGuarded rtargs) ++ 
+>                            (map fst (filter collapse atypes))
 >     where isVar n | elem n boundnames = True
 >                   | otherwise =
 >                         case nameType ctxt n of
@@ -159,16 +184,20 @@ need not be stored (i.e. need not be bound)
 >           cg acc (Name t x) = []
 >           cg acc (App f a) = cg (acc++(cg [] a)) f
 >           cg acc _ = []
+>           collapse (n, ty)
+>                | Name _ apn <- getApp ty
+>                     = isCollapsible apn acc
+>           collapse _ = False
 
 Given a constructor type, return all the names bound in it which
 are to recursive arguments of the datatype.
 (TODO: Higher order recursive arguments too.)
 
-> recArgs :: Name -> ViewTerm -> [Name]
-> recArgs tyname tm = map fst (filter isRec (Ivor.TT.getArgTypes tm))
+> recArgs :: Name -> ViewTerm -> [Transform] -> [Name]
+> recArgs tyname tm trans = map fst (filter isRec (Ivor.TT.getArgTypes tm))
 >     where isRec (n, ty)
 >                 | Name _ apn <- getApp ty
->                    = apn == tyname
+>                    = apn == tyname || isCollapsible apn trans
 >           isRec _ = False
 
 
