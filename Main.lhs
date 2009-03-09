@@ -119,6 +119,9 @@ Command; minimal abbreviation; function to run it; description; visibility
 > latex ist ctxt (nm:defs) 
 >           = do latexDump (idris_context ist) (latexDefs defs) (UN nm)
 >                return Continue
+> tcomp ist ctxt [] 
+>           = do putStrLn "Please give an output filename"
+>                return Continue
 > tcomp ist ctxt (top:[]) 
 >           = do let raw = idris_context ist
 >                comp ist ctxt (UN top) top
@@ -234,7 +237,7 @@ If it is an IO type, execute it, otherwise just eval it.
 > processOpt opts "f+" = (nub opts) \\ [NoErasure]
 > processOpt opts "r-" = (nub opts) \\ [ShowRunTime]
 
-
+> processOpt opts _ = opts -- silently ignore (FIXME)
 
 > prims c = do c <- addPrimitive c (name "Int")
 >              c <- addPrimitive c (name "Float")
