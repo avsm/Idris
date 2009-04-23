@@ -185,7 +185,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Induction RawTerm
 >              | Fill RawTerm
 >              | Case RawTerm
->              | Rewrite Bool RawTerm
+>              | Rewrite Bool Bool RawTerm
 >              | Unfold Id
 >              | Compute
 >              | Equiv RawTerm
@@ -247,7 +247,7 @@ value.
 >               | FloatType
 >               | PtrType
 >               | Builtin String -- builtin type, eg Handle or Lock
->    deriving Eq
+>    deriving (Eq, Ord)
 
 > instance Show Constant where
 >     show (Num i) = show i

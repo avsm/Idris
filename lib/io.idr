@@ -171,6 +171,9 @@ _fread
 _fwrite
   = mkForeign (FFun "fputStr" (Cons FPtr (Cons FStr Nil)) FUnit) %eval;
 
+gc_details
+  = mkForeign (FFun "epicMemInfo" Nil FUnit) %eval;
+
 fopen : String -> String -> (IO File);
 fopen str mode = do { h <- _fopen str mode;
 		      return (FHandle h); };

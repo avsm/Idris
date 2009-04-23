@@ -19,12 +19,21 @@ fallthrough when a function is known to be total, and ErrorCAse otherwise.
 >                 | Tm ViewTerm
 >                 | ErrorCase
 >                 | Impossible
->    deriving Show
+>    deriving (Show, Eq)
 
 > data CaseAlt = Alt Name Int [Name] SimpleCase
 >              | ConstAlt Constant SimpleCase
 >              | Default SimpleCase
->    deriving Show
+>    deriving (Show, Eq)
+
+> instance Ord CaseAlt where
+>   compare (Alt _ t _ _) (Alt _ u _ _) = compare t u
+>   compare (ConstAlt c _) (ConstAlt d _) = compare c d
+>   compare (Default _) (Default _) = EQ
+>   compare (Alt _ _ _ _) _ = LT
+>   compare (ConstAlt _ _) (Alt _ _ _ _) = GT
+>   compare (ConstAlt _ _) (Default _) = LT
+>   compare (Default _) _ = GT
 
 > data CS = CS Int
 
@@ -35,7 +44,7 @@ fallthrough when a function is known to be total, and ErrorCAse otherwise.
 > pmcomp raw ctxt erase n ty (Patterns ps) 
 >       = pm' n (map mkPat (deIOpats erase ps))
 >    where mkPat (PClause args rv) 
->            = Clause (map ((toPat ctxt).(toPattern ctxt)) args) rv
+>            = Clause (map (toPat ctxt) args) rv
 >          pm' n ps = evalState (doCaseComp raw ctxt ps) (CS 0)
 
 It's easier if we can distinguish syntactically between constructor forms
@@ -44,6 +53,7 @@ and variables (and constants)
 > data Pat = PCon Name Int [Pat]
 >          | PVar Name
 >          | PConst Constant
+>          | PNK Name Constant -- n+k pattern
 >          | PAny
 >   deriving Show
 
@@ -63,6 +73,11 @@ and if we don't matching can get confused).
 >                       Just i -> PCon n i args
 >                       Nothing -> error "Can't happen: no tag"
 >         | otherwise = error $ "Can't happen: variable applied to arguments " ++ show (n,args)
+>     toPat' (App (Name _ plus) (App (Name _ n) (Constant c))) []
+>         | plus == opFn Plus 
+>             = case (cast c)::Maybe Int of
+>                   Just i -> PNK n (Num i)
+>                   Nothing -> PAny
 >     toPat' (App f a) args = toPat' f ((toPat' a []):args)
 >     toPat' (Constant c) []
 >             = case (cast c)::Maybe Int of

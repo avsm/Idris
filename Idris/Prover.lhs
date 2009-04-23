@@ -103,7 +103,8 @@ undone bits, after a Qed
 >     at ctxt (Use t) = prove_belief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Decide t) = decide raw t defaultGoal ctxt
 >     at ctxt (Induction t) = induction (ivor t) defaultGoal ctxt
->     at ctxt (Rewrite f t) = rewrite (ivor t) f defaultGoal ctxt
+>     at ctxt (Rewrite False f t) = rewrite (ivor t) f defaultGoal ctxt
+>     at ctxt (Rewrite True f t) = rewriteAll (ivor t) f defaultGoal ctxt
 >     at ctxt Compute = compute defaultGoal ctxt
 >     at ctxt (Unfold n) = unfold (toIvorName n) defaultGoal ctxt
 >     at ctxt Qed = qed ctxt
@@ -120,6 +121,24 @@ undone bits, after a Qed
 
 > rewrite :: ViewTerm -> Bool -> Tactic
 > rewrite = replace eqN replN symN
+
+Given a rewrite rule, find all places where it can be applied (in the given 
+direction), and apply it. Search for points where the goal matches the LHS
+of the rule's type, and apply rewrite.
+
+> rewriteAll :: ViewTerm -> Bool -> Tactic
+> rewriteAll (Name _ n) dir goal ctxt 
+>   = do tyin <- getType ctxt n
+>        let ty = view tyin
+>        rule <- getRule dir (getReturnType ty)
+>        let argNames = map fst (Ivor.TT.getArgTypes ty)
+>        fail $ "Not finished yet " ++ show rule
+>   where getRule dir (App (App (App (App 
+>                       (Name _ eq) Placeholder) Placeholder) l) r)
+>             | eq == opFn JMEq = if dir then return (l, r) else return (r,l)
+>         getRule _ _ = fail "Not a rewrite rule"
+
+> rewriteAll tm dir _ _ = fail "Not a rewrite rule name"
 
 > showCtxtState :: Ctxt IvorFun -> Context -> String
 > showCtxtState raw ctxt

@@ -67,4 +67,5 @@ naux False v i = Cons i (numbers (i-1));
 numbers x = naux (x<=0) Nil x;
 
 main : IO ();
-main = putStrLn (showV (qsortInt (listToVect (numbers 100))));
+main = do { putStrLn (showV (qsortInt (listToVect (numbers 100))));
+	    gc_details; };

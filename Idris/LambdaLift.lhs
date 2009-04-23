@@ -10,6 +10,8 @@
 > import Data.Typeable
 > import Debug.Trace
 
+> import List
+
 This is the language we're converting directly into Epic code, and the
 output of the lambda lifter
 
@@ -21,13 +23,15 @@ output of the lambda lifter
 >             | SApp SCBody [SCBody]
 >             | SLet Name SCBody SCBody
 >             | SCCase SCBody [SCAlt]
+>             | SIf SCBody SCBody SCBody
+>             | SIfZero SCBody SCBody SCBody
 >             | SUnit -- for anything that has no runtime meaning, eg types
 >             | SInfix Op SCBody SCBody
 >             | SIOOp SCIO
 >             | SConst Constant
 >             | SLazy SCBody
 >             | SError
->    deriving Show
+>    deriving (Show, Eq)
 
 Case alternatives, could be a constructor (with tag), a constant, or
 a default case
@@ -35,7 +39,19 @@ a default case
 > data SCAlt = SAlt Name Int [Name] SCBody
 >            | SConstAlt Constant SCBody
 >            | SDefault SCBody
->    deriving Show
+>    deriving (Show, Eq)
+
+It's useful to be able to sort alternatives by tag, for transformation 
+purposes, since once they're compiled order doesn't matter.
+
+> instance Ord SCAlt where
+>   compare (SAlt _ t _ _) (SAlt _ u _ _) = compare t u
+>   compare (SConstAlt c _) (SConstAlt d _) = compare c d
+>   compare (SDefault _) (SDefault _) = EQ
+>   compare (SAlt _ _ _ _) _ = LT
+>   compare (SConstAlt _ _) (SAlt _ _ _ _) = GT
+>   compare (SConstAlt _ _) (SDefault _) = LT
+>   compare (SDefault _) _ = GT
 
 Built-in IO operations 
 
@@ -48,7 +64,7 @@ Built-in IO operations
 >           | NewRef
 >           | ReadRef SCBody
 >           | WriteRef SCBody SCBody
->    deriving Show
+>    deriving (Show, Eq)
 
 Any lambdas in the body need to be made functions in their own right,
 with names in scope passed as arguments.
@@ -82,7 +98,7 @@ name, arguments, body
 >              (root,args,body):defs
 >    where liftSC env (SCase tm alts) = do tm' <- lift env tm
 >                                          alts' <- mapM (liftAlt env) alts
->                                          return (SCase tm' alts')
+>                                          return (SCase tm' (sort alts'))
 >          liftSC env (Tm t) = do t' <- lift env t
 >                                 return (Tm t')
 >          liftSC env x = return x

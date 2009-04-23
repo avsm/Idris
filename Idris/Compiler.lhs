@@ -6,6 +6,7 @@
 > import Idris.PMComp
 > import Idris.LambdaLift
 > import Idris.ConTrans
+> import Idris.SCTrans
 > import Idris.Lib
 > import Ivor.TT
 
@@ -38,7 +39,8 @@ already simple case trees.
 >               let pcomp = map (pmCompDef raw ctxt erasure trans) pdefs
 >               let declouts = filter (/="") (map epicDecl decls)
 >               let clink = filter (/="") (map epicLink decls)
->               let scs = allSCs pcomp
+>               let scs = map (\ (n,sc) -> (n, transformSC erasure sc)) 
+>                           $ allSCs pcomp
 >               catch (do compileAll raw ctxt ofile clink declouts scs
 >                         return True)
 >                     (\e -> do putStrLn "Compilation error"
@@ -190,6 +192,10 @@ TMP HACK until we do coercions on primitives properly
 >   writeSC' (SCCase b alts) = "case " ++ writeSC' b ++ " of { " ++ 
 >                              writeAlts fname alts
 >                             ++ "}"
+>   writeSC' (SIf x t e) = "(if (" ++ writeSC' x ++ ") then (" ++
+>                          writeSC' t ++ ") else (" ++ writeSC' e ++ "))"
+>   writeSC' (SIfZero x t e) = "(if (" ++ writeSC' x ++ "==0) then (" ++
+>                          writeSC' t ++ ") else (" ++ writeSC' e ++ "))"
 >   writeSC' (SInfix op l r) = boolOp op (writeOp op (writeSC' l) (writeSC' r))
 >   writeSC' (SConst c) = writeConst c
 >   writeSC' (SLazy b) = "lazy(" ++ writeSC' b ++ ")"

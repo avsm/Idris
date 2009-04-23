@@ -114,6 +114,7 @@ data Token
       | TokenGeneralise
       | TokenReflP
       | TokenRewrite
+      | TokenRewriteAll
       | TokenCompute
       | TokenUnfold
       | TokenUndo
@@ -275,6 +276,7 @@ lexSpecial cont cs =
       ("generalise",rest) -> cont TokenGeneralise rest
       ("refl",rest) -> cont TokenReflP rest
       ("rewrite",rest) -> cont TokenRewrite rest
+      ("rewriteall",rest) -> cont TokenRewriteAll rest
       ("compute",rest) -> cont TokenCompute rest
       ("unfold",rest) -> cont TokenUnfold rest
       ("undo",rest) -> cont TokenUndo rest

@@ -87,6 +87,7 @@ import Idris.Lib
       generalise      { TokenGeneralise }
       reflp           { TokenReflP }
       rewrite         { TokenRewrite }
+      rewriteall      { TokenRewriteAll }
       compute         { TokenCompute }
       unfold          { TokenUnfold }
       undo            { TokenUndo }
@@ -368,8 +369,10 @@ Tactic : intro Names { Intro $2 }
        | refine Name { Refine $2 }
        | generalise Term { Generalise $2 }
        | reflp { ReflP }
-       | rewrite Term { Rewrite False $2 }
-       | rewrite leftarrow Term { Rewrite True $3 }
+       | rewrite Term { Rewrite False False $2 }
+       | rewrite leftarrow Term { Rewrite False True $3 }
+       | rewriteall Term { Rewrite True False $2 }
+       | rewriteall leftarrow Term { Rewrite True True $3 }
        | compute { Compute }
        | unfold Name { Unfold $2 }
        | undo { Undo }
