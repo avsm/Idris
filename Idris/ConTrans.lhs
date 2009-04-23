@@ -107,11 +107,12 @@ which are themselves collapsible.
 >          detaggable = pdisjoint ctxt (map (getFnArgs.getReturnType) (map snd cons))
 >          recursive = nub (map (\ (x,y) -> (x, recArgs n y acc, Ivor.TT.getArgTypes y)) cons)
 >          collapsible = detaggable && all droppedAll (combine forceable recursive)
+>          nattable = isNat forceable recursive
 >               in
 >          -- trace (show n ++ " " ++ show collapsible ++ " " ++ show (forceable, recursive)) $ -- FORCING \n\t" ++ show forceable) 
 >            if collapsible then
 >                map (collapseTrans n) cons
->                else mapMaybe forceTrans forceable
+>                else mapMaybe (forceTrans nattable) forceable
 
 Combine assumes constructors are in each list in the same order. Since they
 were built the same way, this is okay. Just combines the forceable and
@@ -129,6 +130,27 @@ from a collapsible type...
 > transNames = map tname
 >    where tname (Trans n _) = n
 
+> isNat :: [(Name, [Name], [(Name, ViewTerm)])] ->
+>          [(Name, [Name], [(Name, ViewTerm)])] ->
+>           Maybe (Name, Name)
+> isNat force recs = nt' force recs [] where
+>     nt' [] [] acc = nattable' (sortBy cmprec acc)
+>     nt' ((f, fargs, targs):fs) ((r, rargs, _):rs) acc
+>     -- we know f = r, from how they were built
+>          = nt' fs rs ((f, length targs, length fargs, length rargs):acc)
+>     cmprec (_,_,_,x) (_,_,_,y) = compare x y
+
+Ordered by number of recursive arguments
+If there's two constructors, one with 0 recursive arguments and all others 
+force, one with 1 recursive argument and all others force, it can be 
+transformed to Nat.
+
+> nattable' :: [(Name, Int, Int, Int)] -> Maybe (Name, Name)
+> nattable' [(z, ztot, zforce, 0), (s, stot, sforce, 1)]
+>       | (ztot==zforce) && (stot-1 == sforce) 
+>            = Just (z, s)
+> nattable' _ = Nothing
+
 > collapseTrans :: Name -> (Name, ViewTerm) -> Transform
 > collapseTrans n (c, ty) = Trans ((show n)++"_COLLAPSE")
 >                            (mkCollapse (length (Ivor.TT.getArgTypes ty)))
@@ -140,9 +162,10 @@ from a collapsible type...
 >                          else tm
 >          mkCollapse _ tm = tm
 
-> forceTrans :: (Name, [Name], [(Name, ViewTerm)]) -> Maybe Transform
-> forceTrans (x, [], _) = Nothing
-> forceTrans (n, forced, tys) 
+> forceTrans :: Maybe (Name, Name) ->
+>               (Name, [Name], [(Name, ViewTerm)]) -> Maybe Transform
+> forceTrans nat (x, [], _) = Nothing
+> forceTrans nat (n, forced, tys) 
 >      = Just (Trans ((show n)++"_FORCE") (mkForce (length tys)))
 
 If a term is n applied to (length tys) arguments, change it to
@@ -154,13 +177,19 @@ n applied to arguments minus the ones in forceable positions
 >                       args = getFnArgs tm 
 >                       nargs = zip (map fst tys) args in
 >                   if con == n && length args == num then
->                       let app = apply (Name nty con) (map snd (filter notForced nargs)) in
+>                       let app = apply (Name nty (newname nat con)) 
+>                                       (map snd (filter notForced nargs)) in
 >                           -- trace (show (app, con, nargs)) 
 >                           app
 >                       else tm
 >          mkForce _ tm = tm
 >          notForced (f, tm) = not (f `elem` forced)
+>          newname Nothing n = n
 
+If the type has the shape of a Nat, transform the constructors.
+
+>          newname (Just (z, s)) n | n == z = name "O"
+>                                  | n == s = name "S"
 
 Given a constructor type, return all the names bound in it which
 need not be stored (i.e. need not be bound)
