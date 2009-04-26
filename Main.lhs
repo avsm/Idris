@@ -23,7 +23,7 @@
 > import Idris.Prover
 > import Idris.ConTrans
 
-> import RunIO
+> import Idris.RunIO
 
 Load things in this order:
 

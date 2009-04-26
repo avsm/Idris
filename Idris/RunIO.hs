@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fglasgow-exts -fallow-undecidable-instances -fallow-overlapping-instances #-}
 {-# LANGUAGE MagicHash, UndecidableInstances, OverlappingInstances #-}
 
-module RunIO where
+module Idris.RunIO where
 
 -- import SimplDSL
 

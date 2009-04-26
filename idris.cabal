@@ -38,7 +38,7 @@ Library
                          Idris.AbsSyntax, Idris.Context, Idris.Latex
                          Idris.Compiler, Idris.LambdaLift, Idris.PMComp, 
                          Idris.MakeTerm, Idris.Prefix, Idris.Prover, 
-                         Idris.ConTrans, Idris.SCTrans, RunIO
+                         Idris.ConTrans, Idris.SCTrans, Idris.RunIO
 
         Build-depends:   base>3, containers, array, parsec, mtl,
                          readline, ivor>=0.1.8, directory, haskell98,
@@ -52,4 +52,4 @@ Executable     idris
                               Idris.AbsSyntax, Idris.Context,
                               Idris.Compiler, Idris.LambdaLift, Idris.PMComp, 
                               Idris.MakeTerm, Idris.Prefix, Idris.Prover, 
-                              Idris.ConTrans, Idris.SCTrans, RunIO
+                              Idris.ConTrans, Idris.SCTrans, Idris.RunIO
