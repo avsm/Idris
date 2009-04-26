@@ -1,12 +1,12 @@
 Name:           idris
-Version:        0.1.1
+Version:        0.1.2
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
 Maintainer:     Edwin Brady <eb@dcs.st-and.ac.uk>
 
 Stability:      Alpha
-Category:       Compilers/Interpreters
+Category:       Compilers/Interpreters, Dependent Types
 Synopsis:       Dependently Typed Functional Programming Language
 Description:    Idris is an experimental language with full dependent types.
                 Dependent types allow types to be predicated on values,
@@ -30,7 +30,7 @@ Description:    Idris is an experimental language with full dependent types.
                 The Darcs repository can be found at <http://www-fp.dcs.st-and.ac.uk/~eb/darcs/Idris>.
 Homepage:       http://www.dcs.st-and.ac.uk/~eb/Ivor/
 
-Cabal-Version:  >= 1.2
+Cabal-Version:  >= 1.2.3
 Build-type:     Simple
 
 Library
@@ -41,7 +41,7 @@ Library
                          Idris.ConTrans, Idris.SCTrans, RunIO
 
         Build-depends:   base>3, containers, array, parsec, mtl,
-                         readline, ivor, directory, haskell98,
+                         readline, ivor>=0.1.8, directory, haskell98,
                          old-time, old-locale
 				
         Extensions:      MagicHash, UndecidableInstances, OverlappingInstances

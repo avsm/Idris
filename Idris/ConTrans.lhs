@@ -164,7 +164,7 @@ transformed to Nat.
 
 > forceTrans :: Maybe (Name, Name) ->
 >               (Name, [Name], [(Name, ViewTerm)]) -> Maybe Transform
-> forceTrans nat (x, [], _) = Nothing
+> forceTrans Nothing (x, [], _) = Nothing
 > forceTrans nat (n, forced, tys) 
 >      = Just (Trans ((show n)++"_FORCE") (mkForce (length tys)))
 

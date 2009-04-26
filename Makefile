@@ -16,6 +16,9 @@ install: .PHONY
 
 package: all install
 
+cabal-package:
+	runhaskell Setup.lhs sdist
+
 clean:
 	runhaskell Setup.lhs clean
 
