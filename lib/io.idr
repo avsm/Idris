@@ -192,3 +192,5 @@ sequence Nil = return Nil;
 sequence (Cons x xs) = do { a <- x;
 			    as <- sequence xs;
 			    return (Cons a as); };
+
+sleep = mkForeign (FFun "sleep" (Cons FInt Nil) FUnit) %eval;

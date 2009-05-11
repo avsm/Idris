@@ -32,7 +32,7 @@ __epic_doUnlock (l:Int) -> Unit =
    foreign Unit "doUnlock" (l:Int)
 
 __epic_fork (a:Any, f:Fun) -> Unit =
-   foreign Unit "doFork" (f:Fun)
+   lazy foreign Unit "doFork" (f:Fun)
 
 __epic_bool (x:Int) -> Data =
    if (x==0) then (Con 1 ()) else (Con 0 ())

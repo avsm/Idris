@@ -33,12 +33,15 @@ Homepage:       http://www.dcs.st-and.ac.uk/~eb/Ivor/
 Cabal-Version:  >= 1.2.3
 Build-type:     Simple
 
+Data-files:     lib/*.idr
+
 Library
         Exposed-modules: Idris.Parser, Idris.Lexer, Idris.Lib, 
                          Idris.AbsSyntax, Idris.Context, Idris.Latex
                          Idris.Compiler, Idris.LambdaLift, Idris.PMComp, 
-                         Idris.MakeTerm, Idris.Prefix, Idris.Prover, 
+                         Idris.MakeTerm, Idris.Prover, 
                          Idris.ConTrans, Idris.SCTrans, Idris.RunIO
+        Other-modules:   Paths_idris
 
         Build-depends:   base>3, containers, array, parsec, mtl,
                          readline, ivor>=0.1.8, directory, haskell98,
@@ -51,5 +54,5 @@ Executable     idris
                Other-modules: Idris.Parser, Idris.Lexer, Idris.Lib, 
                               Idris.AbsSyntax, Idris.Context,
                               Idris.Compiler, Idris.LambdaLift, Idris.PMComp, 
-                              Idris.MakeTerm, Idris.Prefix, Idris.Prover, 
+                              Idris.MakeTerm, Idris.Prover, 
                               Idris.ConTrans, Idris.SCTrans, Idris.RunIO

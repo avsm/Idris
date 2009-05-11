@@ -33,7 +33,7 @@ Load things in this order:
 * Load prelude
 * Load users program
 
-> version = "0.1.0"
+> idris_version = "0.1.0"
 
 > main :: IO ()
 > main = do args <- getArgs
@@ -172,8 +172,8 @@ Command; minimal abbreviation; function to run it; description; visibility
 >               return $ NewCtxt ist' ctxt
 
 > help _ _ _ 
->    = do putStrLn $ "\nIdris version " ++ version
->         putStrLn $ "----------------" ++ take (length version) (repeat '-')
+>    = do putStrLn $ "\nIdris version " ++ idris_version
+>         putStrLn $ "----------------" ++ take (length idris_version) (repeat '-')
 >         putStrLn "Commands available:\n"
 >         putStrLn "\t<expression>     Execute the given expression"
 >         mapM_ (\ (com, _, _, desc,vis) -> 
