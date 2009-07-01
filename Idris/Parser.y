@@ -20,6 +20,8 @@ import Idris.Lib
 %monad { P } { thenP } { returnP }
 %lexer { lexer } { TokenEOF }
 
+%expect 0
+
 %token
       name            { TokenName $$ }
       string          { TokenString $$ }
@@ -54,6 +56,8 @@ import Idris.Lib
       eq              { TokenEQ }
       ge              { TokenGE }
       le              { TokenLE }
+      or              { TokenOr }
+      and             { TokenAnd }
       arrow           { TokenArrow }
       leftarrow       { TokenLeftArrow }
       inttype         { TokenIntType }
@@ -107,14 +111,17 @@ import Idris.Lib
 %nonassoc LAM
 %nonassoc let in
 %nonassoc '!' '@'
-%left '(' '{' lazybracket
+%left or
+%left and
+%left '=' eq
+%left '<' le '>' ge
 %left '+' '-'
 %left '*' '/'
 %left concat
-%left '=' eq
 %left '\\'
 %left APP
 %right arrow
+%left '(' '{' lazybracket
 %nonassoc '.'
 %right IMP
 %nonassoc CONST
@@ -253,12 +260,14 @@ InfixTerm : NoAppTerm '=' NoAppTerm { RInfix JMEq $1 $3 }
           | Term '-' Term { RInfix Minus $1 $3 }
           | Term '*' Term { RInfix Times $1 $3 }
           | Term '/' Term { RInfix Divide $1 $3 }
+          | Term and Term { RInfix OpAnd $1 $3 }
+          | Term or Term { RInfix OpOr $1 $3 }
           | Term concat Term { RInfix Concat $1 $3 }
-          | NoAppTerm eq NoAppTerm { RInfix OpEq $1 $3 }
-          | NoAppTerm '<' NoAppTerm { RInfix OpLT $1 $3 }
-          | NoAppTerm le NoAppTerm { RInfix OpLEq $1 $3 }
-          | NoAppTerm '>' NoAppTerm { RInfix OpGT $1 $3 }
-          | NoAppTerm ge NoAppTerm { RInfix OpGEq $1 $3 }
+          | Term eq Term { RInfix OpEq $1 $3 }
+          | Term '<' Term { RInfix OpLT $1 $3 }
+          | Term le Term { RInfix OpLEq $1 $3 }
+          | Term '>' Term { RInfix OpGT $1 $3 }
+          | Term ge Term { RInfix OpGEq $1 $3 }
 
 MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}

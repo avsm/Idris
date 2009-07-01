@@ -81,6 +81,8 @@ data Token
       | TokenTimes
       | TokenDivide
       | TokenEquals
+      | TokenOr
+      | TokenAnd
       | TokenMightEqual
       | TokenEQ
       | TokenGE
@@ -170,6 +172,8 @@ lexer cont ('>':'=':cs) = cont TokenGE cs
 lexer cont ('<':'=':cs) = cont TokenLE cs
 lexer cont ('>':cs) = cont TokenGT cs
 lexer cont ('<':cs) = cont TokenLT cs
+lexer cont ('|':'|':cs) = cont TokenOr cs
+lexer cont ('&':'&':cs) = cont TokenAnd cs
 lexer cont ('?':'=':cs) = cont TokenMightEqual cs
 lexer cont ('=':cs) = cont TokenEquals cs
 lexer cont (':':cs) = cont TokenColon cs

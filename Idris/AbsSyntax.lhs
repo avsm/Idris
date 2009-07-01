@@ -262,7 +262,7 @@ value.
 >     show (Builtin s) = s
 
 > data Op = Plus | Minus | Times | Divide | Concat | JMEq
->         | OpEq | OpLT | OpLEq | OpGT | OpGEq
+>         | OpEq | OpLT | OpLEq | OpGT | OpGEq | OpOr | OpAnd
 >         | ToString | ToInt
 >    deriving Eq
 
@@ -280,6 +280,8 @@ value.
 >     show OpLEq = "<="
 >     show OpGT = ">"
 >     show OpGEq = ">="
+>     show OpOr = "||"
+>     show OpAnd = "&&"
 
 > opFn Plus = (name "__addInt")
 > opFn Minus = (name "__subInt")
@@ -294,6 +296,8 @@ value.
 > opFn OpGEq = (name "__intgeq")
 > opFn ToInt = (name "__toInt")
 > opFn ToString = (name "__toString")
+> opFn OpOr = (name "__or")
+> opFn OpAnd = (name "__and")
 
 Pattern clauses
 
