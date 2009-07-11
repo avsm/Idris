@@ -66,7 +66,9 @@ data Token
       | TokenNoElim
       | TokenCollapsible
       | TokenPartial
+      | TokenSyntax
       | TokenWhere
+      | TokenWith
       | TokenType
       | TokenLazyBracket
       | TokenOB
@@ -90,12 +92,14 @@ data Token
       | TokenGT
       | TokenLT
       | TokenArrow
+      | TokenFatArrow
       | TokenLeftArrow
       | TokenColon
       | TokenSemi
       | TokenComma
       | TokenBar
       | TokenDot
+      | TokenEllipsis
       | TokenLambda
       | TokenInclude
       | TokenDo
@@ -155,6 +159,7 @@ lexer cont ('\'':cs) = lexChar cont cs
 lexer cont ('{':'-':cs) = lexerEatComment 0 cont cs
 lexer cont ('-':'-':cs) = lexerEatToNewline cont cs
 lexer cont ('-':'>':cs) = cont TokenArrow cs
+lexer cont ('=':'>':cs) = cont TokenFatArrow cs
 lexer cont ('<':'-':cs) = cont TokenLeftArrow cs
 lexer cont ('(':cs) = cont TokenOB cs
 lexer cont (')':cs) = cont TokenCB cs
@@ -182,6 +187,7 @@ lexer cont (',':cs) = cont TokenComma cs
 lexer cont ('\\':cs) = cont TokenLambda cs
 lexer cont ('|':'(':cs) = cont TokenLazyBracket cs
 lexer cont ('|':cs) = cont TokenBar cs
+lexer cont ('.':'.':'.':cs) = cont TokenEllipsis cs
 lexer cont ('.':cs) = cont TokenDot cs
 lexer cont ('#':cs) = cont TokenType cs
 lexer cont ('!':cs) = cont TokenBang cs
@@ -244,7 +250,9 @@ lexVar cont cs =
       ("noElim",rest) -> cont TokenNoElim rest
       ("collapsible",rest) -> cont TokenCollapsible rest
       ("where",rest) -> cont TokenWhere rest
+      ("with",rest) -> cont TokenWith rest
       ("partial",rest) -> cont TokenPartial rest
+      ("syntax",rest) -> cont TokenSyntax rest
 -- Types
       ("Int",rest) -> cont TokenIntType rest
       ("Char",rest) -> cont TokenCharType rest

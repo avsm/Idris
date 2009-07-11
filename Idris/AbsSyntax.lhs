@@ -61,24 +61,27 @@ the system to insert a hole for a proof that turns it into the right type.
 
 > data ParseDecl = RealDecl Decl
 >                | FunType Id RawTerm [CGFlag] 
->                | FunClause RawTerm RawTerm [CGFlag]
->                | FunClauseP RawTerm RawTerm Id
+>                | FunClause RawTerm [RawTerm] RawTerm [CGFlag]
+>                | FunClauseP RawTerm [RawTerm] RawTerm Id
+>                | WithClause RawTerm [RawTerm] RawTerm [ParseDecl]
 >                | ProofScript Id [ITactic]
 >                | PUsing [(Id,RawTerm)] [ParseDecl]
 >                | PDoUsing (Id, Id) [ParseDecl]
+>                | PSyntax Id [Id] RawTerm 
+>    deriving Show
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
 > collectDecls pds = cds [] [] pds
 >   where cds rds fwds ((RealDecl d):ds) = cds (d:rds) fwds ds
->         cds rds fwds ((FunType n t fl):ds) = getClauses rds fwds n t fl [] ds
->         cds rds fwds ((FunClause (RVar n) ret fl):ds) 
+>         cds rds fwds ((FunType n t fl):ds) = getClauses RPlaceholder rds fwds n t fl [] ds
+>         cds rds fwds ((FunClause (RVar n) [] ret fl):ds) 
 >                 = cds ((TermDef n ret fl):rds) fwds ds
->         cds rds fwds ds@((FunClause app ret fl):_) 
+>         cds rds fwds ds@((FunClause app [] ret fl):_) 
 >             = case getFnName app of
 >                 Just n -> 
 >                    case (lookup n fwds) of
 >                      Nothing -> fail $ "No type declaration for " ++ show n
->                      Just (ty,fl) -> getClauses rds fwds n ty fl [] ds
+>                      Just (ty,fl) -> getClauses app rds fwds n ty fl [] ds
 >                 _ -> fail $ "Invalid pattern clause"
 >         cds rds fwds ((ProofScript n prf):ds)
 >             = case lookup n fwds of
@@ -96,18 +99,41 @@ the system to insert a hole for a proof that turns it into the right type.
 >                   Success d ->
 >                       cds ((DoUsing ub ur d):rds) fwds ds
 >                   failure -> failure
+>         cds rds fwds ((PSyntax name args to):ds) = cds rds fwds ds -- TODO
+>         cds rds fwds (d:ds) = fail $ "Invalid declaration: " ++ show d
 >         cds rds fwds [] = return (reverse rds)
 
->         getClauses rds fwds n t fl clauses ((FunClause pat ret fl'):ds)
+
+>         getClauses parent rds fwds n t fl clauses ((FunClause RPlaceholder [with] ret fl'):ds)
+>             = getClauses parent rds fwds n t fl clauses ((FunClause parent [with] ret fl'):ds)
+>         getClauses parent rds fwds n t fl clauses ((FunClause pat withs ret fl'):ds)
 >             | (RVar n) == getFn pat
->                 = getClauses rds fwds n t fl ((n, RawClause pat ret):clauses) ds
->         getClauses rds fwds n t fl clauses ((FunClauseP pat ret mv):ds)
+>                = getClauses parent rds fwds n t fl ((n, RawClause (mkApp pat withs) ret):clauses) ds
+>         getClauses parent rds fwds n t fl clauses ((FunClauseP pat withs ret mv):ds)
 >             | (RVar n) == getFn pat
->                 = getClauses rds fwds n t fl ((n, RawClause pat (mkhret mv ret)):clauses) ds
->         getClauses rds fwds n t fl [] ds 
+>                 = getClauses parent rds fwds n t fl 
+>                       ((n, RawClause (mkApp pat withs) (mkhret mv ret)):clauses) ds
+>         getClauses parent rds fwds n t fl clauses ((WithClause RPlaceholder [with] ret fl'):ds)
+>             = getClauses parent rds fwds n t fl clauses ((WithClause parent [with] ret fl'):ds)
+>         getClauses parent rds fwds n t fl clauses ((WithClause pat withs scr defs):ds)
+>             | (RVar n) == getFn pat
+>                 = do wcl <- collectWiths (mkApp pat withs) rds fwds n t fl defs
+>                      getClauses parent rds fwds n t fl 
+>                          ((n, RawWithClause (mkApp pat withs) scr wcl):clauses) ds
+>         getClauses parent rds fwds n t fl [] ds 
 >                = cds ((Fwd n t fl):rds) ((n,(t,fl)):fwds) ds
->         getClauses rds fwds n t fl clauses ds =
+>         getClauses parent rds fwds n t fl clauses ds =
 >             cds ((Fun (Function n t (reverse clauses)) fl):rds) fwds ds
+
+>         collectWiths parent rds fwds n t fl cs = 
+>              do cls <- getClauses parent [] [] n t fl [] cs
+>                 case cls of
+>                     [Fun (Function _ _ cl) _] -> return (map snd cl)
+>                     _ -> fail $ "Invalid with clause for " ++ show n
+
+         collectWiths rds fwds n t fl ((FunClause pat ex rhs []):cs) =
+             | (RVar n) == getFn pat
+                 = RawClause (mkApp pat withs)
 
 >         mkhret mv v = RBind (UN "value") (RLet v RPlaceholder) 
 >                             (RMetavar mv)
@@ -303,6 +329,9 @@ Pattern clauses
 
 > data RawClause = RawClause { lhs :: RawTerm,
 >                              rhs :: RawTerm }
+>                | RawWithClause { lhs :: RawTerm,
+>                                  scrutinee :: RawTerm,
+>                                  defn :: [RawClause] }
 >    deriving Show
 
 > mkApp :: RawTerm -> [RawTerm] -> RawTerm

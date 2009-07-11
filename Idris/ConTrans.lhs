@@ -36,6 +36,13 @@ then turn it back into a pclause
 >                    ret' = applyTransforms ctxt ts ret
 >                    args' = getFnArgs lhs' in
 >                    PClause args' ret'
+>          doTrans (PWithClause args scr (Patterns pats))
+>              = let pats' = Patterns $ (map doTrans pats)
+>                    lhs = apply (Name Unknown n) args
+>                    lhs' = applyTransforms ctxt ts lhs
+>                    scr' = applyTransforms ctxt ts scr
+>                    args' = getFnArgs lhs' in
+>                    PWithClause args' scr' pats'
 
 Test transforms: VNil A => VNil
                  VCons a k x xs => VCons x xs
@@ -103,13 +110,14 @@ which are themselves collapsible.
 > makeTransform :: Context -> (Name, Inductive) -> [Transform] -> [Transform]
 > makeTransform ctxt (n, ity) acc
 >    = let cons = constructors ity
+>          detagin = (map (getFnArgs.getReturnType) (map snd cons))
 >          forceable = nub (map (\ (x,y) -> (x, force ctxt y acc, Ivor.TT.getArgTypes y)) cons)
->          detaggable = pdisjoint ctxt (map (getFnArgs.getReturnType) (map snd cons))
+>          detaggable = pdisjoint ctxt detagin
 >          recursive = nub (map (\ (x,y) -> (x, recArgs n y acc, Ivor.TT.getArgTypes y)) cons)
 >          collapsible = detaggable && all droppedAll (combine forceable recursive)
 >          nattable = isNat forceable recursive
 >               in
->          -- trace (show n ++ " " ++ show collapsible ++ " " ++ show (forceable, recursive)) $ -- FORCING \n\t" ++ show forceable) 
+>          -- trace (show n ++ " " ++ show (nattable) ++ " " ++ show (forceable, recursive)) $ -- FORCING \n\t" ++ show forceable) 
 >            if collapsible then
 >                map (collapseTrans n) cons
 >                else mapMaybe (forceTrans nattable) forceable
@@ -198,7 +206,7 @@ need not be stored (i.e. need not be bound)
 > force ctxt tm acc = let rt = getReturnType tm
 >                         atypes = Ivor.TT.getArgTypes tm
 >                         rtargs = getFnArgs rt in
->                         concat (map conGuarded rtargs) ++ 
+>                         nub $ concat (map conGuarded rtargs) ++ 
 >                            (map fst (filter collapse atypes))
 >     where isVar n | elem n boundnames = True
 >                   | otherwise =
@@ -240,14 +248,14 @@ Return whether constructor types are pairwise disjoint in their indices
 >   where pdisjointWith x [] = True
 >         pdisjointWith x (y:ys) = disjoint (zip x y) && pdisjointWith x ys
 
-Is there an argument position with a difference constructor at the head?
+Is there an argument position with a different constructor at the head?
 
 >         disjoint xs = or (map disjointCon xs)
 >         disjointCon (x, y)
 >              | Name _ xn <- getApp x
 >              , Name _ yn <- getApp y
 >                 = case (nameType c xn, nameType c yn) of
->                     (Just DataCon, Just DataCon) -> x /= y
+>                     (Just DataCon, Just DataCon) -> xn /= yn
 >                     _ -> False
 >         disjointCon _ = False
 
@@ -264,7 +272,12 @@ is either a pattern or unused (modulo recursion), do this to it:
 >    where
 >      getPlPos acc [] [] = acc
 >      getPlPos acc ((PClause args r):ps) ((PClause args' r'):ps')
->          = getPlPos (filter (plArg args args' r') acc) ps ps'
+>            = getPlPos (filter (plArg args args' r') acc) ps ps'
+>      getPlPos acc ((PWithClause args _ _):ps) ((PClause args' r'):ps')
+>            = getPlPos (filter (plArg args args' r') acc) ps ps'
+>      getPlPos acc (_:ps) (_:ps')
+>            = getPlPos acc ps ps'
+
 >      plArg args args' r' x 
 >            = args!!x == Placeholder && recGuard x n r' (namesIn (args'!!x))
 >      args ((PClause args r):_) = length args
@@ -277,6 +290,7 @@ after removing them.
 >      noDiscriminate :: [Int] -> [PClause] -> [Int]
 >      noDiscriminate phs ps = indiscriminate phs (map pargs ps)
 >          where pargs (PClause args _) = args
+>                pargs (PWithClause args _ _) = args
 
 Drop argument x, from all patterns, see if they are still pairwise disjoint.
 If so, x can remain a placeholder position.

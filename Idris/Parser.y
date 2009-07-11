@@ -49,6 +49,7 @@ import Idris.Lib
       '<'             { TokenLT }
       '>'             { TokenGT }
       '.'             { TokenDot }
+      ellipsis        { TokenEllipsis }
       '_'             { TokenUnderscore }
       ','             { TokenComma }
       '!'             { TokenBang }
@@ -59,6 +60,7 @@ import Idris.Lib
       or              { TokenOr }
       and             { TokenAnd }
       arrow           { TokenArrow }
+      fatarrow        { TokenFatArrow }
       leftarrow       { TokenLeftArrow }
       inttype         { TokenIntType }
       chartype        { TokenCharType }
@@ -74,7 +76,9 @@ import Idris.Lib
       noelim          { TokenNoElim }
       collapsible     { TokenCollapsible }
       where           { TokenWhere }
+      with            { TokenWith }
       partial         { TokenPartial }
+      syntax          { TokenSyntax }
       refl            { TokenRefl }
       empty           { TokenEmptyType }
       unit            { TokenUnitType }
@@ -149,15 +153,30 @@ Declaration: Function { $1 }
            | Latex { RealDecl $1 }
            | Using '{' Program '}' { PUsing $1 $3 }
            | DoUsing '{' Program '}' { PDoUsing $1 $3 } 
+           | syntax Name NamesS '=' Term ';' { PSyntax $2 $3 $5 }
            | cinclude string { RealDecl (CInclude $2) }
            | clib string { RealDecl (CLib $2) }
 
 Function :: { ParseDecl }
 Function : Name ':' Type Flags ';' { FunType $1 $3 $4 }
          | Name ProofScript ';' { ProofScript $1 $2 }
-         | DefTerm '=' Term Flags ';' { FunClause (mkDef $1) $3 $4 }
-         | DefTerm mightbe Term ';' '[' Name ']'
-              { FunClauseP (mkDef $1) $3 $6 }
+--         | DefTerm '=' Term Flags ';' { FunClause (mkDef $1) [] $3 $4 }
+         | DefTerm WithTerms with NoAppTerm '{' Functions '}'
+              { WithClause (mkDef $1) $2 $4 $6 }
+         | DefTerm WithTerms mightbe Term ';' '[' Name ']'
+              { FunClauseP (mkDef $1) $2 $4 $7 }
+         | DefTerm WithTerms '=' Term Flags ';' { FunClause (mkDef $1) $2 $4 $5 }
+         | '|' NoAppTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
+         | '|' NoAppTerm with NoAppTerm '{' Functions '}'
+              { WithClause RPlaceholder [$2] $4 $6 }
+
+WithTerms :: { [RawTerm] }
+WithTerms : '|' NoAppTerm WithTerms { $2:$3 }
+          | { [] }
+
+Functions :: { [ParseDecl] }
+Functions : Function Functions { $1:$2 }
+          | Function { [$1] }
 
 Flags :: { [CGFlag] }
 Flags : { [] }
@@ -245,6 +264,10 @@ TypedBind : Names ':' Term { map ( \x -> (x,$3)) $1 }
 Names :: { [Id] }
 Names : Name { [$1] }
       | Name ',' Names { $1:$3 }
+
+NamesS :: { [Id] }
+NamesS : Name { [$1] }
+       | Name NamesS { $1:$2 }
 
 LetBinds :: { [(Id, RawTerm, RawTerm)] }
 LetBinds : Name MaybeType '=' Term { [($1,$2,$4)] }

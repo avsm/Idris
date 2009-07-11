@@ -30,6 +30,14 @@ into an ivor definition, with all the necessary placeholders added.
 >                            let vpats = map (toIvor ui n) pats
 >                                vrhs = makeIvorTerm ui n ectx rhs in
 >                                PClause vpats vrhs
+>         mkPat ectx imp (id,(RawWithClause lhs scr def))
+>               = let lhs' = addPlaceholders ectx lhs in
+>                     case (getFn lhs', getRawArgs lhs') of
+>                          (fid, pats) ->
+>                            let vpats = map (toIvor ui n) pats
+>                                vscr = makeIvorTerm ui n ectx scr
+>                                vdef = Patterns $ map (mkPat ectx imp) (zip (repeat id) def) in
+>                                PWithClause vpats vscr vdef
 
 > makeIvorFuns :: Ctxt IvorFun -> [Decl] -> Ctxt IvorFun
 > makeIvorFuns is defs = mif is [] [] defDo defs
