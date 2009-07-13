@@ -219,11 +219,16 @@ IO operations and do notation as we go.
 >        sc' (App f a) args = sc' f ((sc' a []):args)
 >        sc' (Let n ty val x) args 
 >                = scapply ist (SLet n (sc' val []) (sc' x [])) args
+
+Chars are just treated as Ints by the compiler, so convert here.
+
 >        sc' (Constant c) [] 
 >            = case (cast c)::Maybe Int of
 >                 Just i -> SConst (Num i)
 >                 Nothing -> case (cast c)::Maybe String of
 >                                Just s -> SConst (Str s)
+>                                Nothing -> case (cast c)::Maybe Char of
+>                                             Just c -> SConst (Num (fromEnum c))
 >        sc' x args = SUnit -- no runtime meaning
 
 scapply deals with special cases for infix operators, IO, etc.

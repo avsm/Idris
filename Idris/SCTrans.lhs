@@ -60,8 +60,18 @@ Built-in transformations.
 
 > natArith = SCTrans "NatArith" narith where
 >    narith (SApp (SVar op) [x,y]) 
+
+Arithmetic can use machine operations
+
 >           | op == name "plus" = SInfix Plus x y
 >           | op == name "mult" = SInfix Times x y
+
+Conversions between nat and int are just no-ops
+
+>    narith (SApp (SVar op) [x]) 
+>           | op == name "natToInt" = x
+>           | op == name "intToNat" = x
+
 >    narith x = x
 
 * Nat destructor (case)

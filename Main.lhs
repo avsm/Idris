@@ -292,6 +292,7 @@ the appropriate thing, after applying the relevant transformations.
 >        showarg x = if (' ' `elem` x) then "(" ++ x ++ ")" else x
 
 > prims c = do c <- addPrimitive c (name "Int")
+>              c <- addPrimitive c (name "Char")
 >              c <- addPrimitive c (name "Float")
 >              c <- addPrimitive c (name "String")
 >              c <- addPrimitive c (name "Lock")
@@ -313,6 +314,9 @@ the appropriate thing, after applying the relevant transformations.
 >              c <- addExternalFn c (opFn OpGEq) 2 intge "Int->Int->Bool"
 >              c <- addExternalFn c (opFn ToString) 1 intToString "Int->String"
 >              c <- addExternalFn c (opFn ToInt) 1 stringToInt "String->Int"
+>              c <- addExternalFn c (opFn IntToChar) 1 intToChar "Int->Char"
+>              c <- addExternalFn c (opFn CharToInt) 1 charToInt "Char->Int"
+>              c <- addExternalFn c (opFn StringLength) 1 stringLen "String->Int"
 >              return c
 
 > constEq :: [ViewTerm] -> Maybe ViewTerm
@@ -382,3 +386,22 @@ the appropriate thing, after applying the relevant transformations.
 >           sToI s | all isDigit s = read s
 >                  | otherwise = 0
 > stringToInt _ = Nothing
+
+> intToChar :: [ViewTerm] -> Maybe ViewTerm
+> intToChar [Constant x] = case cast x :: Maybe Int of
+>                            Just i -> Just (Constant (toEnum i :: Char))
+>                            _ -> Nothing
+> intToChar _ = Nothing
+
+> charToInt :: [ViewTerm] -> Maybe ViewTerm
+> charToInt [Constant x] = case cast x :: Maybe Char of
+>                            Just i -> Just (Constant (fromEnum i :: Int))
+>                            _ -> Nothing
+> charToInt _ = Nothing
+
+> stringLen :: [ViewTerm] -> Maybe ViewTerm
+> stringLen [Constant x] = case cast x :: Maybe String of
+>                            (Just s) -> Just (Constant (length s))
+>                            _ -> Nothing
+> stringLen _ = Nothing
+

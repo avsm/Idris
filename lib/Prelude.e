@@ -13,6 +13,9 @@ __epic_readStr () -> String =
 __epic_append (x:String, y:String) -> String =
     foreign String "append" (x:String, y:String)
 
+__epic_strlen (x:String) -> Int =
+    foreign Int "strlen" (x:String)
+
 __epic_newRef () -> Int =
     foreign Int "newRef" ()
 

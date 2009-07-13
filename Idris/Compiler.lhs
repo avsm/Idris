@@ -181,6 +181,12 @@ TMP HACK until we do coercions on primitives properly
 >         "__epic_toInt(" ++ writeSC' arg ++ ")"
 >     | n == name "__toString" =
 >         "__epic_toString(" ++ writeSC' arg ++ ")"
+>     | n == name "__charToInt" =
+>         writeSC' arg
+>     | n == name "__intToChar" =
+>         writeSC' arg
+>     | n == name "__strlen" =
+>         "__epic_strlen(" ++ writeSC' arg ++ ")"
 >     | n == name "unsafeNative" =
 >         "__epic_native(" ++ writeSC' arg ++ ")"
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
@@ -239,6 +245,9 @@ TMP HACK until we do coercions on primitives properly
 > writeAlt n (SDefault b) = "Default -> " ++ writeSC n b
 > writeAlt n _ = "Default -> error \"unhandled case in " ++ show n ++ "\""
 
+Chars are just treated as Ints by the compiler, so convert here.
+
+> writeConst (Ch c) = show $ fromEnum c
 > writeConst c = show c
 
 > writeFCall :: SCBody -> SCBody -> Name -> String

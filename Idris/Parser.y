@@ -130,7 +130,7 @@ import Idris.Lib
 %right IMP
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
-%nonassoc name inttype floattype stringtype int string float bool refl do type
+%nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' if then else ptrtype handletype locktype metavar
 
 
@@ -343,11 +343,13 @@ Constant :: { Constant }
 Constant : type { TYPE }
          | stringtype { StringType }
          | inttype { IntType }
+         | chartype { CharType }
          | floattype { FloatType }
          | ptrtype { PtrType }
          | handletype { Builtin "Handle" }
          | locktype { Builtin "Lock" }
          | int { Num $1 }
+         | char { Ch $1 }
          | string { Str $1 }
          | bool { Bo $1 }
          | float { Fl $1 }

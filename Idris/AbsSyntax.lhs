@@ -266,30 +266,49 @@ value.
 > data Constant = Num Int
 >               | Str String
 >               | Bo Bool
+>               | Ch Char
 >               | Fl Double
 >               | TYPE
 >               | StringType
 >               | IntType
 >               | FloatType
+>               | CharType
 >               | PtrType
 >               | Builtin String -- builtin type, eg Handle or Lock
 >    deriving (Eq, Ord)
+
+> instance ViewConst Char where
+>     typeof x = (name "Char")
 
 > instance Show Constant where
 >     show (Num i) = show i
 >     show (Str s) = show s
 >     show (Bo b) = show b
+>     show (Ch c) = show c
 >     show (Fl d) = show d
 >     show TYPE = "#"
 >     show IntType = "Int"
 >     show FloatType = "Float"
+>     show CharType = "Char"
 >     show StringType = "String"
 >     show PtrType = "Ptr"
 >     show (Builtin s) = s
 
+Operators, more precisely, are built-in functions on primitive types which both the 
+typechecker and compiler need to know how to run. First we have the usual set of infix 
+operators (plus John Major equality):
+
 > data Op = Plus | Minus | Times | Divide | Concat | JMEq
 >         | OpEq | OpLT | OpLEq | OpGT | OpGEq | OpOr | OpAnd
+
+Then built-in functions for coercing between types
+
 >         | ToString | ToInt
+>         | IntToChar | CharToInt
+
+Finally some primitive operations on primitive types.
+
+>         | StringLength | StringGetIndex | StringSubstr
 >    deriving Eq
 
 > allOps = [Plus,Minus,Times,Divide,Concat,JMEq,OpEq,OpLT,OpLEq,OpGT,OpGEq]
@@ -320,10 +339,17 @@ value.
 > opFn OpLEq = (name "__intleq")
 > opFn OpGT = (name "__intgt")
 > opFn OpGEq = (name "__intgeq")
-> opFn ToInt = (name "__toInt")
-> opFn ToString = (name "__toString")
 > opFn OpOr = (name "__or")
 > opFn OpAnd = (name "__and")
+
+> opFn ToInt = (name "__toInt")
+> opFn ToString = (name "__toString")
+> opFn CharToInt = (name "__charToInt")
+> opFn IntToChar = (name "__intToChar")
+
+> opFn StringLength = (name "__strlen")
+> opFn StringGetIndex = (name "__strgetIdx")
+> opFn StringSubstr = (name "__substr")
 
 Pattern clauses
 
@@ -561,6 +587,7 @@ ready for typechecking
 > toIvorConst (Str str) = Constant str
 > toIvorConst (Bo True) = Name Unknown (name "true")
 > toIvorConst (Bo False) = Name Unknown (name "false")
+> toIvorConst (Ch c) = Constant c
 > toIvorConst (Fl f) = Constant f
 > toIvorConst TYPE = Star
 > toIvorConst StringType = Name Unknown (name "String")
@@ -694,6 +721,8 @@ Now built-in operators
 >                             Just i -> RConst (Num i)
 >                             Nothing -> case (cast c)::Maybe String of
 >                                           Just s -> RConst (Str s)
+>                                           Nothing -> case (cast c)::Maybe Char of
+>                                                        Just c -> RConst (Ch c)
 >     unwind = mkImpApp 0 []
 
 > argNames :: Maybe ViewTerm -> [Id]
