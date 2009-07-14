@@ -281,6 +281,7 @@ is either a pattern or unused (modulo recursion), do this to it:
 >      plArg args args' r' x 
 >            = args!!x == Placeholder && recGuard x n r' (namesIn (args'!!x))
 >      args ((PClause args r):_) = length args
+>      args ((PWithClause args _ (Patterns rest)):_) = length args
 >      args [] = 0
 
 Remove argument positions from the list where those arguments are needed

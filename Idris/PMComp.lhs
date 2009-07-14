@@ -68,6 +68,7 @@ and if we don't matching can get confused).
 > toPat ctxt tm = toPat' tm [] where
 >     toPat' (Name _ n) []
 >         | isVar n = PVar n
+>         | not (isCon n) = PAny
 >     toPat' (Name _ n) args 
 >         | isCon n = case getConstructorTag ctxt n of
 >                       Just i -> PCon n i args
