@@ -432,8 +432,8 @@ name in the scope, returning the number of implicit arguments the resulting
 type has.
 
 We only want names which appear *in argument position*, e.g. P a we'd add a 
-but not P. We also don't want names which appear in the return type, since
-they'll never be inferrable at the call site.
+but not P. [[We also don't want names which appear in the return type, since
+they'll never be inferrable at the call site. (Not done this. Not convinced.) ]]
 
 > addImpl :: Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
 > addImpl = addImpl' True []
@@ -453,7 +453,7 @@ Need to do it twice, in case the first pass added names in the indices
 > addImpl' :: Bool -> [(Id, RawTerm)] -> Ctxt IvorFun -> 
 >             RawTerm -> (RawTerm, Int) 
 > addImpl' pi using ctxt raw 
->             = let (newargs, totimp) = execState (addImplB [] raw) ([],0) in
+>             = let (newargs, totimp) = execState (addImplB [] raw True) ([],0) in
 >                   if pi then 
 >                      let added = pibind (mknew newargs) raw in
 >                         if null using
@@ -461,38 +461,42 @@ Need to do it twice, in case the first pass added names in the indices
 >                             else let (added', totimp') = addImpl' True [] ctxt added in
 >                                   (added', totimp')
 >                      else (raw, totimp)
->     where addImplB :: [Id] -> RawTerm -> State ([Id], Int) ()
->           addImplB env (RVar i)
+>     where addImplB :: [Id] -> RawTerm -> Bool -> State ([Id], Int) ()
+>           addImplB env (RVar i) argpos
 >               | i `elem` env = return ()
 >               | Just _ <- ctxtLookup ctxt i = return ()
->               | otherwise = do (nms, tot) <- get
->                                if (i `elem` nms) then return ()
->                                   else put (i:nms, tot+1)
->           addImplB env (RApp f a)
->                    = do addImplB env f
->                         addImplB env a
->           addImplB env (RAppImp _ f a)
->                    = do addImplB env f
->                         addImplB env a
->           addImplB env (RBind n (Pi Im _ ty) sc)
+
+Only do it in argument position
+
+>               | argpos = do (nms, tot) <- get
+>                             if (i `elem` nms) then return ()
+>                                 else put (i:nms, tot+1)
+>               | otherwise = return ()
+>           addImplB env (RApp f a) argpos
+>                    = do addImplB env f False
+>                         addImplB env a True
+>           addImplB env (RAppImp _ f a) argpos 
+>                    = do addImplB env f False
+>                         addImplB env a True
+>           addImplB env (RBind n (Pi Im _ ty) sc) argpos
 >                    = do (nms, tot) <- get
 >                         put (nms, tot+1)
->                         addImplB env ty
->                         addImplB (n:env) sc
->           addImplB env (RBind n (Pi Ex _ ty) sc)
->                    = do addImplB env ty
->                         addImplB (n:env) sc
->           addImplB env (RBind n (Lam ty) sc)
->                    = do addImplB env ty
->                         addImplB (n:env) sc
->           addImplB env (RBind n (RLet val ty) sc)
->                    = do addImplB env val
->                         addImplB env ty
->                         addImplB (n:env) sc
->           addImplB env (RInfix op l r)
->                    = do addImplB env l
->                         addImplB env r
->           addImplB env _ = return ()
+>                         addImplB env ty argpos
+>                         addImplB (n:env) sc argpos
+>           addImplB env (RBind n (Pi Ex _ ty) sc) argpos
+>                    = do addImplB env ty True
+>                         addImplB (n:env) sc argpos
+>           addImplB env (RBind n (Lam ty) sc) argpos
+>                    = do addImplB env ty argpos
+>                         addImplB (n:env) sc argpos
+>           addImplB env (RBind n (RLet val ty) sc) argpos
+>                    = do addImplB env val argpos
+>                         addImplB env ty argpos
+>                         addImplB (n:env) sc argpos
+>           addImplB env (RInfix op l r) argpos
+>                    = do addImplB env l argpos
+>                         addImplB env r argpos
+>           addImplB env _ _ = return ()
 
 >           mknew :: [Id] -> [(Id, RawTerm)]
 >           mknew args = map fst (sortBy ordIdx (map addTy args))
