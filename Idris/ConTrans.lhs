@@ -94,6 +94,10 @@ Step 1. Forcing
    guarded in that constructor's return type. Any argument with these
    names is forceable.
    If the type of the argument is collapsible, it's also forceable.
+
+   If there's only one constructor left, of the form C x, transform it to just x.
+   (Relies on totality)
+
 Step 2: Detagging
    Check if there is an argument position in the return type which has a
    different constructor at the head on each constructor. If so,
@@ -120,7 +124,7 @@ which are themselves collapsible.
 >          -- trace (show n ++ " " ++ show (nattable) ++ " " ++ show (forceable, recursive)) $ -- FORCING \n\t" ++ show forceable) 
 >            if collapsible then
 >                map (collapseTrans n) cons
->                else mapMaybe (forceTrans nattable) forceable
+>                else mapMaybe (forceTrans nattable (length cons)) forceable
 
 Combine assumes constructors are in each list in the same order. Since they
 were built the same way, this is okay. Just combines the forceable and
@@ -170,10 +174,10 @@ transformed to Nat.
 >                          else tm
 >          mkCollapse _ tm = tm
 
-> forceTrans :: Maybe (Name, Name) ->
+> forceTrans :: Maybe (Name, Name) -> Int ->
 >               (Name, [Name], [(Name, ViewTerm)]) -> Maybe Transform
-> forceTrans Nothing (x, [], _) = Nothing
-> forceTrans nat (n, forced, tys) 
+> forceTrans Nothing _ (x, [], _) = Nothing
+> forceTrans nat ncons (n, forced, tys)
 >      = Just (Trans ((show n)++"_FORCE") (mkForce (length tys)))
 
 If a term is n applied to (length tys) arguments, change it to
@@ -185,12 +189,14 @@ n applied to arguments minus the ones in forceable positions
 >                       args = getFnArgs tm 
 >                       nargs = zip (map fst tys) args in
 >                   if con == n && length args == num then
->                       let app = apply (Name nty (newname nat con)) 
+>                       let app = forceapply ncons (Name nty (newname nat con)) 
 >                                       (map snd (filter notForced nargs)) in
 >                           -- trace (show (app, con, nargs)) 
 >                           app
 >                       else tm
 >          mkForce _ tm = tm
+>          forceapply 1 _ [x] = x
+>          forceapply _ n args = apply n args
 >          notForced (f, tm) = not (f `elem` forced)
 >          newname Nothing n = n
 
