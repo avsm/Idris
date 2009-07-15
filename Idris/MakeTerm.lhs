@@ -202,11 +202,17 @@ n is a parameter
 Add definitions to the Ivor Context. Return the new context and a list
 of things we need to define to complete the program (i.e. metavariables)
 
+> data TryAdd = OK (Context, [(Name, ViewTerm)])
+>             | Err (Context, [(Name, ViewTerm)]) String -- record how far we got
+
 > addIvor :: Ctxt IvorFun -> -- all definitions, including prelude
 >            Ctxt IvorFun -> -- just the ones we haven't added to Ivor yet
->            Context -> TTM (Context, [(Name, ViewTerm)])
-> addIvor all defs ctxt = foldM (addIvorDef all) (ctxt, [])
->                               (reverse (ctxtAlist defs))
+>            Context -> TryAdd
+> addIvor all defs ctxt = addivs (ctxt, []) (reverse (ctxtAlist defs))
+>    where addivs acc [] = OK acc
+>          addivs acc (def:ds) = case addIvorDef all acc def of
+>                                          Right ok -> addivs ok ds
+>                                          Left err -> Err acc (idrisError all err)
 
 > addIvorDef :: Ctxt IvorFun -> (Context, [(Name, ViewTerm)]) -> 
 >                (Id, IvorFun) -> 

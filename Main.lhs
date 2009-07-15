@@ -83,9 +83,9 @@ these days instead...
 >       Success ds -> do let defs' = makeIvorFuns defs ds
 >                        let alldefs = defs++defs'
 >                        (ctxt, metas) <- case (addIvor alldefs defs' ctxt) of
->                             Right x -> return x
->                             Left err -> do print err
->                                            return (ctxt, [])
+>                             OK x -> return x
+>                             Err x err -> do putStrLn err 
+>                                             return x
 >                        let ist = addTransforms (IState alldefs (decls++ds) metas opts []) ctxt
 >                        return (ctxt, ist)
 >       Failure err f ln -> fail err

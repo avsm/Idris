@@ -783,3 +783,11 @@ boolean flag (true for showing them)
 >     showP _ x = show x
 >     bracket outer inner str | inner>outer = "("++str++")"
 >                             | otherwise = str
+
+> showVT :: Ctxt IvorFun -> ViewTerm -> String
+> showVT ivs t = showImp False (unIvor ivs t)
+
+> idrisError :: Ctxt IvorFun -> TTError -> String
+> idrisError ivs (CantUnify x y) = "Can't unify " ++ (showVT ivs x) ++ " and " ++ 
+>                                                    (showVT ivs y)
+> idrisError ivs (Message str) = str
