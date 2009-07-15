@@ -156,7 +156,7 @@ We need to make sure all constructors are fully applied before we start
 >     ecalt (Default sc) = Default (ec' sc)
 
 >     ec ap@(App f a) 
->         | Just (ar, con, args) <- needsExp (App f a)
+>         | Right (ar, con, args) <- needsExp (App f a)
 >              = etaExp ar con args
 >     ec (App f a) = App f (ec a)
 >     ec (Lambda n ty sc) = Lambda n (ec ty) (ec sc)
@@ -169,9 +169,9 @@ That's all the terms we care about.
 >     needsExp' (App f a) as = needsExp' f ((ec a):as)
 >     needsExp' nm@(Name _ n) as 
 >         = do ar <- getConstructorArity ctxt n
->              if (ar == length as) then Nothing
->                  else Just (ar, nm, as)
->     needsExp' _ _ = Nothing
+>              if (ar == length as) then ttfail "FAIL"
+>                  else Right (ar, nm, as)
+>     needsExp' _ _ = ttfail "FAIL"
 
 We don't care about the type on the lambda here, We'll never look at it
 even when compiling, it's just for the sake of having constructors fully
@@ -212,10 +212,10 @@ IO operations and do notation as we go.
 >             = scapply ist (SCon (toIvorName (UN "refl")) 0) args -- can't actually use this either
 >          | otherwise
 >             = case getConstructorTag ctxt n of
->                   Just i -> scapply ist (SCon n i) args
->                   Nothing -> case nameType ctxt n of
->                                      Just TypeCon -> SUnit
->                                      _ -> scapply ist (SVar n) args
+>                   Right i -> scapply ist (SCon n i) args
+>                   _ -> case nameType ctxt n of
+>                                  Right TypeCon -> SUnit
+>                                  _ -> scapply ist (SVar n) args
 >        sc' (App f a) args = sc' f ((sc' a []):args)
 >        sc' (Let n ty val x) args 
 >                = scapply ist (SLet n (sc' val []) (sc' x [])) args

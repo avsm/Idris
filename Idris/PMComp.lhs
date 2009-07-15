@@ -71,8 +71,8 @@ and if we don't matching can get confused).
 >         | not (isCon n) = PAny
 >     toPat' (Name _ n) args 
 >         | isCon n = case getConstructorTag ctxt n of
->                       Just i -> PCon n i args
->                       Nothing -> error "Can't happen: no tag"
+>                       Right i -> PCon n i args
+>                       Left _ -> error "Can't happen: no tag"
 >         | otherwise = error $ "Can't happen: variable applied to arguments " ++ show (n,args)
 >     toPat' (App (Name _ plus) (App (Name _ n) (Constant c))) []
 >         | plus == opFn Plus 
@@ -90,11 +90,11 @@ and if we don't matching can get confused).
 >     toPat' _ _ = PAny
 
 >     isVar n = case nameType ctxt n of
->                 Nothing -> True
->                 Just Bound -> True
+>                 Left _ -> True
+>                 Right Bound -> True
 >                 _ -> False
 >     isCon n = case nameType ctxt n of
->                 Just DataCon -> True
+>                 Right DataCon -> True
 >                 _ -> False
 
 > isVarPat (Clause ((PVar _):ps) _) = True

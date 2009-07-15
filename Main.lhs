@@ -38,9 +38,9 @@ Load things in this order:
 > main :: IO ()
 > main = do args <- getArgs
 >           let infile = args!!0
->           ctxt <- addEquality emptyContext (name "Eq") (name "refl")
+>           ctxt <- ioTac $ addEquality emptyContext (name "Eq") (name "refl")
 >           (ctxt, defs) <- processInput ctxt initState "builtins.idr"
->           ctxt <- prims ctxt
+>           ctxt <- ioTac $ prims ctxt
 >           (ctxt, defs) <- processInput ctxt defs "prelude.idr"
 >           (ctxt, defs) <- processInput ctxt defs infile
 >           repl defs ctxt
@@ -76,9 +76,9 @@ these days instead...
 >       Success ds -> do let defs' = makeIvorFuns defs ds
 >                        let alldefs = defs++defs'
 >                        (ctxt, metas) <- case (addIvor alldefs defs' ctxt) of
->                             Success x -> return x
->                             Failure err _ _ -> do putStrLn err
->                                                   return (ctxt, [])
+>                             Right x -> return x
+>                             Left err -> do print err
+>                                            return (ctxt, [])
 >                        let ist = addTransforms (IState alldefs (decls++ds) metas opts []) ctxt
 >                        return (ctxt, ist)
 >       Failure err f ln -> fail err
@@ -213,11 +213,14 @@ Command; minimal abbreviation; function to run it; description; visibility
 
 > termInput runio raw ctxt tm 
 >         = case getTerm tm of
->                Success tm -> execEval runio raw ctxt (tm, viewType tm)
->                Failure err f ln -> putStrLn err
->   where getTerm tm = do parsed <- parseTerm tm
->                         let itm = makeIvorTerm defDo (UN "__main") raw parsed
->                         check ctxt itm
+>                Right tm -> execEval runio raw ctxt (tm, viewType tm)
+>                Left err -> print err
+>   where getTerm tm = do let parsed' = parseTerm tm
+>                         case parsed' of
+>                           Success parsed -> do
+>                              let itm = makeIvorTerm defDo (UN "__main") raw parsed
+>                              check ctxt itm
+>                           Failure err f l -> ttfail err
 
 If it is an IO type, execute it, otherwise just eval it.
 
@@ -237,7 +240,7 @@ If it is an IO type, execute it, otherwise just eval it.
 >         = case parseTerm tmin of 
 >               Success tm -> 
 >                    do let itm = makeIvorTerm defDo (UN "__main") ivs tm
->                       gtm <- check ctxt itm
+>                       gtm <- ioTac $ check ctxt itm
 >                       putStrLn $ showImp False (unIvor ivs (viewType gtm))
 >               Failure err _ _ -> putStrLn err
 
@@ -262,11 +265,11 @@ the appropriate thing, after applying the relevant transformations.
 >           return Continue
 > showdef ist ctxt (n:_)
 >     = do case getPatternDef ctxt (name n) of
->            Just (ty, pats) -> showPats n (transform ctxt 
+>            Right (ty, pats) -> showPats n (transform ctxt 
 >                                              (idris_transforms ist)
 >                                               (name n) pats)
 >            _ -> case getInductive ctxt (name n) of
->                   Just ind -> showInductive n ctxt (idris_transforms ist) 
+>                   Right ind -> showInductive n ctxt (idris_transforms ist) 
 >                                               (constructors ind)
 >                   _ -> putStrLn $ n ++ " not defined"
 >          return Continue

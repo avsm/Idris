@@ -1,4 +1,4 @@
-> module Idris.Prover(doProof, runScript, doIvor) where
+> module Idris.Prover(doProof, runScript, doIvor, ioTac) where
 
 > import System.Console.Readline
 > import Control.Monad
@@ -12,10 +12,14 @@
 
 > import Debug.Trace
 
+> ioTac :: TTM a -> IO a
+> ioTac (Left a) = fail (show a)
+> ioTac (Right v) = return v
+
 > doProof :: Ctxt IvorFun -> Context -> Id -> IO Context
 > doProof raw ctxt nm = 
->     do ctxt' <- resume ctxt (toIvorName nm)
->        ctxt' <- attack defaultGoal ctxt'
+>     do ctxt' <- ioTac $ resume ctxt (toIvorName nm)
+>        ctxt' <- ioTac $ attack defaultGoal ctxt'
 >        putStrLn $ showCtxtState raw ctxt'
 >        (ctxt', script, ok) <- proofShell (show nm) raw [] ctxt'
 >        if ok then do
@@ -23,8 +27,8 @@
 >          else do putStrLn "Proof abandoned"
 >                  return ctxt
 
-> runScript :: Monad m => Ctxt IvorFun -> Context -> Id -> [ITactic] -> 
->              m Context
+> runScript :: Ctxt IvorFun -> Context -> Id -> [ITactic] -> 
+>              TTM Context
 > runScript raw ctxt nm tacs =
 >     do ctxt <- resume ctxt (toIvorName nm)
 >        ctxt <- attack defaultGoal ctxt
@@ -34,7 +38,7 @@ This function assumes that it can plough on knowing the proof is fine.
 If it isn't, it'll break, but with an error. We probably ought to check
 properly, if only for useful diagnostics.
 
-> execScript :: Monad m => Ctxt IvorFun -> Context -> [ITactic] -> m Context
+> execScript :: Ctxt IvorFun -> Context -> [ITactic] -> TTM Context
 > execScript raw ctxt [] = return ctxt
 > execScript raw ctxt (t:ts) 
 >      = do (ctxt,_,_) <- applyTac raw ctxt [] t
@@ -70,11 +74,11 @@ undone bits, after a Qed
 >                   when (tac == Qed) $ 
 >                        showScript nm script
 >                   case applyTac raw ctxt script' tac of
->                     Failure err f l -> do putStrLn err
->                                           proofShell nm raw script ctxt
->                     Success (ctxt, script, True) -> do
->                       ctxt <- keepSolving defaultGoal ctxt
->                       ctxt <- if ((numUnsolved ctxt) > 0)
+>                     Left err -> do print err
+>                                    proofShell nm raw script ctxt
+>                     Right (ctxt, script, True) -> do
+>                       ctxt <- ioTac $ keepSolving defaultGoal ctxt
+>                       ctxt <- ioTac $ if ((numUnsolved ctxt) > 0)
 >                                 then beta defaultGoal ctxt
 >                                 else return ctxt
 >                       if (proving ctxt)
@@ -83,8 +87,8 @@ undone bits, after a Qed
 >                          else return (ctxt, script, True)
 >                     _ -> return (ctxt, script, False)
 
-> applyTac :: Monad m => Ctxt IvorFun -> Context -> [String] -> ITactic -> 
->             m (Context, [String], Bool)
+> applyTac :: Ctxt IvorFun -> Context -> [String] -> ITactic -> 
+>             TTM (Context, [String], Bool)
 > applyTac raw ctxt script Abandon = return (ctxt, script, False)
 > applyTac raw ctxt script Undo = do ctxt <- restore ctxt
 >                                    -- remove the undo and the command
@@ -150,7 +154,7 @@ of the rule's type, and apply rewrite.
 >  where
 >    showTm t = showImp False (unIvor raw (view t))
 >    showGoalState :: Goal -> String
->    showGoalState g = let (Just gd) = goalData ctxt True g
+>    showGoalState g = let (Right gd) = goalData ctxt True g
 >                          env = bindings gd
 >                          ty = goalType gd
 >                          nm = goalName gd in

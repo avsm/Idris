@@ -394,7 +394,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >               (Just ty, PattDef ps) -> 
 >                   (iname, (ty,ps)):(gdefs ds)
 >               _ -> case getPatternDef ctxt iname of
->                      Just (ty,ps) -> (iname, (ty,ps)):(gdefs ds)
+>                      Right (ty,ps) -> (iname, (ty,ps)):(gdefs ds)
 >                      _ -> gdefs ds
 
 Name definitions Ivor-side.

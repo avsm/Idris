@@ -216,8 +216,8 @@ need not be stored (i.e. need not be bound)
 >                            (map fst (filter collapse atypes))
 >     where isVar n | elem n boundnames = True
 >                   | otherwise =
->                         case nameType ctxt n of
->                         Just _ -> False
+>                       case nameType ctxt n of
+>                         Right _ -> False
 >                         _ -> True
 >           boundnames = map fst (Ivor.TT.getArgTypes tm)
 >           conGuarded t = cg [] t
@@ -261,7 +261,7 @@ Is there an argument position with a different constructor at the head?
 >              | Name _ xn <- getApp x
 >              , Name _ yn <- getApp y
 >                 = case (nameType c xn, nameType c yn) of
->                     (Just DataCon, Just DataCon) -> xn /= yn
+>                     (Right DataCon, Right DataCon) -> xn /= yn
 >                     _ -> False
 >         disjointCon _ = False
 
@@ -318,7 +318,7 @@ else, it can't be dropped.
 
 >      recGuard i fn ret zs = and (map (recGuard' i fn ret) zs)
 >      recGuard' i fn ret z 
->          | Nothing <- nameType ctxt z
+>          | Left _ <- nameType ctxt z
 >        = let res = rgOK ret in
 >           -- trace ("GUARD " ++ show (i,fn,z,ret,res)) 
 >            res                    
@@ -344,7 +344,7 @@ True -- Complex term, just drop it.
 > makePTransform raw ctxt ctrans (n, (ty, patsin)) 
 >   = let pats = transform ctxt ctrans n patsin in
 >       case getPatternDef ctxt n of
->        Just (_, idpatsin) ->
+>        Right (_, idpatsin) ->
 >            let idpats = transform ctxt ctrans n idpatsin
 >                numargs = args pats
 >                placeholders = getPlaceholders ctxt n pats idpats in 
@@ -390,7 +390,7 @@ Apply all transforms in order to a term, eta expanding constructors first.
 > etaExpand ctxt tm = ec tm
 >   where
 >     ec ap@(App f a) 
->         | Just (ar, con, args) <- needsExp (App f a)
+>         | Right (ar, con, args) <- needsExp (App f a)
 >              = etaExp ar con args
 >     ec ap@(App _ _) = let f = getApp ap
 >                           args = getFnArgs ap in
@@ -405,9 +405,9 @@ That's all the terms we care about.
 >     needsExp' (App f a) as = needsExp' f ((ec a):as)
 >     needsExp' nm@(Name _ n) as 
 >         = do ar <- getConstructorArity ctxt n
->              if (ar == length as) then Nothing
->                  else Just (ar, nm, as)
->     needsExp' _ _ = Nothing
+>              if (ar == length as) then ttfail "FAIL"
+>                  else Right (ar, nm, as)
+>     needsExp' _ _ = ttfail "FAIL"
 
 We don't care about the type on the lambda here, We'll never look at it
 even when compiling, it's just for the sake of having constructors fully

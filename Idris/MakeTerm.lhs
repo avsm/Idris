@@ -202,17 +202,15 @@ n is a parameter
 Add definitions to the Ivor Context. Return the new context and a list
 of things we need to define to complete the program (i.e. metavariables)
 
-> addIvor :: Monad m => 
->            Ctxt IvorFun -> -- all definitions, including prelude
+> addIvor :: Ctxt IvorFun -> -- all definitions, including prelude
 >            Ctxt IvorFun -> -- just the ones we haven't added to Ivor yet
->            Context -> m (Context, [(Name, ViewTerm)])
+>            Context -> TTM (Context, [(Name, ViewTerm)])
 > addIvor all defs ctxt = foldM (addIvorDef all) (ctxt, [])
 >                               (reverse (ctxtAlist defs))
 
-> addIvorDef :: Monad m =>
->                Ctxt IvorFun -> (Context, [(Name, ViewTerm)]) -> 
+> addIvorDef :: Ctxt IvorFun -> (Context, [(Name, ViewTerm)]) -> 
 >                (Id, IvorFun) -> 
->               m (Context, [(Name, ViewTerm)])
+>               TTM (Context, [(Name, ViewTerm)])
 > addIvorDef raw (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _ _) 
 >                = return (ctxt, metas)
 > addIvorDef raw (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
@@ -254,10 +252,9 @@ of things we need to define to complete the program (i.e. metavariables)
 >         _ -> return (ctxt, metas)
 >    where unjust (Just x) = x
 
-> addMeta :: Monad m =>
->            Ctxt IvorFun -> Context -> 
+> addMeta :: Ctxt IvorFun -> Context -> 
 >           [(Name, ViewTerm)] -> [(Name, ViewTerm)] -> 
->            m (Context, [(Name, ViewTerm)])
+>            TTM (Context, [(Name, ViewTerm)])
 > addMeta raw ctxt metas newdefs
 >       = trace ("Metavariables are:\n" ++  concat (map showDef newdefs))
 >            $ return (ctxt, metas ++ newdefs)
