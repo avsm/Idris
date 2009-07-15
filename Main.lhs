@@ -33,17 +33,24 @@ Load things in this order:
 * Load prelude
 * Load users program
 
-> idris_version = "0.1.0"
+> idris_version = "0.1.2"
 
 > main :: IO ()
 > main = do args <- getArgs
->           let infile = args!!0
+>           infile <- usage args
 >           ctxt <- ioTac $ addEquality emptyContext (name "Eq") (name "refl")
 >           (ctxt, defs) <- processInput ctxt initState "builtins.idr"
 >           ctxt <- ioTac $ prims ctxt
 >           (ctxt, defs) <- processInput ctxt defs "prelude.idr"
 >           (ctxt, defs) <- processInput ctxt defs infile
 >           repl defs ctxt
+
+> usage [fname] = return fname
+> usage _ = do putStrLn $ "Idris version " ++ idris_version
+>              putStrLn $ "--------------" ++ take (length idris_version) (repeat '-')
+>              putStrLn $ "Usage:"
+>              putStrLn $ "\tidris <source file>"
+>              exitWith (ExitFailure 1)
 
 Time functions
 FIXME: These use System.Time which is deprecated. Find out what to use
