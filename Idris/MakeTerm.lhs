@@ -170,15 +170,18 @@ n is a parameter
 >              | length t >= pos = nameMatch n (t!!pos) && checkp pos n ts
 >              | otherwise = False
 >         nameMatch n (Name _ nm) = n == nm
+>         nameMatch n (Annotation _ t) = nameMatch n t
 >         nameMatch _ _ = False
 
 >         getApps app@(App f a)
 >             | appIsT (getApp f) = [getFnArgs app]
 >             | otherwise = getApps f ++ getApps a
 >         getApps (Forall n ty sc) = getApps ty ++ getApps sc
+>         getApps (Annotation _ n) = getApps n
 >         getApps x = []
 
 >         appIsT (Name _ n) = n == tname
+>         appIsT (Annotation _ t) = appIsT t
 >         appIsT _ = False
 
 >         remPs newps [] = []
@@ -186,6 +189,7 @@ n is a parameter
 >         remAllPs newps (Forall n ty sc)
 >                  | n `elem` (map fst newps) = remAllPs newps sc
 >                  | otherwise = Forall n ty (remAllPs newps sc)
+>         remAllPs newps (Annotation _ n) = remAllPs newps n
 >         remAllPs newps x = x
 
 > addConEntries :: Ctxt IvorFun -> Ctxt IvorFun -> [(Id,RawTerm)] -> 
@@ -221,8 +225,7 @@ of things we need to define to complete the program (i.e. metavariables)
 >                = return (ctxt, metas)
 > addIvorDef raw (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
 >     = trace ("Processing "++ show n ++ " " ++ show lazy) $ case def of
->         PattDef ps -> -- trace (show ps) $ 
->                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
+>         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return (ctxt, metas)
 >                            else addMeta raw ctxt metas newdefs
 >         SimpleDef tm -> 
@@ -237,8 +240,7 @@ of things we need to define to complete the program (i.e. metavariables)
 >         LataDef -> case tyin of
 >                       Just ty -> do ctxt <- declareData ctxt name ty
 >                                     return (ctxt, metas)
->         DataDef ind e -> do
->                             c <- addDataNoElim ctxt ind
+>         DataDef ind e -> do c <- addDataNoElim ctxt ind
 >                           -- add once to fill in placeholders
 >                             ctxt <- if e then do
 >                                     d <- getInductive c name 

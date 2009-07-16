@@ -131,7 +131,7 @@ import Idris.Lib
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
-          empty unit '_' if then else ptrtype handletype locktype metavar
+          empty unit '_' if then else ptrtype handletype locktype metavar NONE
 
 
 %%
@@ -142,7 +142,7 @@ Program: { [] }
        | include string ';' Program {%
 	     let rest = $4 in
 	     let pt = unsafePerformIO (readLib defaultLibPath $2) in
-		case (mkparse pt $2 0) of
+		case (mkparse pt $2 1) of
 		   Success x -> returnP (x ++ rest)
 		   Failure err file ln -> failP err
 	  }
@@ -161,11 +161,12 @@ Function :: { ParseDecl }
 Function : Name ':' Type Flags ';' { FunType $1 $3 $4 }
          | Name ProofScript ';' { ProofScript $1 $2 }
 --         | DefTerm '=' Term Flags ';' { FunClause (mkDef $1) [] $3 $4 }
-         | DefTerm WithTerms with NoAppTerm '{' Functions '}'
-              { WithClause (mkDef $1) $2 $4 $6 }
-         | DefTerm WithTerms mightbe Term ';' '[' Name ']'
-              { FunClauseP (mkDef $1) $2 $4 $7 }
-         | DefTerm WithTerms '=' Term Flags ';' { FunClause (mkDef $1) $2 $4 $5 }
+         | DefTerm WithTerms with NoAppTerm '{' Functions '}' File Line
+              { WithClause (mkDef $8 $9 $1) $2 $4 $6 }
+         | DefTerm WithTerms mightbe Term ';' '[' Name ']' File Line
+              { FunClauseP (mkDef $9 $10 $1) $2 $4 $7 }
+         | DefTerm WithTerms '=' Term Flags ';' File Line 
+              { FunClause (mkDef $7 $8 $1) $2 $4 $5 }
          | '|' NoAppTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
          | '|' NoAppTerm with NoAppTerm '{' Functions '}'
               { WithClause RPlaceholder [$2] $4 $6 }
@@ -208,12 +209,12 @@ DefTerm : Name ArgTerms { ($1, $2) }
 ArgTerms :: { [(RawTerm,Maybe Id)] }
 ArgTerms : { [] }
       | NoAppTerm ArgTerms { ($1,Nothing):$2 }
-      | '{' Name '}' ArgTerms { (RVar $2, Just $2):$4 }
+      | '{' Name '}' ArgTerms File Line { (RVar $5 $6 $2, Just $2):$4 }
       | '{' Name '=' Term '}' ArgTerms { ($4, Just $2):$6 }
 
 Datatype :: { Datatype }
-Datatype : data DataOpts Name DefinedData
-             { mkDatatype $3 $4 $2 }
+Datatype : data DataOpts Name DefinedData File Line
+             { mkDatatype $5 $6 $3 $4 $2 }
 
 DefinedData :: { Either RawTerm ((RawTerm, [(Id, RawTerm)]), [ConParse]) }
 DefinedData : DType Constructors ';' { Right ($1,$2) }
@@ -240,15 +241,15 @@ Name : name { $1 }
 
 Term :: { RawTerm }
 Term : NoAppTerm { $1 }
-     | Term NoAppTerm %prec APP { RApp $1 $2 }
-     | Term '{' ImplicitTerm '}' %prec APP { RAppImp (fst $3) $1 (snd $3) }
+     | Term NoAppTerm File Line %prec APP { RApp $3 $4 $1 $2 }
+     | Term '{' ImplicitTerm '}' File Line %prec APP { RAppImp $5 $6 (fst $3) $1 (snd $3) }
      | '\\' Binds '.' Term %prec LAM
                 { doBind Lam $2 $4 }
      | let LetBinds in Term
                 { doLetBind $2 $4 }
      | InfixTerm { $1 }
-     | if Term then Term else Term
-       { mkApp (RVar (UN "if_then_else")) [$2,$4,$6] }
+     | if Term then Term else Term File Line
+       { mkApp $7 $8 (RVar $7 $8 (UN "if_then_else")) [$2,$4,$6] }
 
 Binds :: { [(Id, RawTerm)] }
 Binds : Name MaybeType { [($1,$2)] }
@@ -274,23 +275,23 @@ LetBinds : Name MaybeType '=' Term { [($1,$2,$4)] }
          | Name MaybeType '=' Term ',' LetBinds { ($1,$2,$4):$6 }
 
 ImplicitTerm :: { (Id, RawTerm) }
-ImplicitTerm : Name { ($1, RVar $1) }
+ImplicitTerm : Name File Line { ($1, RVar $2 $3 $1) }
              | Name '=' Term { ($1, $3) }
 
 InfixTerm :: { RawTerm }
-InfixTerm : NoAppTerm '=' NoAppTerm { RInfix JMEq $1 $3 }
-          | Term '+' Term { RInfix Plus $1 $3 }
-          | Term '-' Term { RInfix Minus $1 $3 }
-          | Term '*' Term { RInfix Times $1 $3 }
-          | Term '/' Term { RInfix Divide $1 $3 }
-          | Term and Term { RInfix OpAnd $1 $3 }
-          | Term or Term { RInfix OpOr $1 $3 }
-          | Term concat Term { RInfix Concat $1 $3 }
-          | Term eq Term { RInfix OpEq $1 $3 }
-          | Term '<' Term { RInfix OpLT $1 $3 }
-          | Term le Term { RInfix OpLEq $1 $3 }
-          | Term '>' Term { RInfix OpGT $1 $3 }
-          | Term ge Term { RInfix OpGEq $1 $3 }
+InfixTerm : NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
+          | Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
+          | Term '-' Term File Line { RInfix $4 $5  Minus $1 $3 }
+          | Term '*' Term File Line { RInfix $4 $5  Times $1 $3 }
+          | Term '/' Term File Line { RInfix $4 $5  Divide $1 $3 }
+          | Term and Term File Line { RInfix $4 $5  OpAnd $1 $3 }
+          | Term or Term File Line { RInfix $4 $5  OpOr $1 $3 }
+          | Term concat Term File Line { RInfix $4 $5  Concat $1 $3 }
+          | Term eq Term File Line { RInfix $4 $5  OpEq $1 $3 }
+          | Term '<' Term File Line { RInfix $4 $5  OpLT $1 $3 }
+          | Term le Term File Line { RInfix $4 $5  OpLEq $1 $3 }
+          | Term '>' Term File Line { RInfix $4 $5  OpGT $1 $3 }
+          | Term ge Term File Line { RInfix $4 $5  OpGEq $1 $3 }
 
 MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}
@@ -309,10 +310,10 @@ Type : '{' Names MaybeAType '}' arrow Type
 
 
 NoAppTerm :: { RawTerm }
-NoAppTerm : Name { RVar $1 }
+NoAppTerm : Name File Line { RVar $2 $3 $1 }
           | '(' Term ')' { $2 }
           | metavar { RMetavar $1 }
-          | '!' Name { RExpVar $2 }
+          | '!' Name File Line { RExpVar $3 $4 $2 }
           | NoAppTerm arrow NoAppTerm { RBind (MN "X" 0)
                                         (Pi Ex Eager $1) $3 }
           | '(' TypedBinds ')' arrow NoAppTerm
@@ -323,8 +324,8 @@ NoAppTerm : Name { RVar $1 }
 --                { doBind (Pi Im) $2 $5 }
           | Constant { RConst $1 }
           | refl { RRefl }
-          | empty { RVar (UN "__Empty") }
-          | unit { RVar (UN "__Unit") }
+          | empty File Line { RVar $2 $3 (UN "__Empty") }
+          | unit File Line { RVar $2 $3 (UN "__Unit") }
           | '_' { RPlaceholder }
           | DoBlock { RDo $1 }
 
@@ -336,8 +337,8 @@ DoBindings : DoBind DoBindings { $1:$2}
            | DoBind { [$1] }
 
 DoBind :: { Do }
-DoBind : Name MaybeType leftarrow Term ';' { DoBinding $1 $2 $4 }
-       | Term ';' { DoExp $1 }
+DoBind : Name MaybeType leftarrow Term File Line ';' { DoBinding $5 $6 $1 $2 $4 }
+       | Term File Line ';' { DoExp $2 $3 $1 }
 
 Constant :: { Constant }
 Constant : type { TYPE }
@@ -425,6 +426,12 @@ Tactics :: { [ITactic] }
 Tactics : Tactic ';' { [$1] }
         | Tactic ';' Tactics { $1:$3 }
 
+Line :: { LineNumber }
+     : {- empty -}      {% getLineNo }
+
+File :: { String } 
+     : {- empty -} %prec NONE  {% getFileName }
+
 {
 
 data ConParse = Full Id RawTerm
@@ -446,10 +453,10 @@ mkCon ty (Simple n args) = (n, mkConTy args ty)
    where mkConTy [] ty = ty
          mkConTy (a:as) ty = RBind (MN "X" 0) (Pi Ex Eager a) (mkConTy as ty)
 
-mkDef (n, tms) = mkImpApp (RVar n) tms
+mkDef file line (n, tms) = mkImpApp (RVar file line n) tms
    where mkImpApp f [] = f
-         mkImpApp f ((tm,Just n):ts) = mkImpApp (RAppImp n f tm) ts
-         mkImpApp f ((tm, Nothing):ts) = mkImpApp (RApp f tm) ts
+         mkImpApp f ((tm,Just n):ts) = mkImpApp (RAppImp file line n f tm) ts
+         mkImpApp f ((tm, Nothing):ts) = mkImpApp (RApp file line f tm) ts
 
 doBind :: (RawTerm -> RBinder) -> [(Id,RawTerm)] -> RawTerm -> RawTerm
 doBind b [] t = t
@@ -459,20 +466,21 @@ doLetBind :: [(Id,RawTerm,RawTerm)] -> RawTerm -> RawTerm
 doLetBind [] t = t
 doLetBind ((x,ty,val):ts) tm = RBind x (RLet val ty) (doLetBind ts tm)
 
-mkTyApp :: Id -> RawTerm -> RawTerm
-mkTyApp n ty = mkApp (RVar n) (getTyArgs ty)
-   where getTyArgs (RBind n _ t) = (RVar n):(getTyArgs t)
+mkTyApp :: String -> Int -> Id -> RawTerm -> RawTerm
+mkTyApp file line n ty = mkApp file line (RVar file line n) (getTyArgs ty)
+   where getTyArgs (RBind n _ t) = (RVar file line n):(getTyArgs t)
          getTyArgs x = []
 
 mkTyParams :: [Id] -> RawTerm
 mkTyParams [] = RConst TYPE
 mkTyParams (x:xs) = RBind x (Pi Ex Eager (RConst TYPE)) (mkTyParams xs)
 
-mkDatatype :: Id -> Either RawTerm ((RawTerm, [(Id, RawTerm)]), [ConParse]) -> 
+mkDatatype :: String -> Int ->
+              Id -> Either RawTerm ((RawTerm, [(Id, RawTerm)]), [ConParse]) -> 
                     [TyOpt] -> Datatype
-mkDatatype n (Right ((t, using), cons)) opts
-    = Datatype n t (map (mkCon (mkTyApp n t)) cons) using opts
-mkDatatype n (Left t) opts
+mkDatatype file line n (Right ((t, using), cons)) opts
+    = Datatype n t (map (mkCon (mkTyApp file line n t)) cons) using opts
+mkDatatype file line n (Left t) opts
     = Latatype n t
 
 }

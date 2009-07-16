@@ -239,7 +239,7 @@ a b c, and send the result to Ivor's isItJust tactic
 >    gd <- goalData ctxt True goal
 >    let idgoal = unIvor raw ((view.goalType) gd)
 >    let args = getExplicitArgs idgoal
->    let dapp = makeIvorTerm defDo (UN "__prf") raw (mkApp dproc args)
+>    let dapp = makeIvorTerm defDo (UN "__prf") raw (mkApp "[proof]" 0 dproc args)
 >    isItJust dapp goal ctxt
 
 

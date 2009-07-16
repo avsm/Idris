@@ -101,13 +101,13 @@ Main bit for terms
 
 > instance LaTeX RawTerm where
 >     latex ctxt defs tm = showP 10 tm where
->        showP p (RVar (UN "__Unit")) = "()"
->        showP p (RVar (UN "__Empty")) = "\\bottom"
->        showP p (RVar i) = latex ctxt defs i
+>        showP p (RVar _ _ (UN "__Unit")) = "()"
+>        showP p (RVar _ _ (UN "__Empty")) = "\\bottom"
+>        showP p (RVar _ _ i) = latex ctxt defs i
 >        showP p RRefl = "\\DC{refl}"
 >        showP p RPlaceholder = "\\_"
->        showP p (RApp f a) = bracket p 1 $ showP 1 f ++ "\\:" ++ showP 0 a
->        showP p (RAppImp n f a) = showP 1 f
+>        showP p (RApp _ _ f a) = bracket p 1 $ showP 1 f ++ "\\:" ++ showP 0 a
+>        showP p (RAppImp _ _ n f a) = showP 1 f
 >        showP p (RBind n (Lam ty) sc)
 >           = bracket p 2 $ 
 >             "\\lambda\\VV{" ++ show n ++ "}." ++ showP 10 sc
@@ -128,8 +128,8 @@ Main bit for terms
 >             "\\LET:\\VV{" ++ show n ++ "}\\: = " ++ showP 10 val
 >                    ++ "\\:\\IN\\:" ++ showP 10 sc
 >        showP p (RConst c) = latex ctxt defs c
->        showP p (RInfix op l r) = bracket p 5 $
->                               showP 4 l ++ show op ++ showP 4 r
+>        showP p (RInfix _ _ op l r) = bracket p 5 $
+>                                      showP 4 l ++ show op ++ showP 4 r
 
 We want the closing bracket inside the \AR here, so it's on the right line,
 hence the weird bracketing.
@@ -143,9 +143,9 @@ hence the weird bracketing.
 >                                | otherwise = str
 
 > instance LaTeX Do where
->     latex ctxt defs (DoBinding n ty tm) 
+>     latex ctxt defs (DoBinding _ _ n ty tm) 
 >         = latex ctxt defs n ++ "\\leftarrow " ++ latex ctxt defs tm ++ 
 >           "\\\\ \n"
->     latex ctxt defs (DoExp tm) = latex ctxt defs tm ++ "\\\\ \n"
+>     latex ctxt defs (DoExp _ _ tm) = latex ctxt defs tm ++ "\\\\ \n"
 
 
