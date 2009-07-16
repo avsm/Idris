@@ -37,19 +37,20 @@ Load things in this order:
 
 > main :: IO ()
 > main = do args <- getArgs
->           infile <- usage args
+>           (infile, batch) <- usage args
 >           ctxt <- ioTac $ addEquality emptyContext (name "Eq") (name "refl")
 >           (ctxt, defs) <- processInput ctxt initState "builtins.idr"
 >           ctxt <- ioTac $ prims ctxt
 >           (ctxt, defs) <- processInput ctxt defs "prelude.idr"
 >           (ctxt, defs) <- processInput ctxt defs infile
->           repl defs ctxt
+>           repl defs ctxt batch
 
-> usage [fname] = return fname
+> usage [fname] = return (fname, Nothing)
+> usage (fname:opts) = return (fname, Just (unwords opts))
 > usage _ = do putStrLn $ "Idris version " ++ idris_version
 >              putStrLn $ "--------------" ++ take (length idris_version) (repeat '-')
 >              putStrLn $ "Usage:"
->              putStrLn $ "\tidris <source file>"
+>              putStrLn $ "\tidris <source file> [command]"
 >              exitWith (ExitFailure 1)
 
 Time functions
@@ -190,9 +191,11 @@ Command; minimal abbreviation; function to run it; description; visibility
 >         putStrLn "\nCommands may be given the shortest unambiguous abbreviation (e.g. :q, :l)\n"
 >         return Continue
 
-> repl :: IdrisState -> Context -> IO ()
-> repl ist@(IState raw decls metas opts trans) ctxt 
->          = do inp <- readline ("Idris> ")
+> repl :: IdrisState -> Context -> Maybe String -> IO ()
+> repl ist@(IState raw decls metas opts trans) ctxt inp' 
+>          = do inp <- case inp' of 
+>                        Nothing -> readline ("Idris> ")
+>                        Just s -> return (Just s)
 >               res <- case inp of
 >                        Nothing -> return Continue
 >                        Just (':':command) -> 
@@ -202,9 +205,9 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                            do termInput True raw ctxt exprinput
 >                               addHistory exprinput
 >                               return Continue
->               case res of
->                      Continue -> repl ist ctxt
->                      NewCtxt ist' ctxt' -> repl ist' ctxt'
+>               case (res, inp') of
+>                      (Continue, Nothing) -> repl ist ctxt Nothing
+>                      (NewCtxt ist' ctxt', Nothing) -> repl ist' ctxt' Nothing
 >                      _ -> return ()
 
 >   where
