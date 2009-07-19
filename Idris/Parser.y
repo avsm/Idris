@@ -101,6 +101,7 @@ import Idris.Lib
       undo            { TokenUndo }
       induction       { TokenInduction }
       fill            { TokenFill }
+      trivial         { TokenTrivial }
       believe         { TokenBelieve }
       use             { TokenUse }
       decide          { TokenDecide }
@@ -158,7 +159,7 @@ Declaration: Function { $1 }
            | clib string { RealDecl (CLib $2) }
 
 Function :: { ParseDecl }
-Function : Name ':' Type Flags ';' { FunType $1 $3 $4 }
+Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
          | Name ProofScript ';' { ProofScript $1 $2 }
 --         | DefTerm '=' Term Flags ';' { FunClause (mkDef $1) [] $3 $4 }
          | DefTerm WithTerms with NoAppTerm '{' Functions '}' File Line
@@ -413,6 +414,7 @@ Tactic : intro Names { Intro $2 }
        | undo { Undo }
        | induction Term { Induction $2 }
        | fill Term { Fill $2 }
+       | trivial { Trivial }
        | believe Term { Believe $2 }
        | use Term { Use $2 }
        | decide Term { Decide $2 }
@@ -479,9 +481,9 @@ mkDatatype :: String -> Int ->
               Id -> Either RawTerm ((RawTerm, [(Id, RawTerm)]), [ConParse]) -> 
                     [TyOpt] -> Datatype
 mkDatatype file line n (Right ((t, using), cons)) opts
-    = Datatype n t (map (mkCon (mkTyApp file line n t)) cons) using opts
+    = Datatype n t (map (mkCon (mkTyApp file line n t)) cons) using opts file line 
 mkDatatype file line n (Left t) opts
-    = Latatype n t
+    = Latatype n t file line
 
 }
 

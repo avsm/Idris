@@ -126,6 +126,7 @@ data Token
       | TokenUndo
       | TokenInduction
       | TokenFill
+      | TokenTrivial
       | TokenBelieve
       | TokenUse
       | TokenDecide
@@ -294,6 +295,7 @@ lexSpecial cont cs =
       ("undo",rest) -> cont TokenUndo rest
       ("induction",rest) -> cont TokenInduction rest
       ("fill", rest) -> cont TokenFill rest
+      ("trivial", rest) -> cont TokenTrivial rest
       ("believe", rest) -> cont TokenBelieve rest
       ("use", rest) -> cont TokenUse rest
       ("decide", rest) -> cont TokenDecide rest

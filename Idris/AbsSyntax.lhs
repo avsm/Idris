@@ -60,7 +60,7 @@ A FunClauseP is a clause which is probably the wrong type, but instructs
 the system to insert a hole for a proof that turns it into the right type.
 
 > data ParseDecl = RealDecl Decl
->                | FunType Id RawTerm [CGFlag] 
+>                | FunType Id RawTerm [CGFlag] String Int 
 >                | FunClause RawTerm [RawTerm] RawTerm [CGFlag]
 >                | FunClauseP RawTerm [RawTerm] RawTerm Id
 >                | WithClause RawTerm [RawTerm] RawTerm [ParseDecl]
@@ -73,15 +73,16 @@ the system to insert a hole for a proof that turns it into the right type.
 > collectDecls :: [ParseDecl] -> Result [Decl]
 > collectDecls pds = cds [] [] pds
 >   where cds rds fwds ((RealDecl d):ds) = cds (d:rds) fwds ds
->         cds rds fwds ((FunType n t fl):ds) = getClauses RPlaceholder rds fwds n t fl [] ds
+>         cds rds fwds ((FunType n t fl file line):ds) 
+>             = getClauses RPlaceholder rds fwds n (t, file, line) fl [] ds
 >         cds rds fwds ((FunClause (RVar f l n) [] ret fl):ds) 
 >                 = cds ((TermDef n ret fl):rds) fwds ds
 >         cds rds fwds ds@((FunClause app [] ret fl):_) 
 >             = case getFnName app of
->                 Just n -> 
+>                 Just (n, file, line) -> 
 >                    case (lookup n fwds) of
 >                      Nothing -> fail $ "No type declaration for " ++ show n
->                      Just (ty,fl) -> getClauses app rds fwds n ty fl [] ds
+>                      Just (ty,fl) -> getClauses app rds fwds n (ty, file, line) fl [] ds
 >                 _ -> fail $ "Invalid pattern clause"
 >         cds rds fwds ((ProofScript n prf):ds)
 >             = case lookup n fwds of
@@ -120,10 +121,10 @@ the system to insert a hole for a proof that turns it into the right type.
 >                 = do wcl <- collectWiths (mkApp f l pat withs) rds fwds n t fl defs
 >                      getClauses parent rds fwds n t fl 
 >                          ((n, RawWithClause (mkApp f l pat withs) scr wcl):clauses) ds
->         getClauses parent rds fwds n t fl [] ds 
+>         getClauses parent rds fwds n (t, _, _) fl [] ds 
 >                = cds ((Fwd n t fl):rds) ((n,(t,fl)):fwds) ds
->         getClauses parent rds fwds n t fl clauses ds =
->             cds ((Fun (Function n t (reverse clauses)) fl):rds) fwds ds
+>         getClauses parent rds fwds n (t,file,line) fl clauses ds =
+>             cds ((Fun (Function n t (reverse clauses) file line) fl):rds) fwds ds
 
 >         isnm n (RVar f l nm) | nm == n = Just (f,l)
 >         isnm _ _ = Nothing
@@ -131,7 +132,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >         collectWiths parent rds fwds n t fl cs = 
 >              do cls <- getClauses parent [] [] n t fl [] cs
 >                 case cls of
->                     [Fun (Function _ _ cl) _] -> return (map snd cl)
+>                     [Fun (Function _ _ cl _ _) _] -> return (map snd cl)
 >                     _ -> fail $ "Invalid with clause for " ++ show n
 
          collectWiths rds fwds n t fl ((FunClause pat ex rhs []):cs) =
@@ -146,10 +147,15 @@ the system to insert a hole for a proof that turns it into the right type.
 >                           tyType :: RawTerm,
 >                           tyConstructors :: [(Id, RawTerm)],
 >                           tyImplicits :: [(Id, RawTerm)],
->                           tyOpts :: [TyOpt]
+>                           tyOpts :: [TyOpt],
+>                           tyFile :: String,
+>                           tyLine :: Int
 >                          }
 >               | Latatype { tyId :: Id,
->                            tyType :: RawTerm } -- forward declaration
+>                            tyType :: RawTerm,
+>                            tyFile :: String,
+>                            tyLine :: Int 
+>                          } -- forward declaration
 >   deriving Show
 
 > data TyOpt = NoElim | Collapsible
@@ -161,7 +167,9 @@ the system to insert a hole for a proof that turns it into the right type.
 > data Function = Function {
 >                           funId :: Id,
 >                           funType :: RawTerm,
->                           funClauses :: [(Id, RawClause)]
+>                           funClauses :: [(Id, RawClause)],
+>                           funFile :: String,
+>                           funLine :: Int
 >                          }
 >   deriving Show
 
@@ -213,6 +221,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | ReflP
 >              | Induction RawTerm
 >              | Fill RawTerm
+>              | Trivial
 >              | Case RawTerm
 >              | Rewrite Bool Bool RawTerm
 >              | Unfold Id
@@ -248,7 +257,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > getRetType x = x
 
 > getFnName f = case getFn f of
->                 (RVar _ _ n) -> Just n
+>                 (RVar f l n) -> Just (n,f,l)
 >                 _ -> Nothing
 
 > getRawArgs :: RawTerm -> [RawTerm]
@@ -803,4 +812,5 @@ boolean flag (true for showing them)
 >                = "Unbound names in " ++ showVT ivs rhs ++ 
 >                  " : " ++ showVT ivs clty ++
 >                  "  " ++ show names
+> idrisError ivs (NoSuchVar n) = "No such variable as " ++ show n
 > idrisError ivs (ErrContext s e) = s ++ idrisError ivs e

@@ -103,6 +103,7 @@ undone bits, after a Qed
 >     at ctxt (Generalise t) = generalise (ivor t) defaultGoal ctxt
 >     at ctxt ReflP = refine reflN defaultGoal ctxt
 >     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
+>     at ctxt Trivial = trivial defaultGoal ctxt
 >     at ctxt (Believe t) = suspend_disbelief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Use t) = prove_belief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Decide t) = decide raw t defaultGoal ctxt

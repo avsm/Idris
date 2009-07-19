@@ -38,7 +38,7 @@
 >     latex ctxt defs (IvorFun nm ty _ _ decl _ _) = latex ctxt defs decl
 
 > instance LaTeX Decl where
->     latex ctxt defs (DataDecl (Datatype id ty cons _ _))
+>     latex ctxt defs (DataDecl (Datatype id ty cons _ _ _ _))
 >           = "\\DM{\\AR{\n\\Data\\hg\\:" ++ 
 >             latex ctxt defs id ++ "\\:\\Hab\\:\\AR{" ++
 >             latex ctxt defs ty ++ "\\hg\\Where}\\\\ \n\\begin{array}{rl}\n" ++ 
@@ -54,7 +54,7 @@
 >                                
 
 > instance LaTeX Function where
->     latex ctxt defs (Function n ty clauses) =
+>     latex ctxt defs (Function n ty clauses _ _) =
 >         "\\DM{\\AR{\n" ++
 >         latex ctxt defs n ++ "\\:\\Hab\\:\\AR{" ++ latex ctxt defs ty ++ "}\\\\ \n" ++
 >         latexClauses clauses ++ "}}"
