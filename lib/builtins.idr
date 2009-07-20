@@ -6,6 +6,12 @@ data __Empty = ;
 data Sigma : (A:#)->(P:A->#)-># where
    Exists : {P:A->#} -> {a:A} -> (P a) -> (Sigma A P);
 
+getSigIdx : (s:Sigma A P) -> A;
+getSigIdx (Exists {a} v) = a;
+
+getSigVal : (s:Sigma A P) -> (P (getSigIdx s));
+getSigVal (Exists v) = v;
+
 Pair : # -> # -> #;
 Pair A B = Sigma A (\x:A.B);
 

@@ -396,6 +396,7 @@ the appropriate thing, after applying the relevant transformations.
 >                 (Just s) -> Just (Constant (sToI s))
 >                 _ -> Nothing
 >     where sToI :: String -> Int
+>           sToI ('-':s) | all isDigit s = -(read s)
 >           sToI s | all isDigit s = read s
 >                  | otherwise = 0
 > stringToInt _ = Nothing

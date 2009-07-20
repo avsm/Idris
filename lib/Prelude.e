@@ -41,7 +41,7 @@ __epic_bool (x:Int) -> Data =
    if (x==0) then (Con 1 ()) else (Con 0 ())
 
 __epic_toInt (x:String) -> Int = 
-   foreign Int "atoi" (x:String)
+   foreign Int "strToInt" (x:String)
 
 __epic_toString (x:Int) -> String = 
    foreign String "intToStr" (x:Int)
