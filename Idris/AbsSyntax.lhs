@@ -212,6 +212,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >    deriving (Show, Eq)
 
 > data Do = DoBinding String Int Id RawTerm RawTerm
+>         | DoLet String Int Id RawTerm RawTerm
 >         | DoExp String Int RawTerm
 >     deriving (Show, Eq)
 
@@ -650,6 +651,7 @@ Convert a raw term to an ivor term, adding placeholders
 
 >           apdo (DoExp f l r) = DoExp f l (ap [] r)
 >           apdo (DoBinding file line x t r) = DoBinding file line x (ap [] t) (ap [] r)
+>           apdo (DoLet file line x t r) = DoLet file line x (ap [] t) (ap [] r)
 
 Go through the arguments; if an implicit argument has the same name as one
 in our list of explicit names to add, add it.
@@ -676,6 +678,9 @@ in our list of explicit names to add, add it.
 >               let k = RBind v' (Lam ty) ds'
 >               return $ mkApp file line (RVar file line bind) 
 >                          ((take bindimpl (repeat RPlaceholder)) ++ [exp, k])
+> undo ui ((DoLet file line v' ty exp):ds)
+>          = do ds' <- undo ui ds
+>               return $ RBind v' (RLet exp ty) ds'
 > undo ui@(UI bind bindimpl _ _) ((DoExp file line exp):ds)
 >          = -- bind exp (\_ . [[ds]])
 >            do ds' <- undo ui ds

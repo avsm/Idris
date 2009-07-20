@@ -98,6 +98,11 @@ putStr str = IODo (PutStr str) (\a . (IOReturn a));
 getStr : IO String;
 getStr = IODo GetStr (\b . (IOReturn b));
 
+getInt : IO Int;
+getInt = do { inp <- getStr;
+              let val = __toInt inp;
+	      return val; };
+
 putStrLn : String -> (IO ());
 putStrLn str = do { putStr str;
 		    putStr "\n"; };

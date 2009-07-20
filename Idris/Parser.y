@@ -340,6 +340,7 @@ DoBindings : DoBind DoBindings { $1:$2}
 
 DoBind :: { Do }
 DoBind : Name MaybeType leftarrow Term File Line ';' { DoBinding $5 $6 $1 $2 $4 }
+       | let Name MaybeType '=' Term File Line ';' { DoLet $6 $7 $2 $3 $5 }
        | Term File Line ';' { DoExp $2 $3 $1 }
 
 Constant :: { Constant }

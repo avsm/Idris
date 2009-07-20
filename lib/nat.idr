@@ -118,3 +118,21 @@ mult_distrib proof {
         %refl;
         %qed;
 };
+
+---- Comparing Nats
+
+data Compare : Nat -> Nat -> # where
+   cmpLT : (y:Nat) -> (Compare x (plus x (S y)))
+ | cmpEQ : Compare x x
+ | cmpGT : (x:Nat) -> (Compare (plus y (S x)) y);
+
+compareAux : (Compare n m) -> (Compare (S n) (S m));
+compareAux (cmpLT y) = cmpLT _;
+compareAux cmpEQ = cmpEQ;
+compareAux (cmpGT x) = cmpGT _;
+
+compare : (n:Nat) -> (m:Nat) -> (Compare n m);
+compare O O = cmpEQ;
+compare (S n) O = cmpGT _;
+compare O (S m) = cmpLT _;
+compare (S n) (S m) = compareAux (compare n m);
