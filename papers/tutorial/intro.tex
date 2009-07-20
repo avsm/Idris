@@ -1,5 +1,53 @@
 \section{Introduction}
 
-\Idris{} is a functional programming language with full dependent
-types, built on top of the \Ivor{} theorem proving library~\cite{ivor}.
+\Idris{} is an experimental functional programming language with full
+dependent types. This document is intended as a brief introduction to
+the language, and is aimed at readers already familiar with a
+functional language such as Haskell or OCaml.
+
+\subsection{What are dependent types?}
+
+\subsection{Related languages}
+
+Agda, Epigram and Coq. The distinctive feature of \Idris{} is that it
+has both dependent pattern matching (like Agda and Epigram) and an
+extensible tactic-based theorem prover (like Coq) in an effort to reap
+the benefits of both. It serves as an environment for exploring the
+design space of dependently typed functional programming languages,
+without being limited by design decisions of other more mature
+systems.
+
+\subsection{Downloading and Installation}
+
+\Idris{} is available from \url{http://www.cs.st-and.ac.uk/~eb/Idris}.
+You can download a package containing the latest version from:
+
+\UL{
+\item \url{http://www-fp.cs.st-and.ac.uk/~eb/idris/idris-current.tgz}.
+}
+
+To install, you will require GHC 6.10 or greater, and the Boehm
+garbage collector (available from
+\url{http://www.hpl.hp.com/personal/Hans_Boehm/gc/}, or as a package
+from Macports or your favourite Linux distribution).
+
+Download the package, untar it with ``\texttt{tar zxvf
+  idris-current.tgz}'', \texttt{cd} to the new directory (which will
+have a name of the form \texttt{idris-date}, where \texttt{date} gives
+the date the package was created, then type ``\texttt{make}''. This
+will install the \texttt{idris} executable in your home
+directory. 
+
+Ensure that \texttt{\~{ }/bin} is in your \texttt{\$PATH}. If
+everything has worked, you should be able to execute \texttt{idris},
+and see something like:
+
+\begin{verbatim}
+$ idris
+Idris version 0.1.2
+-------------------
+Usage:
+	idris <source file> [command]
+\end{verbatim}
+
 

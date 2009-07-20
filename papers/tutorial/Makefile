@@ -1,6 +1,6 @@
 all: tutorial.pdf
 
-SOURCES = tutorial.tex literature.bib intro.tex
+SOURCES = tutorial.tex literature.bib intro.tex firstex.tex features.tex example.tex
 
 tutorial.pdf: ${SOURCES}
 #	dvipdf tutorial.dvi

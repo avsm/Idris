@@ -1,0 +1,46 @@
+\section{First Examples}
+
+In this section, we'll write a couple of quick (and hopefully
+familiar) programs to show how to evaluate expressions and compile
+programs. Then, we'll build a complete (if simple) application to
+illustrate some of the basic language features.
+
+\subsection{Hello world}
+
+To get things going, let's implement everyone's favourite first
+example, the ``Hello World'' program. If you are familiar with
+Haskell, not much of this will be surprising. Put the following in a
+file called \texttt{hello.idr}:
+
+\begin{SaveVerbatim}{hworld}
+
+main : IO ();
+main = putStrLn "Hello world!";
+
+\end{SaveVerbatim}
+
+\useverb{hworld}
+
+prelude.idr. Primitive types.
+
+\subsection{Data types}
+
+Lists (Haskell style declartions), do map and fold, and some evaluation at the \Idris{} prompt.
+
+\subsection{Vectors}
+
+Pairwise addition of vectors.
+
+\subsection{Dependent Pairs}
+
+Users tend not to be so helpful at providing well formed inputs. So
+although we can add vectors of the same length, a user might not
+provide two vectors of the same length.
+
+vadd'
+
+\subsection{Informative Testing}
+
+
+Summary: vadd does the work, but we're not allowed to run it until we
+can satisfy the machine that we've done the relevant checks.

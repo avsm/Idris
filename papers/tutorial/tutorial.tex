@@ -1,4 +1,4 @@
-\documentclass{report}
+\documentclass{article}
 %\documentclass[orivec,dvips,10pt]{llncs}
 
 %\usepackage[draft]{comments}
@@ -10,18 +10,15 @@
 \usepackage{epsfig}
 \usepackage{path}
 \usepackage{url}
+\usepackage{fancyvrb}
 \usepackage{amsmath,amssymb} 
+\usepackage{palatino}
 
 \newenvironment{template}{\sffamily}
 
 \usepackage{graphics,epsfig}
 \usepackage{stmaryrd}
-
-\input{./macros.ltx}
-\input{./library.ltx}
-
-\NatPackage
-\FinPackage
+\usepackage{idris}
 
 \newcommand{\Funl}{\textsc{Funl}}
 \newcommand{\Agda}{\textsc{Agda}}
@@ -31,7 +28,6 @@
 \textbf{#1}
 }
 \newcommand{\hdecl}[1]{\texttt{#1}}
-\newcommand{\Ivor}{\textsc{Ivor}}
 
 %\usepackage{natbib}
 %\bibpunct();A{},
@@ -39,7 +35,7 @@
 
 \begin{document}
 
-\title{\Idris{}, a language with dependent types}
+\title{\Idris{}, a language with dependent types --- Tutorial}
 \author{Edwin Brady}
 
 %\institute{School of Computer Science, \\
@@ -50,6 +46,14 @@
 \maketitle
 
 \input{intro}
+
+\input{firstex}
+
+\input{features}
+
+\input{example}
+
+\input{library}
 
 \bibliographystyle{alpha}
 %\begin{small}
