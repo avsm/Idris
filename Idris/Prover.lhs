@@ -104,7 +104,7 @@ undone bits, after a Qed
 >     at ctxt (Generalise t) = generalise (ivor t) defaultGoal ctxt
 >     at ctxt ReflP = refine reflN defaultGoal ctxt
 >     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
->     at ctxt Trivial = trivial defaultGoal ctxt
+>     at ctxt Trivial = (trivial >|> refine reflN) defaultGoal ctxt
 >     at ctxt (Believe t) = suspend_disbelief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Use t) = prove_belief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Decide t) = decide raw t defaultGoal ctxt
@@ -284,7 +284,7 @@ the result term tells us to run.
 >         exect' (App (Name _ tfail) (Constant s)) | tfail == name "TFail" =
 >                  \ g c -> case cast s :: Maybe String of
 >                              Just err -> ttfail err 
->         exect' (Name _ ttrivial) | ttrivial == name "TTrivial" = trivial
+>         exect' (Name _ ttrivial) | ttrivial == name "TTrivial" = trivial >|> refine reflN
 
 XXX: Auto-rewrite: user can add rewrite rules, auto-rewrite repeatedly
 rewrites by these rules until there's no more to rewrite, or until a
