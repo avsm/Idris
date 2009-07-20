@@ -239,13 +239,16 @@ decide; given a goal of the form X a b c, and a function x of type
 x : a:A -> b:B -> c:C -> (Maybe (X a b c), apply the function to
 a b c, and send the result to Ivor's isItJust tactic
 
+_or_; given a goal of the form X a b c, and a function x of type
+x: a:A -> b:B -> c:C -> Tactic, send x a b c to runtac below.
+
 > decide :: Ctxt IvorFun -> RawTerm -> Tactic
 > decide raw dproc goal ctxt = do
 >    gd <- goalData ctxt True goal
 >    let idgoal = unIvor raw ((view.goalType) gd)
 >    let args = getExplicitArgs idgoal
 >    let dapp = makeIvorTerm defDo (UN "__prf") raw (mkApp "[proof]" 0 dproc args)
->    isItJust dapp goal ctxt
+>    (isItJust dapp >|> runtac dapp) goal ctxt
 
 Run a tactic computed by mkTac
 
@@ -285,6 +288,7 @@ the result term tells us to run.
 >                  \ g c -> case cast s :: Maybe String of
 >                              Just err -> ttfail err 
 >         exect' (Name _ ttrivial) | ttrivial == name "TTrivial" = trivial >|> refine reflN
+>         exect' tm = \ g c -> ttfail "Couldn't compute tactic"
 
 XXX: Auto-rewrite: user can add rewrite rules, auto-rewrite repeatedly
 rewrites by these rules until there's no more to rewrite, or until a

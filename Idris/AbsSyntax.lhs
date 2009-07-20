@@ -271,6 +271,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > getExplicitArgs x = args [] x
 >    where args acc (RApp _ _ f a) = args (a:acc) f
 >          args acc (RAppImp _ _ _ f a) = args acc f
+>          args [] (RInfix _ _ _ x y) = [x,y]
 >          args acc f = acc
 
 Binders; Pi (either implicit or explicitly written), Lambda and Let with
