@@ -5,3 +5,4 @@ include "nat.idr";
 include "maybe.idr";
 include "io.idr";
 include "either.idr";
+include "tactics.idr";

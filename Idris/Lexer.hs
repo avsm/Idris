@@ -127,6 +127,7 @@ data Token
       | TokenInduction
       | TokenFill
       | TokenTrivial
+      | TokenMkTac
       | TokenBelieve
       | TokenUse
       | TokenDecide
@@ -296,6 +297,7 @@ lexSpecial cont cs =
       ("induction",rest) -> cont TokenInduction rest
       ("fill", rest) -> cont TokenFill rest
       ("trivial", rest) -> cont TokenTrivial rest
+      ("mktac", rest) -> cont TokenMkTac rest
       ("believe", rest) -> cont TokenBelieve rest
       ("use", rest) -> cont TokenUse rest
       ("decide", rest) -> cont TokenDecide rest

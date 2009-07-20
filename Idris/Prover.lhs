@@ -1,7 +1,8 @@
 > module Idris.Prover(doProof, runScript, doIvor, ioTac) where
 
 > import System.Console.Readline
-> import Control.Monad
+> import Control.Monad hiding ((>=>))
+> import Data.Typeable
 
 > import Idris.AbsSyntax
 > import Idris.Parser
@@ -112,6 +113,7 @@ undone bits, after a Qed
 >     at ctxt (Rewrite True f t) = rewriteAll (ivor t) f defaultGoal ctxt
 >     at ctxt Compute = compute defaultGoal ctxt
 >     at ctxt (Unfold n) = unfold (toIvorName n) defaultGoal ctxt
+>     at ctxt (RunTactic tm) = runtac (ivor tm) defaultGoal ctxt
 >     at ctxt Qed = qed ctxt
 
 >     ivor t = makeIvorTerm defDo (UN "__prf") raw t
@@ -166,6 +168,8 @@ of the rule's type, and apply rewrite.
 >    showEnv ((n,ty):xs) = show n ++ " : " ++ showTm ty ++ "\n" ++
 >                          showEnv xs
 
+Apply a tactic computed by an ivor function (see libs/tactics.idr for construction
+of these tactics)
 
 > doIvor :: Context -> IO Context
 > doIvor ctxt = do s <- runShell "Ivor> " (newShell ctxt)
@@ -243,6 +247,44 @@ a b c, and send the result to Ivor's isItJust tactic
 >    let dapp = makeIvorTerm defDo (UN "__prf") raw (mkApp "[proof]" 0 dproc args)
 >    isItJust dapp goal ctxt
 
+Run a tactic computed by mkTac
+
+Check the term actually computes a tactic, then evaluate it, then run the actual tactics
+the result term tells us to run.
+
+> runtac :: ViewTerm -> Tactic
+> runtac tmin goal ctxt = 
+>    do tm <- checkCtxt ctxt goal tmin
+>       checkTac (viewType tm)
+>       tm' <- evalCtxt ctxt goal tm
+>       exect (view tm') goal ctxt
+
+>   where checkTac (Name _ n) | n == (name "Tactic") = return ()
+>         checkTac ty = fail $ (show ty) ++ " is not of type Tactic"
+
+>         exect t g c = do c' <- exect' t g c
+>                          c' <- keepSolving defaultGoal c'
+>                          if ((numUnsolved c') > 0)
+>                             then beta defaultGoal c'
+>                             else return c'
+
+>         exect' (App (App (Name _ tthen) x) y) | tthen == name "TThen" 
+>               = exect x >+> exect y
+>         exect' (App (App (Name _ tseq) x) y) | tseq == name "TSeq" 
+>               = exect x >-> exect y
+>         exect' (App (App (Name _ tthen) x) y) | tthen == name "TThenAll" 
+>               = exect x >=> exect y
+>         exect' (App (App (Name _ ttry) x) y) | ttry == name "TTry" 
+>               = exect x >|> exect y
+>         exect' (App (App (Name _ tfill) _) y) | tfill == name "TFill" 
+>               = fill y >+> keepSolving
+>         exect' (App (Name _ trefine) (Constant s)) | trefine == name "TRefine" =
+>                  case cast s :: Maybe String of
+>                    Just str -> refine str
+>         exect' (App (Name _ tfail) (Constant s)) | tfail == name "TFail" =
+>                  \ g c -> case cast s :: Maybe String of
+>                              Just err -> ttfail err 
+>         exect' (Name _ ttrivial) | ttrivial == name "TTrivial" = trivial
 
 XXX: Auto-rewrite: user can add rewrite rules, auto-rewrite repeatedly
 rewrites by these rules until there's no more to rewrite, or until a

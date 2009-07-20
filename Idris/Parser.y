@@ -102,6 +102,7 @@ import Idris.Lib
       induction       { TokenInduction }
       fill            { TokenFill }
       trivial         { TokenTrivial }
+      mktac           { TokenMkTac }
       believe         { TokenBelieve }
       use             { TokenUse }
       decide          { TokenDecide }
@@ -415,6 +416,7 @@ Tactic : intro Names { Intro $2 }
        | induction Term { Induction $2 }
        | fill Term { Fill $2 }
        | trivial { Trivial }
+       | mktac Term { RunTactic $2 }
        | believe Term { Believe $2 }
        | use Term { Use $2 }
        | decide Term { Decide $2 }
