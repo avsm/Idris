@@ -126,7 +126,6 @@ import Idris.Lib
 %left NEG
 %left concat
 %left '\\'
-%left APP
 %right arrow
 %left '(' '{' lazybracket
 %nonassoc '.'
@@ -135,6 +134,7 @@ import Idris.Lib
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' if then else ptrtype handletype locktype metavar NONE
+%left APP
 
 
 %%
@@ -242,10 +242,19 @@ DataOpt : noelim { NoElim }
 Name :: { Id }
 Name : name { $1 }
 
+SimpleAppTerm :: { RawTerm }
+SimpleAppTerm : SimpleAppTerm File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
+              | SimpleAppTerm '{' ImplicitTerm '}' File Line %prec APP 
+                   { RAppImp $5 $6 (fst $3) $1 (snd $3) }
+              | Name File Line { RVar $2 $3 $1 }
+              | Constant { RConst $1 }
+
 Term :: { RawTerm }
 Term : NoAppTerm { $1 }
-     | Term NoAppTerm File Line %prec APP { RApp $3 $4 $1 $2 }
-     | Term '{' ImplicitTerm '}' File Line %prec APP { RAppImp $5 $6 (fst $3) $1 (snd $3) }
+     | '[' TypeTerm ']' { $2 }
+     | Term File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
+     | Term '{' ImplicitTerm '}' File Line %prec APP 
+                   { RAppImp $5 $6 (fst $3) $1 (snd $3) }
      | '\\' Binds '.' Term %prec LAM
                 { doBind Lam $2 $4 }
      | let LetBinds in Term
@@ -263,7 +272,7 @@ TypedBinds : TypedBind ',' TypedBinds { $1 ++ $3 }
            | TypedBind { $1 }
 
 TypedBind :: { [(Id, RawTerm)] }
-TypedBind : Names ':' Term { map ( \x -> (x,$3)) $1 }
+TypedBind : Names ':' Type { map ( \x -> (x,$3)) $1 }
 
 Names :: { [Id] }
 Names : Name { [$1] }
@@ -282,8 +291,7 @@ ImplicitTerm : Name File Line { ($1, RVar $2 $3 $1) }
              | Name '=' Term { ($1, $3) }
 
 InfixTerm :: { RawTerm }
-InfixTerm : NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
-          | Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
+InfixTerm : Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
           | Term '-' Term File Line { RInfix $4 $5  Minus $1 $3 }
           | '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst (Num 0)) $2 }
           | Term '*' Term File Line { RInfix $4 $5  Times $1 $3 }
@@ -296,34 +304,38 @@ InfixTerm : NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
           | Term le Term File Line { RInfix $4 $5  OpLEq $1 $3 }
           | Term '>' Term File Line { RInfix $4 $5  OpGT $1 $3 }
           | Term ge Term File Line { RInfix $4 $5  OpGEq $1 $3 }
+          | NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
 
 MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}
-          | ':' NoAppTerm { $2 }
+          | ':' TypeTerm { $2 }
 
 MaybeAType :: { RawTerm }
 MaybeAType : { RPlaceholder}
-          | ':' Term { $2 }
+          | ':' TypeTerm { $2 }
 
 -- Term representing a type may begin with implicit argument list
 
 Type :: { RawTerm }
 Type : '{' Names MaybeAType '}' arrow Type
                { doBind (Pi Im Eager) (map (\x -> (x, $3)) $2) $6 }
-     | Term { $1 }
+     | TypeTerm { $1 }
 
+TypeTerm :: { RawTerm }
+TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
+         | '(' TypedBinds ')' arrow TypeTerm
+                { doBind (Pi Ex Eager) $2 $5 }
+         | lazybracket TypedBinds ')' arrow TypeTerm
+                { doBind (Pi Ex Lazy) $2 $5 }
+         | '(' TypeTerm ')' { $2 }
+         | '(' TypeTerm '=' TypeTerm File Line ')' { RInfix $5 $6 JMEq $2 $4 }
+         | SimpleAppTerm { $1 }
 
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name File Line { RVar $2 $3 $1 }
           | '(' Term ')' { $2 }
           | metavar { RMetavar $1 }
           | '!' Name File Line { RExpVar $3 $4 $2 }
-          | NoAppTerm arrow NoAppTerm { RBind (MN "X" 0)
-                                        (Pi Ex Eager $1) $3 }
-          | '(' TypedBinds ')' arrow NoAppTerm
-                { doBind (Pi Ex Eager) $2 $5 }
-          | lazybracket TypedBinds ')' arrow NoAppTerm
-                { doBind (Pi Ex Lazy) $2 $5 }
 --          | '{' TypedBinds '}' arrow NoAppTerm
 --                { doBind (Pi Im) $2 $5 }
           | Constant { RConst $1 }
