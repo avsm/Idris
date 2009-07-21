@@ -353,6 +353,9 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
 
 DoBlock :: { [Do] }
 DoBlock : do '{' DoBindings '}' { $3 }
+-- Next rule is a TMP HACK! So that we can open brackets then have a name immediately.
+        | do brackname MaybeType leftarrow Term File Line ';' DoBindings '}'
+             { DoBinding $6 $7 $2 $3 $5 : $9 }
 
 DoBindings :: { [Do] }
 DoBindings : DoBind DoBindings { $1:$2}

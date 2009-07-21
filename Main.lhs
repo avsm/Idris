@@ -330,6 +330,7 @@ the appropriate thing, after applying the relevant transformations.
 >              c <- addExternalFn c (opFn IntToChar) 1 intToChar "Int->Char"
 >              c <- addExternalFn c (opFn CharToInt) 1 charToInt "Char->Int"
 >              c <- addExternalFn c (opFn StringLength) 1 stringLen "String->Int"
+>              c <- addExternalFn c (name "__lazy") 1 runLazy "(A:*)A->A"
 >              return c
 
 > constEq :: [ViewTerm] -> Maybe ViewTerm
@@ -419,3 +420,6 @@ the appropriate thing, after applying the relevant transformations.
 >                            _ -> Nothing
 > stringLen _ = Nothing
 
+> runLazy :: [ViewTerm] -> Maybe ViewTerm
+> runLazy [_,x] = Just x
+> runLazy _ = Nothing

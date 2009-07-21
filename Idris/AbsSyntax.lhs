@@ -244,6 +244,9 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >         gl' i (RBind n (Pi Im Eager _) sc) = gl' i sc
 >         gl' i x = []
 
+> mkLazy :: ViewTerm -> ViewTerm
+> mkLazy t = App (App (Name Unknown (name "__lazy")) Placeholder) t
+
 > getFn :: RawTerm -> RawTerm
 > getFn (RApp _ _ f a) = getFn f
 > getFn (RAppImp _ _ _ f a) = getFn f

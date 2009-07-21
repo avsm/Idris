@@ -253,10 +253,15 @@ Infix operators
 >             Just ifn -> let ia = implicitArgs ifn
 >                             lz = lazyArgs ifn 
 >                             args' = makeLazy (map (ia+) lz) args in
-> --                        if (not (null lz))
-> --                            then trace (show args ++ "\n" ++ show args') $ SApp (SVar n) args'
->                             -- else 
 >                             SApp (SVar n) args'
+> scapply ist (SCon n i) args
+>         = let raw = idris_context ist in
+>           case ctxtLookup raw (fromIvorName n) of
+>             Nothing -> SApp (SCon n i) args
+>             Just ifn -> let ia = implicitArgs ifn
+>                             lz = lazyArgs ifn 
+>                             args' = makeLazy (map (ia+) lz) args in
+>                             SApp (SCon n i) args'
 
 Everything else
 

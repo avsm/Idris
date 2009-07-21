@@ -327,7 +327,7 @@ intermediate functions for when this isn't the case
 >                v' <- deIO' v
 >                k' <- deIO' k
 >                return $ Let (bname i) Star -- type irrelevant
->                             v' (quickSimpl (App k' (Name Unknown (bname i))))
+>                             (mkLazy v') (quickSimpl (App k' (Name Unknown (bname i))))
 >      | bind == (name "unsafeBind") 
 >           = do i <- get
 >                put (i+1)

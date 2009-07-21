@@ -168,7 +168,7 @@ the relevant IO operation
 >           list [a] = writeSC' a
 >           list (x:xs) = writeSC' x ++ ", " ++ list xs
 
-Fork is a special case, because it's argument needs to be evaluated lazily
+Fork is a special case, because its argument needs to be evaluated lazily
 or it'll be evaluated by the time we run the thread!
 
 >   writeSC' (SApp (SVar n) [arg])
@@ -192,6 +192,9 @@ TMP HACK until we do coercions on primitives properly
 
 TMP HACK until we do laziness problem (if/then/else needs to be lazy in its args!)
 
+>   writeSC' (SApp (SVar lazy) [_,v])
+>     | lazy == name "__lazy" =
+>         "lazy(" ++ writeSC' v ++ ")"
 >   writeSC' (SApp (SVar ite) [_,v,t,e])
 >     | ite == name "if_then_else" =
 >         "(case " ++ writeSC' v ++ " of { Con 0 () -> " ++ writeSC' t ++ 
