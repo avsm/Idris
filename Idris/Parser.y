@@ -20,10 +20,11 @@ import Idris.Lib
 %monad { P } { thenP } { returnP }
 %lexer { lexer } { TokenEOF }
 
-%expect 0
+-- %expect 0
 
 %token
       name            { TokenName $$ }
+      brackname       { TokenBrackName $$ }
       string          { TokenString $$ }
       int             { TokenInt $$ }
       float           { TokenFloat $$ }
@@ -133,7 +134,7 @@ import Idris.Lib
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
-          empty unit '_' if then else ptrtype handletype locktype metavar NONE
+          empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname
 %left APP
 
 
@@ -164,18 +165,18 @@ Function :: { ParseDecl }
 Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
          | Name ProofScript ';' { ProofScript $1 $2 }
 --         | DefTerm '=' Term Flags ';' { FunClause (mkDef $1) [] $3 $4 }
-         | DefTerm WithTerms with NoAppTerm '{' Functions '}' File Line
+         | DefTerm WithTerms with Term '{' Functions '}' File Line
               { WithClause (mkDef $8 $9 $1) $2 $4 $6 }
          | DefTerm WithTerms mightbe Term ';' '[' Name ']' File Line
               { FunClauseP (mkDef $9 $10 $1) $2 $4 $7 }
          | DefTerm WithTerms '=' Term Flags ';' File Line 
               { FunClause (mkDef $7 $8 $1) $2 $4 $5 }
-         | '|' NoAppTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
-         | '|' NoAppTerm with NoAppTerm '{' Functions '}'
+         | '|' SimpleAppTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
+         | '|' SimpleAppTerm with NoAppTerm '{' Functions '}'
               { WithClause RPlaceholder [$2] $4 $6 }
 
 WithTerms :: { [RawTerm] }
-WithTerms : '|' NoAppTerm WithTerms { $2:$3 }
+WithTerms : '|' SimpleAppTerm WithTerms { $2:$3 }
           | { [] }
 
 Functions :: { [ParseDecl] }
@@ -212,8 +213,8 @@ DefTerm : Name ArgTerms { ($1, $2) }
 ArgTerms :: { [(RawTerm,Maybe Id)] }
 ArgTerms : { [] }
       | NoAppTerm ArgTerms { ($1,Nothing):$2 }
-      | '{' Name '}' ArgTerms File Line { (RVar $5 $6 $2, Just $2):$4 }
-      | '{' Name '=' Term '}' ArgTerms { ($4, Just $2):$6 }
+      | brackname '}' ArgTerms File Line { (RVar $4 $5 $1, Just $1):$3 }
+      | brackname '=' Term '}' ArgTerms { ($3, Just $1):$5 }
 
 Datatype :: { Datatype }
 Datatype : data DataOpts Name DefinedData File Line
@@ -244,17 +245,18 @@ Name : name { $1 }
 
 SimpleAppTerm :: { RawTerm }
 SimpleAppTerm : SimpleAppTerm File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
-              | SimpleAppTerm '{' ImplicitTerm '}' File Line %prec APP 
-                   { RAppImp $5 $6 (fst $3) $1 (snd $3) }
+              | SimpleAppTerm ImplicitTerm '}' File Line %prec APP 
+                   { RAppImp $4 $5 (fst $2) $1 (snd $2) }
               | Name File Line { RVar $2 $3 $1 }
               | Constant { RConst $1 }
+              | '_' { RPlaceholder }
 
 Term :: { RawTerm }
 Term : NoAppTerm { $1 }
      | '[' TypeTerm ']' { $2 }
      | Term File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
-     | Term '{' ImplicitTerm '}' File Line %prec APP 
-                   { RAppImp $5 $6 (fst $3) $1 (snd $3) }
+     | Term ImplicitTerm '}' File Line %prec APP 
+                   { RAppImp $4 $5 (fst $2) $1 (snd $2) }
      | '\\' Binds '.' Term %prec LAM
                 { doBind Lam $2 $4 }
      | let LetBinds in Term
@@ -278,6 +280,10 @@ Names :: { [Id] }
 Names : Name { [$1] }
       | Name ',' Names { $1:$3 }
 
+BrackNames :: { [Id] }
+BrackNames : brackname { [$1] }
+      | brackname ',' Names { $1:$3 }
+
 NamesS :: { [Id] }
 NamesS : Name { [$1] }
        | Name NamesS { $1:$2 }
@@ -287,8 +293,8 @@ LetBinds : Name MaybeType '=' Term { [($1,$2,$4)] }
          | Name MaybeType '=' Term ',' LetBinds { ($1,$2,$4):$6 }
 
 ImplicitTerm :: { (Id, RawTerm) }
-ImplicitTerm : Name File Line { ($1, RVar $2 $3 $1) }
-             | Name '=' Term { ($1, $3) }
+ImplicitTerm : brackname File Line { ($1, RVar $2 $3 $1) }
+             | brackname '=' Term { ($1, $3) }
 
 InfixTerm :: { RawTerm }
 InfixTerm : Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
@@ -317,8 +323,8 @@ MaybeAType : { RPlaceholder}
 -- Term representing a type may begin with implicit argument list
 
 Type :: { RawTerm }
-Type : '{' Names MaybeAType '}' arrow Type
-               { doBind (Pi Im Eager) (map (\x -> (x, $3)) $2) $6 }
+Type : BrackNames MaybeAType '}' arrow Type
+               { doBind (Pi Im Eager) (map (\x -> (x, $2)) $1) $5 }
      | TypeTerm { $1 }
 
 TypeTerm :: { RawTerm }

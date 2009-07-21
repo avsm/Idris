@@ -1,11 +1,11 @@
 include "vect.idr";
 
-vadd : (Vect Int n) -> (Vect Int n) -> (Vect Int n);
+vadd : Vect Int n -> Vect Int n -> Vect Int n;
 vadd VNil VNil = VNil;
 vadd (VCons x xs) (VCons y ys) = VCons (x+y) (vadd xs ys);
 
-vadd' : (Vect Int n) -> (Vect Int m) -> (Maybe (Sigma Nat (Vect Int)));
-vadd' {n} {m} xs ys with (compare n m) {
+vadd' : Vect Int n -> Vect Int m -> Maybe (Sigma Nat (Vect Int));
+vadd' {n} {m} xs ys with compare n m {
    vadd' xs ys | cmpEQ = Just (Exists (vadd xs ys));
                | _ = Nothing;
 }
@@ -13,17 +13,17 @@ vadd' {n} {m} xs ys with (compare n m) {
 readVec : Vect Int n -> IO (Sigma Nat (Vect Int));
 readVec xs = do { putStr "Number: ";
 	     	  val <- getInt;
-	     	  if (val==-1) then (return (Exists xs))
-		               else (readVec (VCons val xs));
+	     	  if val==-1 then return (Exists xs)
+		             else (readVec (VCons val xs));
 };
 
-dumpVec : (Vect Int n) -> (IO ());
+dumpVec : Vect Int n -> IO ();
 dumpVec VNil = putStrLn "END";
 dumpVec (VCons x xs) = do { putStr (showInt x ++ ", ");
 	       	       	    dumpVec xs;
 			  };
 
-dumpAns : (Maybe (Sigma Nat (Vect Int))) -> (IO ());
+dumpAns : Maybe (Sigma Nat (Vect Int)) -> IO ();
 dumpAns Nothing = putStrLn "FAIL!";
 -- dumpAns (Just (Exists xs)) = dumpVec xs;
 dumpAns (Just (Exists {P=Vect Int} xs)) = dumpVec xs;

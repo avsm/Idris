@@ -47,6 +47,7 @@ reportError err = getFileName `thenP` \fn ->
 
 data Token
       = TokenName Id
+      | TokenBrackName Id
       | TokenString String
       | TokenInt Int
       | TokenFloat Double
@@ -165,6 +166,8 @@ lexer cont ('=':'>':cs) = cont TokenFatArrow cs
 lexer cont ('<':'-':cs) = cont TokenLeftArrow cs
 lexer cont ('(':cs) = cont TokenOB cs
 lexer cont (')':cs) = cont TokenCB cs
+lexer cont ('{':c:cs) 
+    | isAlpha c || c=='_' = lexBrackVar cont (c:cs)
 lexer cont ('{':cs) = cont TokenOCB cs
 lexer cont ('}':cs) = cont TokenCCB cs
 lexer cont ('[':cs) = cont TokenOSB cs
@@ -274,6 +277,10 @@ lexVar cont cs =
 -- values
 -- expressions
       (var,rest) -> cont (mkname var) rest
+
+lexBrackVar cont cs =
+    case span isAllowed cs of
+      (var,rest) -> cont (TokenBrackName (UN var)) rest
 
 lexSpecial cont cs =
     case span isAllowed cs of
