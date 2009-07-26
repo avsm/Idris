@@ -68,6 +68,7 @@ data Token
       | TokenLockType
       | TokenPtrType
       | TokenDataType
+      | TokenInfix
       | TokenInfixL
       | TokenInfixR
       | TokenUsing
@@ -169,9 +170,6 @@ lexer cont ('"':cs) = lexString cont cs
 lexer cont ('\'':cs) = lexChar cont cs
 lexer cont ('{':'-':cs) = lexerEatComment 0 cont cs
 lexer cont ('-':'-':cs) = lexerEatToNewline cont cs
-lexer cont ('-':'>':cs) = cont TokenArrow cs
-lexer cont ('=':'>':cs) = cont TokenFatArrow cs
-lexer cont ('<':'-':cs) = cont TokenLeftArrow cs
 lexer cont ('(':cs) = cont TokenOB cs
 lexer cont (')':cs) = cont TokenCB cs
 lexer cont ('{':c:cs) 
@@ -180,27 +178,12 @@ lexer cont ('{':cs) = cont TokenOCB cs
 lexer cont ('}':cs) = cont TokenCCB cs
 lexer cont ('[':cs) = cont TokenOSB cs
 lexer cont (']':cs) = cont TokenCSB cs
-lexer cont ('-':cs) = cont TokenMinus cs
-lexer cont ('*':cs) = cont TokenTimes cs
-lexer cont ('/':cs) = cont TokenDivide cs
-lexer cont ('=':'=':cs) = cont TokenEQ cs
-lexer cont ('>':'=':cs) = cont TokenGE cs
-lexer cont ('<':'=':cs) = cont TokenLE cs
-lexer cont ('>':cs) = cont TokenGT cs
-lexer cont ('<':cs) = cont TokenLT cs
-lexer cont ('|':'|':cs) = cont TokenOr cs
-lexer cont ('&':'&':cs) = cont TokenAnd cs
 lexer cont ('?':'=':cs) = cont TokenMightEqual cs
-lexer cont ('=':cs) = cont TokenEquals cs
 lexer cont (';':cs) = cont TokenSemi cs
-lexer cont (',':cs) = cont TokenComma cs
 lexer cont ('\\':cs) = cont TokenLambda cs
-lexer cont ('|':'(':cs) = cont TokenLazyBracket cs
-lexer cont ('|':cs) = cont TokenBar cs
-lexer cont ('.':'.':'.':cs) = cont TokenEllipsis cs
-lexer cont ('.':cs) = cont TokenDot cs
 lexer cont ('#':cs) = cont TokenType cs
-lexer cont ('!':cs) = cont TokenBang cs
+lexer cont (',':cs) = cont TokenComma cs
+lexer cont ('|':'(':cs) = cont TokenLazyBracket cs
 lexer cont ('%':cs) = lexSpecial cont cs
 lexer cont ('?':cs) = lexMeta cont cs
 lexer cont (c:cs) | isOpPrefix c = lexOp cont (c:cs)
@@ -265,6 +248,7 @@ lexVar cont cs =
       ("partial",rest) -> cont TokenPartial rest
       ("syntax",rest) -> cont TokenSyntax rest
       ("lazy",rest) -> cont TokenLazy rest
+      ("infix",rest) -> cont TokenInfix rest
       ("infixl",rest) -> cont TokenInfixL rest
       ("infixr",rest) -> cont TokenInfixR rest
 -- Types
@@ -290,10 +274,28 @@ lexVar cont cs =
 lexOp cont cs = case span isOpChar cs of
                    (":",rest) -> cont TokenColon rest
                    ("+",rest) -> cont TokenPlus rest
+                   ("-",rest) -> cont TokenMinus rest
+                   ("*",rest) -> cont TokenTimes rest
+                   ("/",rest) -> cont TokenDivide rest
+                   ("=",rest) -> cont TokenEquals rest
+                   ("==",rest) -> cont TokenEQ rest
+                   (">",rest) -> cont TokenGT rest
+                   ("<",rest) -> cont TokenLT rest
+                   (">=",rest) -> cont TokenGE rest
+                   ("<=",rest) -> cont TokenLE rest
                    ("++",rest) -> cont TokenConcat rest
+                   ("&&",rest) -> cont TokenAnd rest
+                   ("||",rest) -> cont TokenOr rest
+                   (".",rest) -> cont TokenDot rest
+                   ("...",rest) -> cont TokenEllipsis rest
+                   ("|",rest) -> cont TokenBar rest
+                   ("!",rest) -> cont TokenBang rest
+                   ("->", rest) -> cont TokenArrow rest
+                   ("=>", rest) -> cont TokenFatArrow rest
+                   ("<-", rest) -> cont TokenLeftArrow rest
                    (op,rest) -> cont (TokenInfixName op) rest
 
-isOpPrefix c = c `elem` ":+-*/=_"
+isOpPrefix c = c `elem` ":+-*/=_.?|&><!@$%^"
 isOpChar = isOpPrefix
 
 lexBrackVar cont cs =

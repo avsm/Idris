@@ -77,6 +77,7 @@ import Debug.Trace
       type            { TokenType }
       lazybracket     { TokenLazyBracket }
       data            { TokenDataType }
+      infix           { TokenInfix }
       infixl          { TokenInfixL }
       infixr          { TokenInfixR }
       using           { TokenUsing }
@@ -151,6 +152,7 @@ import Debug.Trace
 Program :: { [ParseDecl] }
 Program: { [] }
        | Declaration Program { $1:$2 }
+       | Fixity Program { map RealDecl $1 ++ $2 }
        | include string ';' Program {%
 	     let rest = $4 in
 	     let pt = unsafePerformIO (readLib defaultLibPath $2) in
@@ -163,7 +165,6 @@ Declaration :: { ParseDecl }
 Declaration: Function { $1 }
            | Datatype { RealDecl (DataDecl $1) }
            | Latex { RealDecl $1 }
-           | Fixity { RealDecl $1 }
            | Using '{' Program '}' { PUsing $1 $3 }
            | DoUsing '{' Program '}' { PDoUsing $1 $3 } 
            | syntax Name NamesS '=' Term ';' { PSyntax $2 $3 $5 }
@@ -209,12 +210,17 @@ Flag : nocg { NoCG }
 
 --         | Name '=' Term ';' { RealDecl (TermDef $1 $3) }
 
-Fixity :: { Decl }
-Fixity : FixDec int userinfix ';' { Fixity $3 $1 $2 }
+Fixity :: { [Decl] }
+Fixity : FixDec int Userinfixes ';' { map (\x -> Fixity x $1 $2) $3 }
+
+Userinfixes :: { [String] }
+Userinfixes : userinfix { [$1] }
+            | userinfix ',' Userinfixes { $1:$3 }
 
 FixDec :: { Fixity }
 FixDec : infixl { LeftAssoc }
        | infixr { RightAssoc }
+       | infix { NonAssoc }
 
 Latex :: { Decl }
 Latex : latex '{' LatexDefs '}' { LatexDefs $3 }
