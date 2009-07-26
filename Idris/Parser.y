@@ -53,7 +53,6 @@ import Debug.Trace
       mightbe         { TokenMightEqual }
       '<'             { TokenLT }
       '>'             { TokenGT }
-      '.'             { TokenDot }
       ellipsis        { TokenEllipsis }
       '_'             { TokenUnderscore }
       ','             { TokenComma }
@@ -281,7 +280,7 @@ Term : NoAppTerm { $1 }
      | Term ImplicitTerm '}' File Line %prec APP 
                    { RAppImp $4 $5 (fst $2) $1 (snd $2) }
      | lazy Term File Line { RApp $3 $4 (RApp $3 $4 (RVar $3 $4 (UN "__lazy")) RPlaceholder) $2 }
-     | '\\' Binds '.' Term %prec LAM
+     | '\\' Binds fatarrow Term %prec LAM
                 { doBind Lam $2 $4 }
      | let LetBinds in Term
                 { doLetBind $2 $4 }
@@ -361,6 +360,7 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
          | '(' TypeTerm ')' { bracket $2 }
          | '(' TypeTerm '=' TypeTerm File Line ')' { RInfix $5 $6 JMEq $2 $4 }
          | SimpleAppTerm { $1 }
+         | '[' Term ']' { $2 }
 
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name File Line { RVar $2 $3 $1 }

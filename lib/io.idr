@@ -67,7 +67,7 @@ data IORef A = MkIORef Int;
 
 bind : (IO A) -> (A -> (IO B)) -> (IO B);
 bind (IOReturn a) k = k a;
-bind (IODo c p) k = IODo c (\x . (bind (p x) k));
+bind (IODo c p) k = IODo c (\x => (bind (p x) k));
 -- bind (IOError str) k = IOError str;
 
 return : A -> (IO A);
@@ -93,10 +93,10 @@ unsafePerformIO : (IO A) -> A;
 unsafeNative : A -> Ptr;
 
 putStr : String -> (IO ());
-putStr str = IODo (PutStr str) (\a . (IOReturn a));
+putStr str = IODo (PutStr str) (\a => (IOReturn a));
 
 getStr : IO String;
-getStr = IODo GetStr (\b . (IOReturn b));
+getStr = IODo GetStr (\b => (IOReturn b));
 
 getInt : IO Int;
 getInt = do { inp <- getStr;
@@ -108,25 +108,25 @@ putStrLn str = do { putStr str;
 		    putStr "\n"; };
 
 fork : (IO ()) -> (IO ());
-fork proc = IODo (Fork proc) (\a . (IOReturn a));
+fork proc = IODo (Fork proc) (\a => (IOReturn a));
 
 newLock : Int -> (IO Lock);
-newLock i = IODo (NewLock i) (\l . (IOReturn l));
+newLock i = IODo (NewLock i) (\l => (IOReturn l));
 
 lock : Lock -> (IO ());
-lock l = IODo (DoLock l) (\a . (IOReturn a));
+lock l = IODo (DoLock l) (\a => (IOReturn a));
 
 unlock : Lock -> (IO ());
-unlock l = IODo (DoUnlock l) (\a . (IOReturn a));
+unlock l = IODo (DoUnlock l) (\a => (IOReturn a));
 
 newIORefPrim : IO Int;
-newIORefPrim = IODo (NewRef) (\i . (IOReturn i));
+newIORefPrim = IODo (NewRef) (\i => (IOReturn i));
 
 readIORefPrim : Int -> (IO A);
-readIORefPrim {A} i = IODo (ReadRef A i) (\a . (IOReturn a));
+readIORefPrim {A} i = IODo (ReadRef A i) (\a => (IOReturn a));
 
 writeIORefPrim : Int -> A -> (IO ());
-writeIORefPrim {A} i val = IODo (WriteRef {A} i val) (\a . (IOReturn a));
+writeIORefPrim {A} i val = IODo (WriteRef {A} i val) (\a => (IOReturn a));
 
 newIORef : A -> (IO (IORef A));
 newIORef val = do { i <- newIORefPrim;
@@ -152,9 +152,9 @@ mkFDef : String -> (ts:List FType) -> (xs:List FType) -> (FArgList xs) ->
 	 (ret:FType) -> (mkFType' ts ret)   %nocg;
 mkFDef nm Nil accA fs ret 
    = IODo (Foreign (FFun nm accA ret) fs)
-				 (\a. (IOReturn a));
+				 (\a => (IOReturn a));
 mkFDef nm (Cons t ts) accA fs ret 
-   = \x:(i_ftype t) . mkFDef nm ts (app accA (Cons t Nil)) 
+   = \x:i_ftype t => mkFDef nm ts (app accA (Cons t Nil)) 
 				   (fapp fs (fCons x fNil)) ret;
 
 mkForeign : (f:ForeignFun) -> (mkFType f)   %nocg;
