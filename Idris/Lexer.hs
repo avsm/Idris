@@ -107,6 +107,7 @@ data Token
       | TokenColon
       | TokenSemi
       | TokenComma
+      | TokenTuple
       | TokenBar
       | TokenDot
       | TokenEllipsis
@@ -285,6 +286,7 @@ lexOp cont cs = case span isOpChar cs of
                    ("<=",rest) -> cont TokenLE rest
                    ("++",rest) -> cont TokenConcat rest
                    ("&&",rest) -> cont TokenAnd rest
+                   ("&",rest) -> cont TokenTuple rest
                    ("||",rest) -> cont TokenOr rest
                    ("...",rest) -> cont TokenEllipsis rest
                    ("|",rest) -> cont TokenBar rest

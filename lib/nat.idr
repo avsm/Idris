@@ -41,7 +41,7 @@ plus_nSm : ((plus n (S m)) = (S (plus n m)));
 plus_nSm {n=O} {m} = (refl (S m));
 plus_nSm {n=S k} {m} = eq_resp_S plus_nSm;
 
-plus_comm : (x,y:Nat) -> ((plus x y) = (plus y x));
+plus_comm : (x:Nat, y:Nat) -> ((plus x y) = (plus y x));
 plus_comm proof {
         %intro; %induction x;
 	%rewrite <- plus_nO y;
@@ -53,7 +53,7 @@ plus_comm proof {
 	%qed;
 };
 
-plus_assoc  : (m,n,p:Nat) -> ((plus m (plus n p)) = (plus (plus m n) p));
+plus_assoc  : (m:Nat, n:Nat, p:Nat) -> ((plus m (plus n p)) = (plus (plus m n) p));
 plus_assoc proof {
         %intro;
         %induction m;
@@ -73,7 +73,7 @@ mult_nO : (n:Nat) -> ((mult n O) = O);
 mult_nO O = refl _;
 mult_nO (S k) = mult_nO k;
 
-mult_nSm : (n,m:Nat) -> ((mult n (S m)) = (plus n (mult n m)));
+mult_nSm : (n:Nat ,m:Nat) -> ((mult n (S m)) = (plus n (mult n m)));
 mult_nSm proof {
         %intro;
         %induction n;
@@ -91,7 +91,7 @@ mult_nSm proof {
         %qed;
 };
 
-mult_comm : (x,y:Nat) -> ((mult x y) = (mult y x));
+mult_comm : (x:Nat, y:Nat) -> ((mult x y) = (mult y x));
 mult_comm proof {
         %intro;
         %induction x;
@@ -105,7 +105,7 @@ mult_comm proof {
         %qed;
 };
 
-mult_distrib : (m,n,p:Nat) ->
+mult_distrib : (m:Nat, n:Nat, p:Nat) ->
 	       ((plus (mult m p) (mult n p)) = (mult (plus m n) p));
 mult_distrib proof {
         %intro;

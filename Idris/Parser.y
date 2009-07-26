@@ -56,6 +56,7 @@ import Debug.Trace
       ellipsis        { TokenEllipsis }
       '_'             { TokenUnderscore }
       ','             { TokenComma }
+      '&'             { TokenTuple }
       '!'             { TokenBang }
       concat          { TokenConcat }
       eq              { TokenEQ }
@@ -127,7 +128,7 @@ import Debug.Trace
 %nonassoc '!' '@'
 %left userinfix
 %left or
-%left and
+%left and '&'
 %left '=' eq
 %left '<' le '>' ge
 %left '+' '-'
@@ -297,7 +298,7 @@ TypedBinds : TypedBind ',' TypedBinds { $1 ++ $3 }
            | TypedBind { $1 }
 
 TypedBind :: { [(Id, RawTerm)] }
-TypedBind : Names ':' Type { map ( \x -> (x,$3)) $1 }
+TypedBind : Name ':' Type { map ( \x -> (x,$3)) [$1] }
 
 Names :: { [Id] }
 Names : Name { [$1] }
@@ -326,6 +327,7 @@ InfixTerm : Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
           | Term '*' Term File Line { RInfix $4 $5  Times $1 $3 }
           | Term '/' Term File Line { RInfix $4 $5  Divide $1 $3 }
           | Term and Term File Line { RInfix $4 $5  OpAnd $1 $3 }
+          | Term '&' Term File Line { mkApp $4 $5 (RVar $4 $5 (UN "Pair")) [$1, $3] }
           | Term or Term File Line { RInfix $4 $5  OpOr $1 $3 }
           | Term concat Term File Line { RInfix $4 $5  Concat $1 $3 }
           | Term eq Term File Line { RInfix $4 $5  OpEq $1 $3 }
@@ -365,6 +367,11 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
          | SimpleAppTerm { $1 }
          | '[' Term ']' { $2 }
          | TypeTerm userinfix TypeTerm File Line { RUserInfix $4 $5 False $2 $1 $3 }
+         | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
+
+TypeList :: { [RawTerm] }
+         : TypeTerm '&' TypeTerm { $1:$3:[] }
+         | TypeTerm '&' TypeList { $1:$3 }
 
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name File Line { RVar $2 $3 $1 }
@@ -379,6 +386,14 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
           | unit File Line { RVar $2 $3 (UN "__Unit") }
           | '_' { RPlaceholder }
           | DoBlock { RDo $1 }
+          | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair")) $2 }
+
+--          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
+
+TermList :: { [RawTerm] }
+         : Term ',' Term { $1:$3:[] }
+         | Term ',' TermList { $1:$3 }
+
 
 DoBlock :: { [Do] }
 DoBlock : do '{' DoBindings '}' { $3 }
@@ -545,6 +560,11 @@ mkDatatype file line n (Left t) opts
 
 bracket (RUserInfix f l _ op x y) = RUserInfix f l True op x y
 bracket x = x
+
+pairDesugar :: String -> Int -> RawTerm -> [RawTerm] -> RawTerm
+pairDesugar file line pair [x,y] = mkApp file line pair [x,y]
+pairDesugar file line pair (x:y:xs) 
+    = pairDesugar file line pair ((mkApp file line pair [x,y]):xs)
 
 }
 
