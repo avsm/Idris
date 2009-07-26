@@ -83,12 +83,12 @@ these days instead...
 >     case ptree of
 >       Success ds -> do let defs' = makeIvorFuns defs ds
 >                        let alldefs = defs++defs'
->                        (ctxt, metas) <- case (addIvor alldefs defs' ctxt) of
->                             OK x -> return x
->                             Err x err -> do putStrLn err 
->                                             return x
->                        let ist = addTransforms (IState alldefs (decls++ds) metas opts []) ctxt
->                        return (ctxt, ist)
+>                        ((ctxt, metas), fixes) <- case (addIvor alldefs defs' ctxt []) of
+>                             OK x fixes -> return (x, fixes)
+>                             Err x fixes err -> do putStrLn err 
+>                                                   return (x, fixes)
+>                        let ist = addTransforms (IState alldefs (decls++ds) metas opts [] []) ctxt 
+>                        return (ctxt, ist { idris_fixities = idris_fixities ist ++ fixes })
 >       Failure err f ln -> fail err
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context
@@ -117,11 +117,11 @@ Command; minimal abbreviation; function to run it; description; visibility
 > norm, help, options, showdef :: Command
 
 > quit _ _ _ = do return Quit
-> tmtype (IState raw _ _ _ _) ctxt tms = do icheckType raw ctxt (unwords tms)
->                                           return Continue
+> tmtype (IState raw _ _ _ uo _) ctxt tms = do icheckType raw uo ctxt (unwords tms)
+>                                              return Continue
 > prove ist ctxt (nm:[]) 
 >           = do let raw = idris_context ist
->                ctxt' <- doProof raw ctxt (UN nm)
+>                ctxt' <- doProof raw ctxt (idris_fixities ist) (UN nm)
 >                let imv = filter (\ (x,y) -> x /= toIvorName (UN nm))
 >                              (idris_metavars ist)
 >                let ist' = ist { idris_metavars = imv }
@@ -169,7 +169,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                return Continue
 > norm ist ctxt tms 
 >          = do let raw = idris_context ist
->               termInput False raw ctxt (unwords tms)
+>               termInput False raw (idris_fixities ist) ctxt (unwords tms)
 >               return Continue
 > options ist ctxt []
 >          = do putStrLn $ "Options: " ++ show (idris_options ist)
@@ -192,7 +192,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >         return Continue
 
 > repl :: IdrisState -> Context -> Maybe String -> IO ()
-> repl ist@(IState raw decls metas opts trans) ctxt inp' 
+> repl ist@(IState raw decls metas opts fixes trans) ctxt inp' 
 >          = do inp <- case inp' of 
 >                        Nothing -> readline ("Idris> ")
 >                        Just s -> return (Just s)
@@ -202,7 +202,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                            do addHistory (':':command)
 >                               runCommand (words command) commands
 >                        Just exprinput -> 
->                            do termInput True raw ctxt exprinput
+>                            do termInput True raw fixes ctxt exprinput
 >                               addHistory exprinput
 >                               return Continue
 >               case (res, inp') of
@@ -221,14 +221,14 @@ Command; minimal abbreviation; function to run it; description; visibility
 >      matchesAbbrev (a:xs) (c:cs) | a == c = matchesAbbrev xs cs
 >                                  | otherwise = False
 
-> termInput runio raw ctxt tm 
+> termInput runio raw uo ctxt tm 
 >         = case getTerm tm of
 >                Right tm -> execEval runio raw ctxt (tm, viewType tm)
 >                Left err -> print err
 >   where getTerm tm = do let parsed' = parseTerm tm
 >                         case parsed' of
 >                           Success parsed -> do
->                              let itm = makeIvorTerm defDo (UN "__main") raw parsed
+>                              let itm = makeIvorTerm defDo uo (UN "__main") raw parsed
 >                              check ctxt itm
 >                           Failure err f l -> ttfail err
 
@@ -245,11 +245,11 @@ If it is an IO type, execute it, otherwise just eval it.
 >              putStr (showImp False (unIvor ivs (view res)))
 >              putStrLn $ " : " ++ showImp False (unIvor ivs (viewType res))
 
-> icheckType :: Ctxt IvorFun -> Context -> String -> IO ()
-> icheckType ivs ctxt tmin
+> icheckType :: Ctxt IvorFun -> UserOps -> Context -> String -> IO ()
+> icheckType ivs uo ctxt tmin
 >         = case parseTerm tmin of 
 >               Success tm -> 
->                    do let itm = makeIvorTerm defDo (UN "__main") ivs tm
+>                    do let itm = makeIvorTerm defDo uo (UN "__main") ivs tm
 >                       gtm <- ioTac $ check ctxt itm
 >                       putStrLn $ showImp False (unIvor ivs (viewType gtm))
 >               Failure err _ _ -> putStrLn err

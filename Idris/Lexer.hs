@@ -6,34 +6,38 @@ import Debug.Trace
 import Idris.AbsSyntax
 
 type LineNumber = Int
-type P a = String -> String -> LineNumber -> Result a
+
+type P a = String -> String -> LineNumber -> UserOps -> Result a
 
 getLineNo :: P LineNumber
-getLineNo = \s fn l -> Success l
+getLineNo = \s fn l ops -> Success l
 
 getFileName :: P String
-getFileName = \s fn l -> Success fn
+getFileName = \s fn l ops -> Success fn
 
 getContent :: P String
-getContent = \s fn l -> Success s
+getContent = \s fn l ops -> Success s
+
+getOps :: P UserOps
+getOps = \s fn l ops -> Success ops
 
 thenP :: P a -> (a -> P b) -> P b
-m `thenP` k = \s fn l ->
-   case m s fn l of
-       Success a -> k a s fn l
+m `thenP` k = \s fn l ops ->
+   case m s fn l ops of
+       Success a -> k a s fn l ops
        Failure e f ln -> Failure e f ln
 
 returnP :: a -> P a
-returnP a = \s fn l -> Success a
+returnP a = \s fn l ops -> Success a
 
 failP :: String -> P a
-failP err = \s fn l -> Failure err fn l
+failP err = \s fn l ops -> Failure err fn l
 
 catchP :: P a -> (String -> P a) -> P a
-catchP m k = \s fn l ->
-   case m s fn l of
+catchP m k = \s fn l ops ->
+   case m s fn l ops of
       Success a -> Success a
-      Failure e f ln -> k e s fn l
+      Failure e f ln -> k e s fn l ops
 
 happyError :: P a
 happyError = reportError "Parse error"
@@ -47,6 +51,7 @@ reportError err = getFileName `thenP` \fn ->
 
 data Token
       = TokenName Id
+      | TokenInfixName String
       | TokenBrackName Id
       | TokenString String
       | TokenInt Int
@@ -63,11 +68,14 @@ data Token
       | TokenLockType
       | TokenPtrType
       | TokenDataType
+      | TokenInfixL
+      | TokenInfixR
       | TokenUsing
       | TokenNoElim
       | TokenCollapsible
       | TokenPartial
       | TokenSyntax
+      | TokenLazy
       | TokenWhere
       | TokenWith
       | TokenType
@@ -172,8 +180,6 @@ lexer cont ('{':cs) = cont TokenOCB cs
 lexer cont ('}':cs) = cont TokenCCB cs
 lexer cont ('[':cs) = cont TokenOSB cs
 lexer cont (']':cs) = cont TokenCSB cs
-lexer cont ('+':'+':cs) = cont TokenConcat cs
-lexer cont ('+':cs) = cont TokenPlus cs
 lexer cont ('-':cs) = cont TokenMinus cs
 lexer cont ('*':cs) = cont TokenTimes cs
 lexer cont ('/':cs) = cont TokenDivide cs
@@ -186,7 +192,6 @@ lexer cont ('|':'|':cs) = cont TokenOr cs
 lexer cont ('&':'&':cs) = cont TokenAnd cs
 lexer cont ('?':'=':cs) = cont TokenMightEqual cs
 lexer cont ('=':cs) = cont TokenEquals cs
-lexer cont (':':cs) = cont TokenColon cs
 lexer cont (';':cs) = cont TokenSemi cs
 lexer cont (',':cs) = cont TokenComma cs
 lexer cont ('\\':cs) = cont TokenLambda cs
@@ -198,9 +203,10 @@ lexer cont ('#':cs) = cont TokenType cs
 lexer cont ('!':cs) = cont TokenBang cs
 lexer cont ('%':cs) = lexSpecial cont cs
 lexer cont ('?':cs) = lexMeta cont cs
+lexer cont (c:cs) | isOpPrefix c = lexOp cont (c:cs)
 lexer cont (c:cs) = lexError c cs
 
-lexError c s l = failP (show l ++ ": Unrecognised token '" ++ [c] ++ "'\n") s l
+lexError c s l ops = failP (show l ++ ": Unrecognised token '" ++ [c] ++ "'\n") s l ops
 
 lexerEatComment nls cont ('-':'}':cs)
     = \fn line -> lexer cont cs fn (line+nls)
@@ -230,19 +236,19 @@ readNum x = rn' False "" x
         rn' dot acc xs = (acc,xs,dot)
 
 lexString cont cs =
-   \fn line ->
+   \fn line ops ->
    case getstr cs of
-      Just (str,rest,nls) -> cont (TokenString str) rest fn (nls+line)
+      Just (str,rest,nls) -> cont (TokenString str) rest fn (nls+line) ops
       Nothing -> failP (fn++":"++show line++":Unterminated string contant")
-                    cs fn line
+                    cs fn line ops
 
 lexChar cont cs =
-   \fn line ->
+   \fn line ops ->
    case getchar cs of
-      Just (str,rest) -> cont (TokenChar str) rest fn line
+      Just (str,rest) -> cont (TokenChar str) rest fn line ops
       Nothing ->
           failP (fn++":"++show line++":Unterminated character constant")
-                       cs fn line
+                       cs fn line ops
 
 isAllowed c = isAlpha c || isDigit c || c `elem` "_\'?#"
 
@@ -258,6 +264,9 @@ lexVar cont cs =
       ("with",rest) -> cont TokenWith rest
       ("partial",rest) -> cont TokenPartial rest
       ("syntax",rest) -> cont TokenSyntax rest
+      ("lazy",rest) -> cont TokenLazy rest
+      ("infixl",rest) -> cont TokenInfixL rest
+      ("infixr",rest) -> cont TokenInfixR rest
 -- Types
       ("Int",rest) -> cont TokenIntType rest
       ("Char",rest) -> cont TokenCharType rest
@@ -277,6 +286,15 @@ lexVar cont cs =
 -- values
 -- expressions
       (var,rest) -> cont (mkname var) rest
+
+lexOp cont cs = case span isOpChar cs of
+                   (":",rest) -> cont TokenColon rest
+                   ("+",rest) -> cont TokenPlus rest
+                   ("++",rest) -> cont TokenConcat rest
+                   (op,rest) -> cont (TokenInfixName op) rest
+
+isOpPrefix c = c `elem` ":+-*/=_"
+isOpChar = isOpPrefix
 
 lexBrackVar cont cs =
     case span isAllowed cs of

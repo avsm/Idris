@@ -10,6 +10,7 @@
 > import Data.Typeable
 > import Data.Maybe
 > import Data.List
+> import Char
 
 > import Ivor.TT
 > import Ivor.Primitives
@@ -42,6 +43,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | Using [(Id, RawTerm)] [Decl] -- default implicit args
 >           | DoUsing Id Id [Decl] -- bind and return names
 >           | CLib String | CInclude String
+>           | Fixity String Fixity Int
 >    deriving Show
 
 Flags for controlling compilation. In particular, some functions exist only
@@ -52,6 +54,14 @@ Also, some functions should be evaluated completely before code generation
 
 > data CGFlag = NoCG | CGEval
 >    deriving (Show, Eq)
+
+User defined operators have associativity and precedence
+
+> data Fixity = LeftAssoc | RightAssoc | NonAssoc
+>    deriving (Show, Eq)
+
+> type UserOps = [(String, (Fixity, Int))]
+
 
 Function types and clauses are given separately, so we'll parse them
 separately then collect them together into a list of Decls
@@ -196,8 +206,10 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RPlaceholder
 >              | RMetavar Id
 >              | RInfix String Int Op RawTerm RawTerm
+>              | RUserInfix String Int Bool String RawTerm RawTerm
 >              | RDo [Do]
 >              | RRefl
+>              | RError String -- Hackety. Found an error in processing, report when you can.
 >    deriving (Show, Eq)
 
 > data RBinder = Pi Plicit Laziness RawTerm
@@ -276,6 +288,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >    where args acc (RApp _ _ f a) = args (a:acc) f
 >          args acc (RAppImp _ _ _ f a) = args acc f
 >          args [] (RInfix _ _ _ x y) = [x,y]
+>          args [] (RUserInfix _ _ _ _ x y) = [x,y]
 >          args acc f = acc
 
 Binders; Pi (either implicit or explicitly written), Lambda and Let with
@@ -369,6 +382,9 @@ Finally some primitive operations on primitive types.
 > opFn StringGetIndex = (name "__strgetIdx")
 > opFn StringSubstr = (name "__substr")
 
+> useropFn fn = UN $ "__op_" ++ concat (map opC fn) where
+>     opC c = "_" ++ show (fromEnum c)
+
 Pattern clauses
 
 > data RawClause = RawClause { lhs :: RawTerm,
@@ -395,6 +411,7 @@ implicit arguments each function has.
 >       funFlags :: [CGFlag],
 >       lazyArgs :: [Int]
 >     }
+>              | IvorProblem String
 >    deriving Show
 
 Get all the pattern definitions. Get the user specified one, not the
@@ -406,6 +423,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 > getRawPatternDefs raw ctxt = gdefs (ctxtAlist raw) where
 >     gdefs [] = []
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(LatexDefs _)) _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(Fixity _ _ _)) _ _):ds) = gdefs ds
 >     gdefs ((n, ifun):ds)
 >        = let iname = ivorFName ifun in
 >             case (ivorFType ifun, ivorDef ifun) of
@@ -439,11 +457,12 @@ A transformation is a function converting a ViewTerm to a new form.
 >       idris_decls :: [Decl], -- all checked declarations
 >       idris_metavars :: [(Name, ViewTerm)], -- things still to prove
 >       idris_options :: [Opt], -- global options
+>       idris_fixities :: [(String, (Fixity, Int))], -- infix operators and precedences
 >       idris_transforms :: [Transform] -- optimisations
 >     }
 
 > initState :: IdrisState
-> initState = IState newCtxt [] [] [ShowRunTime] []
+> initState = IState newCtxt [] [] [ShowRunTime] [] []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting
@@ -605,6 +624,7 @@ ready for typechecking
 >     toIvorS (RDo dos) = do tm <- undo ui dos
 >                            toIvorS tm
 >     toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
+>     toIvorS (RError x) = error x
 >     mkName (UN n) i = UN (n++"_"++show i)
 >     mkName (MN n j) i = MN (n++"_"++show i) j
 
@@ -623,12 +643,14 @@ ready for typechecking
 
 Convert a raw term to an ivor term, adding placeholders
 
-> makeIvorTerm :: UndoInfo -> Id -> Ctxt IvorFun -> RawTerm -> ViewTerm
-> makeIvorTerm ui n ctxt tm = let expraw = addPlaceholders ctxt tm in
->                                 toIvor ui n expraw
+> makeIvorTerm :: UndoInfo -> UserOps -> Id -> Ctxt IvorFun -> RawTerm -> ViewTerm
+> makeIvorTerm ui uo n ctxt tm = let expraw = addPlaceholders ctxt uo tm in
+>                                    toIvor ui n expraw
 
-> addPlaceholders :: Ctxt IvorFun -> RawTerm -> RawTerm
-> addPlaceholders ctxt tm = ap [] tm
+Add placeholders so that implicit arguments can be filled in. Also desugar user infix apps.
+
+> addPlaceholders :: Ctxt IvorFun -> UserOps -> RawTerm -> RawTerm
+> addPlaceholders ctxt uo tm = ap [] tm
 >     -- Count the number of args we've made explicit in an application
 >     -- and don't add placeholders for them. Reset the counter if we get
 >     -- out of an application
@@ -649,6 +671,12 @@ Convert a raw term to an ivor term, adding placeholders
 >           ap ex (RBind n (RLet val ty) sc)
 >               = RBind n (RLet (ap [] val) (ap [] ty)) (ap [] sc)
 >           ap ex (RInfix file line op l r) = RInfix file line op (ap [] l) (ap [] r)
+>           ap ex fix@(RUserInfix _ _ _ _ _ _)
+>               = case fixFix uo fix of
+>                   (RUserInfix file line _ op l r) ->
+>                       ap ex (RApp file line 
+>                              (RApp file line (RVar file line (useropFn op)) l) r)
+>                   (RError x) -> RError x
 >           ap ex (RDo ds) = RDo (map apdo ds)
 >           ap ex r = r
 
@@ -777,7 +805,9 @@ boolean flag (true for showing them)
 > showImp imp tm = showP 10 tm where
 >     showP p (RVar _ _ (UN "__Unit")) = "()"
 >     showP p (RVar _ _ (UN "__Empty")) = "_|_"
->     showP p (RVar _ _ i) = show i
+>     showP p (RVar _ _ i) = case (getOpName i) of
+>                              (True, o) -> "(" ++ o ++ ")"
+>                              (False, o) -> o
 >     showP p RRefl = "refl"
 >     showP p (RApp _ _ f a) = bracket p 1 $ showP 1 f ++ " " ++ showP 0 a
 >     showP p (RAppImp _ _ n f a)
@@ -824,3 +854,44 @@ boolean flag (true for showing them)
 >                  "  " ++ show names
 > idrisError ivs (NoSuchVar n) = "No such variable as " ++ show n
 > idrisError ivs (ErrContext s e) = s ++ idrisError ivs e
+
+> getOpName (UN ('_':'_':'o':'p':'_':op)) = (True, showOp op) where
+>          showOp ('_':cs) = case span isDigit cs of
+>                               (op, rest) -> toEnum (read op) : showOp rest
+>          showOp _ = ""
+> getOpName s = (False, show s)
+
+Correct the precedences in a user defined infix operator term.
+
+[(a opl b) opr c] ==> (a opl b) opr c
+[a opl b opr c] ==> [a] opl ([b] opr [c]) if (prec opr > prec opl)
+[a opl b opr c] ==> ([a] opl [b]) opr [c] if (prec opr < prec opl)
+[a opl b opr c] ==> [a] opl ([b] opr [c]) if (prec opr == prec opl and fixity both = R)
+[a opl b opr c] ==> ([a] opl [b]) opr [c] if (prec opr == prec opl and fixity both = L)
+error in all other cases
+
+> fixFix :: UserOps -> RawTerm -> RawTerm
+
+Only need to worry if the left term is not bracketed. Otherwise leave it alone.
+
+> fixFix ops (RUserInfix file line _ opr 
+>                (RUserInfix _ _ False opl a b) c) =
+>     case (lookup opl ops, lookup opr ops) of
+>       (Just (assocl, precl), Just (assocr, precr)) ->
+>           doFix assocl precl assocr precr a opl b opr c
+>       _ -> RError $ file ++ ":" ++ show line ++ ":unknown operator"
+>  where
+>    doFix al pl ar pr a opl b opr c 
+>          | pr > pl = mkOp opl a (mkOp opr b c)
+>          | pr < pl = mkOp opr (mkOp opl a b) c
+>          | pr == pl && al == LeftAssoc && ar == LeftAssoc
+>                    = mkOp opr (mkOp opl a b) c
+>          | pr == pl && al == RightAssoc && ar == RightAssoc
+>                    = mkOp opl a (mkOp opr b c)
+>          | otherwise = RError $ file ++ ":" ++ show line ++ ":ambiguous operators, please add brackets"
+>    mkOp op l r = RUserInfix file line True op l r
+
+
+Everything else, we ony work at the top level.
+
+> fixFix _ x = x

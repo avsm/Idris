@@ -6,9 +6,12 @@ module Idris.Parser where
 import Data.Char
 import Ivor.TT
 import System.IO.Unsafe
+
 import Idris.AbsSyntax
 import Idris.Lexer
 import Idris.Lib
+
+import Debug.Trace
 
 }
 
@@ -24,6 +27,7 @@ import Idris.Lib
 
 %token
       name            { TokenName $$ }
+      userinfix       { TokenInfixName $$ }
       brackname       { TokenBrackName $$ }
       string          { TokenString $$ }
       int             { TokenInt $$ }
@@ -73,6 +77,8 @@ import Idris.Lib
       type            { TokenType }
       lazybracket     { TokenLazyBracket }
       data            { TokenDataType }
+      infixl          { TokenInfixL }
+      infixr          { TokenInfixR }
       using           { TokenUsing }
       noelim          { TokenNoElim }
       collapsible     { TokenCollapsible }
@@ -80,6 +86,7 @@ import Idris.Lib
       with            { TokenWith }
       partial         { TokenPartial }
       syntax          { TokenSyntax }
+      lazy            { TokenLazy }
       refl            { TokenRefl }
       empty           { TokenEmptyType }
       unit            { TokenUnitType }
@@ -118,6 +125,7 @@ import Idris.Lib
 %nonassoc LAM
 %nonassoc let in
 %nonassoc '!' '@'
+%left userinfix
 %left or
 %left and
 %left '=' eq
@@ -134,7 +142,7 @@ import Idris.Lib
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
-          empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname
+          empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname lazy
 %left APP
 
 
@@ -146,7 +154,7 @@ Program: { [] }
        | include string ';' Program {%
 	     let rest = $4 in
 	     let pt = unsafePerformIO (readLib defaultLibPath $2) in
-		case (mkparse pt $2 1) of
+		case (mkparse pt $2 1 []) of
 		   Success x -> returnP (x ++ rest)
 		   Failure err file ln -> failP err
 	  }
@@ -155,6 +163,7 @@ Declaration :: { ParseDecl }
 Declaration: Function { $1 }
            | Datatype { RealDecl (DataDecl $1) }
            | Latex { RealDecl $1 }
+           | Fixity { RealDecl $1 }
            | Using '{' Program '}' { PUsing $1 $3 }
            | DoUsing '{' Program '}' { PDoUsing $1 $3 } 
            | syntax Name NamesS '=' Term ';' { PSyntax $2 $3 $5 }
@@ -200,6 +209,13 @@ Flag : nocg { NoCG }
 
 --         | Name '=' Term ';' { RealDecl (TermDef $1 $3) }
 
+Fixity :: { Decl }
+Fixity : FixDec int userinfix ';' { Fixity $3 $1 $2 }
+
+FixDec :: { Fixity }
+FixDec : infixl { LeftAssoc }
+       | infixr { RightAssoc }
+
 Latex :: { Decl }
 Latex : latex '{' LatexDefs '}' { LatexDefs $3 }
 
@@ -242,6 +258,7 @@ DataOpt : noelim { NoElim }
 
 Name :: { Id }
 Name : name { $1 }
+     | '(' userinfix ')' { useropFn $2 }
 
 SimpleAppTerm :: { RawTerm }
 SimpleAppTerm : SimpleAppTerm File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
@@ -257,6 +274,7 @@ Term : NoAppTerm { $1 }
      | Term File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
      | Term ImplicitTerm '}' File Line %prec APP 
                    { RAppImp $4 $5 (fst $2) $1 (snd $2) }
+     | lazy Term File Line { RApp $3 $4 (RApp $3 $4 (RVar $3 $4 (UN "__lazy")) RPlaceholder) $2 }
      | '\\' Binds '.' Term %prec LAM
                 { doBind Lam $2 $4 }
      | let LetBinds in Term
@@ -310,6 +328,7 @@ InfixTerm : Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
           | Term le Term File Line { RInfix $4 $5  OpLEq $1 $3 }
           | Term '>' Term File Line { RInfix $4 $5  OpGT $1 $3 }
           | Term ge Term File Line { RInfix $4 $5  OpGEq $1 $3 }
+          | Term userinfix Term File Line { RUserInfix $4 $5 False $2 $1 $3 }
           | NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
 
 MaybeType :: { RawTerm }
@@ -333,13 +352,13 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
                 { doBind (Pi Ex Eager) $2 $5 }
          | lazybracket TypedBinds ')' arrow TypeTerm
                 { doBind (Pi Ex Lazy) $2 $5 }
-         | '(' TypeTerm ')' { $2 }
+         | '(' TypeTerm ')' { bracket $2 }
          | '(' TypeTerm '=' TypeTerm File Line ')' { RInfix $5 $6 JMEq $2 $4 }
          | SimpleAppTerm { $1 }
 
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name File Line { RVar $2 $3 $1 }
-          | '(' Term ')' { $2 }
+          | '(' Term ')' { bracket $2 }
           | metavar { RMetavar $1 }
           | '!' Name File Line { RExpVar $3 $4 $2 }
 --          | '{' TypedBinds '}' arrow NoAppTerm
@@ -460,20 +479,23 @@ Line :: { LineNumber }
 File :: { String } 
      : {- empty -} %prec NONE  {% getFileName }
 
+Ops :: { UserOps } 
+     : {- empty -} %prec NONE  {% getOps }
+
 {
 
 data ConParse = Full Id RawTerm
               | Simple Id [RawTerm]
 
 parse :: String -> FilePath -> Result [Decl]
-parse s fn = do ds <- mkparse s fn 1
+parse s fn = do ds <- mkparse s fn 1 []
                 collectDecls ds
 
 parseTerm :: String -> Result RawTerm
-parseTerm s = mkparseTerm s "(input)" 0
+parseTerm s = mkparseTerm s "(input)" 0 []
 
 parseTactic :: String -> Result ITactic
-parseTactic s = mkparseTactic s "(tactic)" 0
+parseTactic s = mkparseTactic s "(tactic)" 0 []
 
 mkCon :: RawTerm -> ConParse -> (Id,RawTerm)
 mkCon _ (Full n t) = (n,t)
@@ -510,6 +532,9 @@ mkDatatype file line n (Right ((t, using), cons)) opts
     = Datatype n t (map (mkCon (mkTyApp file line n t)) cons) using opts file line 
 mkDatatype file line n (Left t) opts
     = Latatype n t file line
+
+bracket (RUserInfix f l _ op x y) = RUserInfix f l True op x y
+bracket x = x
 
 }
 

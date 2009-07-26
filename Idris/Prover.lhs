@@ -17,37 +17,37 @@
 > ioTac (Left a) = fail (show a)
 > ioTac (Right v) = return v
 
-> doProof :: Ctxt IvorFun -> Context -> Id -> IO Context
-> doProof raw ctxt nm = 
+> doProof :: Ctxt IvorFun -> Context -> UserOps -> Id -> IO Context
+> doProof raw ctxt uo nm = 
 >     do ctxt' <- ioTac $ resume ctxt (toIvorName nm)
 >        ctxt' <- ioTac $ attack defaultGoal ctxt'
 >        putStrLn $ showCtxtState raw ctxt'
->        (ctxt', script, ok) <- proofShell (show nm) raw [] ctxt'
+>        (ctxt', script, ok) <- proofShell (show nm) raw uo [] ctxt'
 >        if ok then do
 >            return ctxt'
 >          else do putStrLn "Proof abandoned"
 >                  return ctxt
 
-> runScript :: Ctxt IvorFun -> Context -> Id -> [ITactic] -> 
+> runScript :: Ctxt IvorFun -> Context -> UserOps -> Id -> [ITactic] -> 
 >              TTM Context
-> runScript raw ctxt nm tacs =
+> runScript raw ctxt uo nm tacs =
 >     do ctxt <- resume ctxt (toIvorName nm)
 >        ctxt <- attack defaultGoal ctxt
->        execScript raw ctxt tacs
+>        execScript raw ctxt uo tacs
 
 This function assumes that it can plough on knowing the proof is fine.
 If it isn't, it'll break, but with an error. We probably ought to check
 properly, if only for useful diagnostics.
 
-> execScript :: Ctxt IvorFun -> Context -> [ITactic] -> TTM Context
-> execScript raw ctxt [] = return ctxt
-> execScript raw ctxt (t:ts) 
->      = do (ctxt,_,_) <- applyTac raw ctxt [] t
+> execScript :: Ctxt IvorFun -> Context -> UserOps -> [ITactic] -> TTM Context
+> execScript raw ctxt uo [] = return ctxt
+> execScript raw ctxt uo (t:ts) 
+>      = do (ctxt,_,_) <- applyTac raw ctxt uo [] t
 >           ctxt <- keepSolving defaultGoal ctxt
 >           ctxt <- if ((numUnsolved ctxt) > 0)
 >                     then beta defaultGoal ctxt
 >                     else return ctxt
->           execScript raw ctxt ts
+>           execScript raw ctxt uo ts
 
 > showScript :: String -> [String] -> IO ()
 > showScript nm sc 
@@ -58,9 +58,9 @@ properly, if only for useful diagnostics.
 Remember the proof script (that's the [String]) and output it, without the
 undone bits, after a Qed
 
-> proofShell :: String -> Ctxt IvorFun -> [String] -> Context -> 
+> proofShell :: String -> Ctxt IvorFun -> UserOps -> [String] -> Context -> 
 >               IO (Context, [String], Bool)
-> proofShell nm raw script ctxt = do
+> proofShell nm raw uo script ctxt = do
 >     inp <- readline (nm ++ "> ")
 >     res <- case inp of
 >              Nothing -> return ""
@@ -69,14 +69,14 @@ undone bits, after a Qed
 >                             return tac
 >     case parseTactic ("%"++res) of
 >            Failure err f l -> do putStrLn err
->                                  proofShell nm raw script ctxt
+>                                  proofShell nm raw uo script ctxt
 >            Success tac -> 
 >                do let script' = script ++ ["%"++res]
 >                   when (tac == Qed) $ 
 >                        showScript nm script
->                   case applyTac raw ctxt script' tac of
+>                   case applyTac raw ctxt uo script' tac of
 >                     Left err -> do print err
->                                    proofShell nm raw script ctxt
+>                                    proofShell nm raw uo script ctxt
 >                     Right (ctxt, script, True) -> do
 >                       ctxt <- ioTac $ keepSolving defaultGoal ctxt
 >                       ctxt <- ioTac $ if ((numUnsolved ctxt) > 0)
@@ -84,19 +84,19 @@ undone bits, after a Qed
 >                                 else return ctxt
 >                       if (proving ctxt)
 >                          then do putStrLn $ showCtxtState raw ctxt
->                                  proofShell nm raw script ctxt
+>                                  proofShell nm raw uo script ctxt
 >                          else return (ctxt, script, True)
 >                     _ -> return (ctxt, script, False)
 
-> applyTac :: Ctxt IvorFun -> Context -> [String] -> ITactic -> 
+> applyTac :: Ctxt IvorFun -> Context -> UserOps -> [String] -> ITactic -> 
 >             TTM (Context, [String], Bool)
-> applyTac raw ctxt script Abandon = return (ctxt, script, False)
-> applyTac raw ctxt script Undo = do ctxt <- restore ctxt
+> applyTac raw ctxt uo script Abandon = return (ctxt, script, False)
+> applyTac raw ctxt uo script Undo = do ctxt <- restore ctxt
 >                                    -- remove the undo and the command
->                                    let script' = init (init script)
->                                    return (ctxt, script', True)
-> applyTac raw ctxt script tac = do ctxt <- at (save ctxt) tac 
->                                   return (ctxt, script, True)
+>                                       let script' = init (init script)
+>                                       return (ctxt, script', True)
+> applyTac raw ctxt uo script tac = do ctxt <- at (save ctxt) tac 
+>                                      return (ctxt, script, True)
 >   where
 >     at ctxt (Intro []) = intros defaultGoal ctxt
 >     at ctxt (Intro ns) = introsNames (map toIvorName ns) defaultGoal ctxt
@@ -107,7 +107,7 @@ undone bits, after a Qed
 >     at ctxt Trivial = (trivial >|> refine reflN) defaultGoal ctxt
 >     at ctxt (Believe t) = suspend_disbelief raw (ivor t) defaultGoal ctxt
 >     at ctxt (Use t) = prove_belief raw (ivor t) defaultGoal ctxt
->     at ctxt (Decide t) = decide raw t defaultGoal ctxt
+>     at ctxt (Decide t) = decide raw uo t defaultGoal ctxt
 >     at ctxt (Induction t) = induction (ivor t) defaultGoal ctxt
 >     at ctxt (Rewrite False f t) = rewrite (ivor t) f defaultGoal ctxt
 >     at ctxt (Rewrite True f t) = rewriteAll (ivor t) f defaultGoal ctxt
@@ -116,7 +116,7 @@ undone bits, after a Qed
 >     at ctxt (RunTactic tm) = runtac (ivor tm) defaultGoal ctxt
 >     at ctxt Qed = qed ctxt
 
->     ivor t = makeIvorTerm defDo (UN "__prf") raw t
+>     ivor t = makeIvorTerm defDo uo (UN "__prf") raw t
 
 > eqN = Name Unknown $ name "Eq"
 > replN = Name Unknown $ toIvorName (UN "__eq_repl")
@@ -242,12 +242,12 @@ a b c, and send the result to Ivor's isItJust tactic
 _or_; given a goal of the form X a b c, and a function x of type
 x: a:A -> b:B -> c:C -> Tactic, send x a b c to runtac below.
 
-> decide :: Ctxt IvorFun -> RawTerm -> Tactic
-> decide raw dproc goal ctxt = do
+> decide :: Ctxt IvorFun -> UserOps -> RawTerm -> Tactic
+> decide raw uo dproc goal ctxt = do
 >    gd <- goalData ctxt True goal
 >    let idgoal = unIvor raw ((view.goalType) gd)
 >    let args = getExplicitArgs idgoal
->    let dapp = makeIvorTerm defDo (UN "__prf") raw (mkApp "[proof]" 0 dproc args)
+>    let dapp = makeIvorTerm defDo uo (UN "__prf") raw (mkApp "[proof]" 0 dproc args)
 >    (isItJust dapp >|> runtac dapp) goal ctxt
 
 Run a tactic computed by mkTac

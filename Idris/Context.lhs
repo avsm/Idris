@@ -3,6 +3,7 @@
 
 > import Data.List
 > import qualified Data.Map as Map
+> import Char
 
 > data Id = UN String | MN String Int
 >    deriving (Eq, Ord)

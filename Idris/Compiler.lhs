@@ -190,15 +190,11 @@ TMP HACK until we do coercions on primitives properly
 >     | n == name "unsafeNative" =
 >         "__epic_native(" ++ writeSC' arg ++ ")"
 
-TMP HACK until we do laziness problem (if/then/else needs to be lazy in its args!)
+HACK for explicit laziness
 
 >   writeSC' (SApp (SVar lazy) [_,v])
 >     | lazy == name "__lazy" =
 >         "lazy(" ++ writeSC' v ++ ")"
->   writeSC' (SApp (SVar ite) [_,v,t,e])
->     | ite == name "if_then_else" =
->         "(case " ++ writeSC' v ++ " of { Con 0 () -> " ++ writeSC' t ++ 
->          " | Con 1 () -> " ++ writeSC' e ++ "})"
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
 >       where list [] = ""
 >             list [a] = writeSC' a

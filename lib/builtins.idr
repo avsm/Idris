@@ -34,5 +34,3 @@ __eq_sym A a a p = refl _;
 
 __Prove_Anything : {A:#} -> A;
 __Suspend_Disbelief : (m,n:A) -> (m = n);
-
-

@@ -12,46 +12,47 @@
 Work out how many implicit arguments we need, then translate our definition
 into an ivor definition, with all the necessary placeholders added.
 
-> makeIvorFun ::  [(Id, RawTerm)] -> UndoInfo ->
+> makeIvorFun ::  [(Id, RawTerm)] -> UndoInfo -> UserOps ->
 >                 Ctxt IvorFun -> Decl -> Function -> [CGFlag] -> IvorFun
 
-> makeIvorFun using ui ctxt decl (Function n ty clauses file line) flags
+> makeIvorFun using ui uo ctxt decl (Function n ty clauses file line) flags
 >     = let (rty, imp) = addImplWith using ctxt ty
->           ity = makeIvorTerm ui n ctxt rty
+>           ity = makeIvorTerm ui uo n ctxt rty
 >           extCtxt = addEntry ctxt n (IvorFun undefined (Just ity) 
 >                                       imp undefined decl flags (getLazy ty))
 >           pclauses = map (mkPat extCtxt imp) clauses in
 >       IvorFun (toIvorName n) (Just (Annotation (FileLoc file line) ity)) imp 
 >                   (PattDef (Patterns pclauses)) decl flags (getLazy ty)
 >   where mkPat ectx imp (id,(RawClause lhs rhs)) 
->               = let lhs' = addPlaceholders ectx lhs in
+>               = let lhs' = addPlaceholders ectx uo lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
 >                          (fid, pats) ->
 >                            let vpats = map (toIvor ui n) pats
->                                vrhs = makeIvorTerm ui n ectx rhs in
+>                                vrhs = makeIvorTerm ui uo n ectx rhs in
 >                                PClause vpats vrhs
 >         mkPat ectx imp (id,(RawWithClause lhs scr def))
->               = let lhs' = addPlaceholders ectx lhs in
+>               = let lhs' = addPlaceholders ectx uo lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
 >                          (fid, pats) ->
 >                            let vpats = map (toIvor ui n) pats
->                                vscr = makeIvorTerm ui n ectx scr
+>                                vscr = makeIvorTerm ui uo n ectx scr
 >                                vdef = Patterns $ map (mkPat ectx imp) (zip (repeat id) def) in
 >                                PWithClause vpats vscr vdef
 
 > makeIvorFuns :: Ctxt IvorFun -> [Decl] -> Ctxt IvorFun
-> makeIvorFuns is defs = mif is [] [] defDo defs
+> makeIvorFuns is defs = mif is [] [] defDo [] defs
 
 > mif :: Ctxt IvorFun -> -- init
 >        Ctxt IvorFun -> -- new
 >        [(Id, RawTerm)] -> -- implicits
 >        UndoInfo -> -- do using bind, return
+>        UserOps -> -- Users operators
 >        [Decl] -> Ctxt IvorFun
-> mif ctxt acc using ui [] = acc
-> mif ctxt acc using' ui ((Using using decls):ds)
->         = mif ctxt (mif ctxt acc (using'++using) ui decls) using' ui ds
-> mif ctxt acc using ui ((DoUsing bind ret decls):ds)
->         = mif ctxt (mif ctxt acc using ui' decls) using ui ds
+> mif ctxt acc using ui uo [] = acc
+> mif ctxt acc using' ui uo ((Using using decls):ds)
+>         = mif ctxt (mif ctxt acc (using'++using) ui uo decls) using' ui uo ds
+> mif ctxt acc using ui uo ((DoUsing bind ret decls):ds)
+>         = mif ctxt (mif ctxt acc using ui' uo decls) using ui uo ds
 >    where ui' = let bimpl = case ctxtLookup acc bind of
 >                              Just i -> implicitArgs i
 >                              _ -> 0
@@ -59,41 +60,45 @@ into an ivor definition, with all the necessary placeholders added.
 >                              Just i -> implicitArgs i
 >                              _ -> 0
 >                     in UI bind bimpl ret rimpl
-> mif ctxt acc using ui (decl@(Fun f flags):ds) 
->         = let fn = makeIvorFun using ui (ctxt++acc) decl f flags in
->               mif ctxt (addEntry acc (funId f) fn) using ui ds
-> mif ctxt acc using ui (decl@(Fwd n ty flags):ds) 
+> mif ctxt acc using ui uo (decl@(Fun f flags):ds) 
+>         = let fn = makeIvorFun using ui uo (ctxt++acc) decl f flags in
+>               mif ctxt (addEntry acc (funId f) fn) using ui uo ds
+> mif ctxt acc using ui uo (decl@(Fwd n ty flags):ds) 
 >      = let (rty, imp) = addImplWith using (ctxt++acc) ty
->            ity = makeIvorTerm ui n (ctxt++acc) rty in
+>            ity = makeIvorTerm ui uo n (ctxt++acc) rty in
 >            mif ctxt (addEntry acc n (IvorFun (toIvorName n) (Just ity) 
->                              imp Later decl flags (getLazy ty))) using ui ds
-> mif ctxt acc using ui (decl@(DataDecl d):ds) 
->      = addDataEntries ctxt acc decl d using ui ds -- will call mif on ds
-> mif ctxt acc using ui (decl@(TermDef n tm flags):ds) 
+>                              imp Later decl flags (getLazy ty))) using ui uo ds
+> mif ctxt acc using ui uo (decl@(DataDecl d):ds) 
+>      = addDataEntries ctxt acc decl d using ui uo ds -- will call mif on ds
+> mif ctxt acc using ui uo (decl@(TermDef n tm flags):ds) 
 >         = let (itmraw, imp) = addImplWith using (ctxt++acc) tm
->               itm = makeIvorTerm ui n (ctxt++acc) itmraw in
+>               itm = makeIvorTerm ui uo n (ctxt++acc) itmraw in
 >               mif ctxt (addEntry acc n 
 >                   (IvorFun (toIvorName n) Nothing imp 
->                            (SimpleDef itm) decl flags [])) using ui ds
-> mif ctxt acc using ui (decl@(LatexDefs ls):ds) 
+>                            (SimpleDef itm) decl flags [])) using ui uo ds
+> mif ctxt acc using ui uo (decl@(LatexDefs ls):ds) 
 >         = mif ctxt (addEntry acc (MN "latex" 0) 
->              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui ds
-> mif ctxt acc using ui (decl@(Prf (Proof n _ scr)):ds) 
+>              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui uo ds
+> mif ctxt acc using ui uo (decl@(Fixity op assoc prec):ds) 
+>         = mif ctxt (addEntry acc (MN "fixity" 0) 
+>              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui 
+>                   ((op,(assoc,prec)):uo) ds
+> mif ctxt acc using ui uo (decl@(Prf (Proof n _ scr)):ds) 
 >     = case ctxtLookup acc n of
 >          Nothing -> -- add the script and process the type later, should
 >                     -- be a metavariable
 >             mif ctxt (addEntry acc n
 >               (IvorFun (toIvorName n) Nothing 0 (IProof scr) decl [] [])) 
->                  using ui ds
+>                  using ui uo ds
 >          Just (IvorFun _ (Just ty) imp _ _ _ _) -> 
 >             mif ctxt (addEntry acc n
 >               (IvorFun (toIvorName n) (Just ty) imp (IProof scr) decl [] []))
->                   using ui ds
+>                   using ui uo ds
 
 Just pass these on to epic to do the right thing
 
-> mif ctxt acc using ui ((CInclude _):ds) = mif ctxt acc using ui ds
-> mif ctxt acc using ui ((CLib _):ds) = mif ctxt acc using ui ds
+> mif ctxt acc using ui uo ((CInclude _):ds) = mif ctxt acc using ui uo ds
+> mif ctxt acc using ui uo ((CLib _):ds) = mif ctxt acc using ui uo ds
 
 error "Not implemented"
 
@@ -101,37 +106,37 @@ Add an entry for the type id and for each of the constructors.
 
 > addDataEntries :: Ctxt IvorFun -> Ctxt IvorFun -> Decl ->
 >                   Datatype -> [(Id, RawTerm)] -> -- implicits
->                   UndoInfo ->
+>                   UndoInfo -> UserOps ->
 >                   [Decl] -> 
 >                   Ctxt IvorFun
-> addDataEntries ctxt acc decl (Latatype tid tty f l) using ui ds = 
+> addDataEntries ctxt acc decl (Latatype tid tty f l) using ui uo ds = 
 >     let (tyraw, imp) = addImplWith using (ctxt++acc) tty
->         tytm = Annotation (FileLoc f l) $ makeIvorTerm ui tid (ctxt++acc) tyraw 
+>         tytm = Annotation (FileLoc f l) $ makeIvorTerm ui uo tid (ctxt++acc) tyraw 
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                  LataDef decl [] []) in
->         mif ctxt acc' using ui ds
-> addDataEntries ctxt acc decl (Datatype tid tty cons u e f l) using ui ds = 
+>         mif ctxt acc' using ui uo ds
+> addDataEntries ctxt acc decl (Datatype tid tty cons u e f l) using ui uo ds = 
 >     let (tyraw, imp) = addImplWith using (ctxt++acc) tty
->         tytm = Annotation (FileLoc f l) $ makeIvorTerm ui tid (ctxt++acc) tyraw
+>         tytm = Annotation (FileLoc f l) $ makeIvorTerm ui uo tid (ctxt++acc) tyraw
 >         acctmp = addEntry (ctxt++acc) tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                   undefined decl [] [])
->         ddef = makeInductive acctmp tid (getBinders tytm []) cons (using++u) ui []
+>         ddef = makeInductive acctmp tid (getBinders tytm []) cons (using++u) ui uo []
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                              (DataDef ddef (not (elem NoElim e))) decl [] []) in
->         addConEntries ctxt acc' cons u using ui ds f l
+>         addConEntries ctxt acc' cons u using ui uo ds f l
 
      Inductive (toIvorName tid) [] 
 
 > makeInductive :: Ctxt IvorFun -> Id -> ([(Name, ViewTerm)], ViewTerm) ->
 >                  [(Id,RawTerm)] -> [(Id, RawTerm)] ->
->                  UndoInfo -> [(Name, ViewTerm)] -> Inductive
-> makeInductive ctxt tid (indices, tty) [] using ui acc
+>                  UndoInfo -> UserOps -> [(Name, ViewTerm)] -> Inductive
+> makeInductive ctxt tid (indices, tty) [] using ui uo acc
 >        = Inductive (toIvorName tid) [] indices tty (reverse acc)
-> makeInductive ctxt cdec indices ((cid, cty):cs) using ui acc
+> makeInductive ctxt cdec indices ((cid, cty):cs) using ui uo acc
 >        = let (tyraw, imp) = addImplWith using ctxt cty
->              tytm = makeIvorTerm ui cdec ctxt tyraw in
+>              tytm = makeIvorTerm ui uo cdec ctxt tyraw in
 >              makeInductive ctxt cdec
->                            indices cs using ui (((toIvorName cid),tytm):acc)
+>                            indices cs using ui uo (((toIvorName cid),tytm):acc)
 
 Examine an inductive definition; any index position which does not
 change across the structure becomes a parameter.
@@ -193,41 +198,46 @@ n is a parameter
 >         remAllPs newps x = x
 
 > addConEntries :: Ctxt IvorFun -> Ctxt IvorFun -> [(Id,RawTerm)] -> 
->                  [(Id,RawTerm)] -> [(Id,RawTerm)] -> UndoInfo ->
+>                  [(Id,RawTerm)] -> [(Id,RawTerm)] -> UndoInfo -> UserOps ->
 >                  [Decl] -> String -> Int ->
 >                  Ctxt IvorFun
-> addConEntries ctxt acc [] u using ui ds f l = mif ctxt acc using ui ds
-> addConEntries ctxt acc ((cid, ty):cs) u using ui ds f l
+> addConEntries ctxt acc [] u using ui uo ds f l = mif ctxt acc using ui uo ds
+> addConEntries ctxt acc ((cid, ty):cs) u using ui uo ds f l
 >     = let (tyraw, imp) = addImplWith (u++using) (ctxt++acc) ty
->           tytm = Annotation (FileLoc f l) $ makeIvorTerm ui cid (ctxt++acc) tyraw
+>           tytm = Annotation (FileLoc f l) $ makeIvorTerm ui uo cid (ctxt++acc) tyraw
 >           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon Constructor [] (getLazy ty)) in
->           addConEntries ctxt acc' cs u using ui ds f l
+>           addConEntries ctxt acc' cs u using ui uo ds f l
 
 Add definitions to the Ivor Context. Return the new context and a list
 of things we need to define to complete the program (i.e. metavariables)
 
-> data TryAdd = OK (Context, [(Name, ViewTerm)])
->             | Err (Context, [(Name, ViewTerm)]) String -- record how far we got
+> data TryAdd = OK (Context, [(Name, ViewTerm)]) UserOps
+>             | Err (Context, [(Name, ViewTerm)]) UserOps String -- record how far we got
 
 > addIvor :: Ctxt IvorFun -> -- all definitions, including prelude
 >            Ctxt IvorFun -> -- just the ones we haven't added to Ivor yet
->            Context -> TryAdd
-> addIvor all defs ctxt = addivs (ctxt, []) (reverse (ctxtAlist defs))
->    where addivs acc [] = OK acc
->          addivs acc (def:ds) = case addIvorDef all acc def of
->                                          Right ok -> addivs ok ds
->                                          Left err -> Err acc (idrisError all err)
+>            Context -> UserOps -> TryAdd
+> addIvor all defs ctxt uo = addivs (ctxt, []) uo (reverse (ctxtAlist defs))
+>    where addivs acc fixes [] = OK acc fixes
+>          addivs acc fixes ((n, IvorProblem err):ds) = Err acc fixes err
+>          addivs acc fixes (def:ds) = case addIvorDef all fixes acc def of
+>                                          Right (ok, fixes) -> addivs ok fixes ds
+>                                          Left err -> Err acc fixes (idrisError all err)
 
-> addIvorDef :: Ctxt IvorFun -> (Context, [(Name, ViewTerm)]) -> 
+> addIvorDef :: Ctxt IvorFun -> UserOps -> (Context, [(Name, ViewTerm)]) -> 
 >                (Id, IvorFun) -> 
->               TTM (Context, [(Name, ViewTerm)])
-> addIvorDef raw (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _ _) 
->                = return (ctxt, metas)
-> addIvorDef raw (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
+>               TTM ((Context, [(Name, ViewTerm)]), UserOps)
+> addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _ _) 
+>                = return ((ctxt, metas), uo)
+> addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _) 
+>                = return ((ctxt, metas), (op, (assoc, prec)):uo)
+> addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
 >     = trace ("Processing "++ show n ++ " " ++ show lazy) $ case def of
 >         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
->                          if (null newdefs) then return (ctxt, metas)
->                            else addMeta raw ctxt metas newdefs
+>                          if (null newdefs) then return ((ctxt, metas), uo)
+>                            else do r <- addMeta raw ctxt metas newdefs
+>                                    return (r, uo)
+>                                                                     
 >         SimpleDef tm -> 
 >                         do tm' <- case (CGEval `elem` flags) of
 >                              False -> return tm
@@ -236,10 +246,10 @@ of things we need to define to complete the program (i.e. metavariables)
 >                            ctxt <- case tyin of
 >                                 Nothing -> addDef ctxt name tm'
 >                                 Just ty -> addTypedDef ctxt name tm' ty
->                            return (ctxt, metas)
+>                            return ((ctxt, metas), uo)
 >         LataDef -> case tyin of
 >                       Just ty -> do ctxt <- declareData ctxt name ty
->                                     return (ctxt, metas)
+>                                     return ((ctxt, metas), uo)
 >         DataDef ind e -> do c <- addDataNoElim ctxt ind
 >                           -- add once to fill in placeholders
 >                             ctxt <- if e then do
@@ -247,17 +257,17 @@ of things we need to define to complete the program (i.e. metavariables)
 >                           -- add again after we work out the parameters
 >                                     addData ctxt (mkParams d)
 >                                  else return c
->                             return (ctxt, metas)
+>                             return ((ctxt, metas), uo)
 >                           -- addDataNoElim ctxt (mkParams d)
 >                           -- trace (show (mkParams d)) $ return c
->         IProof scr -> do ctxt <- runScript raw ctxt n scr
->                          return (ctxt, filter (\ (x,y) -> x /= toIvorName n)
->                                        metas)
+>         IProof scr -> do ctxt <- runScript raw ctxt uo n scr
+>                          return ((ctxt, filter (\ (x,y) -> x /= toIvorName n)
+>                                         metas), uo)
 >         Later -> case tyin of
 >                    Just ty -> do ctxt <- declare ctxt name ty
->                                  return (ctxt, metas)
+>                                  return ((ctxt, metas), uo)
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
->         _ -> return (ctxt, metas)
+>         _ -> return ((ctxt, metas), uo)
 >    where unjust (Just x) = x
 
 > addMeta :: Ctxt IvorFun -> Context -> 
