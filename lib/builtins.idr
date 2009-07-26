@@ -12,11 +12,7 @@ getSigIdx (Exists {a} v) = a;
 getSigVal : (s:Sigma A P) -> P (getSigIdx s);
 getSigVal (Exists v) = v;
 
-Pair : # -> # -> #;
-Pair A B = Sigma A (\x:A => B);
-
-pair : A -> B -> Pair A B;
-pair {A} {B} a b = Exists {P=\x:A => B} {a} b;
+data Pair a b = mkPair a b;
 
 rewrite : {A:B->#} -> A m -> (m=n) -> A n;
 rewrite t (refl m) = t;

@@ -333,8 +333,11 @@ InfixTerm : Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
           | Term le Term File Line { RInfix $4 $5  OpLEq $1 $3 }
           | Term '>' Term File Line { RInfix $4 $5  OpGT $1 $3 }
           | Term ge Term File Line { RInfix $4 $5  OpGEq $1 $3 }
-          | Term userinfix Term File Line { RUserInfix $4 $5 False $2 $1 $3 }
+          | UserInfixTerm { $1 }
           | NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
+
+UserInfixTerm :: { RawTerm }
+UserInfixTerm : Term userinfix Term File Line { RUserInfix $4 $5 False $2 $1 $3 }
 
 MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}
@@ -361,6 +364,7 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
          | '(' TypeTerm '=' TypeTerm File Line ')' { RInfix $5 $6 JMEq $2 $4 }
          | SimpleAppTerm { $1 }
          | '[' Term ']' { $2 }
+         | TypeTerm userinfix TypeTerm File Line { RUserInfix $4 $5 False $2 $1 $3 }
 
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name File Line { RVar $2 $3 $1 }
