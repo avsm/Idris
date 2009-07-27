@@ -46,6 +46,7 @@ import Debug.Trace
       '}'             { TokenCCB }
       '['             { TokenOSB }
       ']'             { TokenCSB }
+      '~'             { TokenTilde }
       '+'             { TokenPlus }
       '-'             { TokenMinus }
       '*'             { TokenTimes }
@@ -145,7 +146,7 @@ import Debug.Trace
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname lazy
-          '['
+          '[' '~'
 %left APP
 
 
@@ -402,8 +403,8 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
 --          | '[' TermList ']' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Exists")) $2 }
 --          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
           | SigmaType { $1 }
-          | '[' Term ']' File Line 
-                { mkApp $4 $5 (RVar $4 $5 (UN "Exists")) [$2] }
+          | '~' NoAppTerm File Line 
+                { mkApp $3 $4 (RVar $3 $4 (UN "Exists")) [$2] }
 
 TermList :: { [RawTerm] }
          : Term ',' Term { $1:$3:[] }

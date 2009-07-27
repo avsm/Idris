@@ -89,6 +89,7 @@ data Token
       | TokenOSB
       | TokenCSB
       | TokenConcat
+      | TokenTilde
       | TokenPlus
       | TokenMinus
       | TokenTimes
@@ -296,9 +297,10 @@ lexOp cont cs = case span isOpChar cs of
                    ("->", rest) -> cont TokenArrow rest
                    ("=>", rest) -> cont TokenFatArrow rest
                    ("<-", rest) -> cont TokenLeftArrow rest
+                   ("~", rest) -> cont TokenTilde rest
                    (op,rest) -> cont (TokenInfixName op) rest
 
-isOpPrefix c = c `elem` ":+-*/=_.?|&><!@$%^"
+isOpPrefix c = c `elem` ":+-*/=_.?|&><!@$%^~"
 isOpChar = isOpPrefix
 
 lexBrackVar cont cs =
