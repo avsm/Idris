@@ -533,6 +533,9 @@ Only do it in argument position
 >           addImplB env (RInfix _ _ op l r) argpos
 >                    = do addImplB env l argpos
 >                         addImplB env r argpos
+>           addImplB env (RUserInfix _ _ _ op l r) argpos
+>                    = do addImplB env l argpos
+>                         addImplB env r argpos
 >           addImplB env _ _ = return ()
 
 >           mknew :: [Id] -> [(Id, RawTerm)]
