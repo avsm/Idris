@@ -126,10 +126,10 @@ import Debug.Trace
 %nonassoc LAM
 %nonassoc let in
 %nonassoc '!' '@'
-%left userinfix
 %left or
 %left and '&'
 %left '=' eq
+%left userinfix
 %left '<' le '>' ge
 %left '+' '-'
 %left '*' '/'
@@ -321,20 +321,20 @@ ImplicitTerm : brackname File Line { ($1, RVar $2 $3 $1) }
              | brackname '=' Term { ($1, $3) }
 
 InfixTerm :: { RawTerm }
-InfixTerm : Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
-          | Term '-' Term File Line { RInfix $4 $5  Minus $1 $3 }
-          | '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst (Num 0)) $2 }
-          | Term '*' Term File Line { RInfix $4 $5  Times $1 $3 }
-          | Term '/' Term File Line { RInfix $4 $5  Divide $1 $3 }
-          | Term and Term File Line { RInfix $4 $5  OpAnd $1 $3 }
+InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst (Num 0)) $2 }
+--          | Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
+--          | Term '-' Term File Line { RInfix $4 $5  Minus $1 $3 }
+--          | Term '*' Term File Line { RInfix $4 $5  Times $1 $3 }
+--          | Term '/' Term File Line { RInfix $4 $5  Divide $1 $3 }
+--          | Term and Term File Line { RInfix $4 $5  OpAnd $1 $3 }
           | Term '&' Term File Line { mkApp $4 $5 (RVar $4 $5 (UN "Pair")) [$1, $3] }
-          | Term or Term File Line { RInfix $4 $5  OpOr $1 $3 }
-          | Term concat Term File Line { RInfix $4 $5  Concat $1 $3 }
-          | Term eq Term File Line { RInfix $4 $5  OpEq $1 $3 }
-          | Term '<' Term File Line { RInfix $4 $5  OpLT $1 $3 }
-          | Term le Term File Line { RInfix $4 $5  OpLEq $1 $3 }
-          | Term '>' Term File Line { RInfix $4 $5  OpGT $1 $3 }
-          | Term ge Term File Line { RInfix $4 $5  OpGEq $1 $3 }
+--          | Term or Term File Line { RInfix $4 $5  OpOr $1 $3 }
+--          | Term concat Term File Line { RInfix $4 $5  Concat $1 $3 }
+--          | Term eq Term File Line { RInfix $4 $5  OpEq $1 $3 }
+--          | Term '<' Term File Line { RInfix $4 $5  OpLT $1 $3 }
+--          | Term le Term File Line { RInfix $4 $5  OpLEq $1 $3 }
+--          | Term '>' Term File Line { RInfix $4 $5  OpGT $1 $3 }
+--          | Term ge Term File Line { RInfix $4 $5  OpGEq $1 $3 }
           | UserInfixTerm { $1 }
           | NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
 

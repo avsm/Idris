@@ -10,10 +10,12 @@ if_then_else False t f = f;
 
 data so : Bool -> # where oh : so True;
 
-__or : Bool -> Bool -> Bool;
-__or False False = False;
-__or _ _ = True;
+infixl 4 &&,||;
 
-__and : Bool -> Bool -> Bool;
-__and True True = True;
-__and _ _ = False;
+(||) : Bool -> Bool -> Bool;
+(||) False False = False;
+(||) _ _ = True;
+
+(&&) : Bool -> Bool -> Bool;
+(&&) True True = True;
+(&&) _ _ = False;

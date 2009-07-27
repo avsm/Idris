@@ -874,12 +874,14 @@ error in all other cases
 
 Only need to worry if the left term is not bracketed. Otherwise leave it alone.
 
-> fixFix ops (RUserInfix file line _ opr 
->                (RUserInfix _ _ False opl a b) c) =
+> fixFix ops top@(RUserInfix file line _ opr 
+>                (RUserInfix _ _ False opl a b) c) = 
 >     case (lookup opl ops, lookup opr ops) of
 >       (Just (assocl, precl), Just (assocr, precr)) ->
->           doFix assocl precl assocr precr a opl b opr c
->       _ -> RError $ file ++ ":" ++ show line ++ ":unknown operator"
+>         doFix assocl precl assocr precr (fixFix ops a) opl (fixFix ops b) opr (fixFix ops c)
+>       (Nothing, Nothing) -> RError $ file ++ ":" ++ show line ++ ":unknown operators " ++ show opl ++ " and " ++ show opr
+>       (Nothing, _) -> RError $ file ++ ":" ++ show line ++ ":unknown operator " ++ show opl
+>       (_, Nothing) -> RError $ file ++ ":" ++ show line ++ ":unknown operator " ++ show opr
 >  where
 >    doFix al pl ar pr a opl b opr c 
 >          | pr > pl = mkOp opl a (mkOp opr b c)

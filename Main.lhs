@@ -78,17 +78,18 @@ these days instead...
 >     let defs = idris_context ist
 >     let decls = idris_decls ist
 >     let opts = idris_options ist
+>     let fixes = idris_fixities ist
 >     prelude <- readLib defaultLibPath file
 >     let ptree = parse prelude file
 >     case ptree of
 >       Success ds -> do let defs' = makeIvorFuns defs ds
 >                        let alldefs = defs++defs'
->                        ((ctxt, metas), fixes) <- case (addIvor alldefs defs' ctxt []) of
->                             OK x fixes -> return (x, fixes)
->                             Err x fixes err -> do putStrLn err 
->                                                   return (x, fixes)
+>                        ((ctxt, metas), fixes') <- case (addIvor alldefs defs' ctxt fixes) of
+>                             OK x fixes' -> return (x, fixes')
+>                             Err x fixes' err -> do putStrLn err 
+>                                                    return (x, fixes')
 >                        let ist = addTransforms (IState alldefs (decls++ds) metas opts [] []) ctxt 
->                        return (ctxt, ist { idris_fixities = idris_fixities ist ++ fixes })
+>                        return (ctxt, ist { idris_fixities = fixes' })
 >       Failure err f ln -> fail err
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context

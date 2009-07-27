@@ -1,4 +1,4 @@
-include "bool.idr";
+include "bool.idr"; 
 
 data __Unit = II;
 data __Empty = ;
@@ -30,3 +30,4 @@ __eq_sym A a a p = refl _;
 
 __Prove_Anything : {A:#} -> A;
 __Suspend_Disbelief : (m:A) -> (n:A) -> (m = n);
+
