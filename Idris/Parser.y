@@ -379,7 +379,7 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
          | SigmaType { $1 }
 
 SigmaType :: { RawTerm }
-SigmaType : '[' Name MaybeType fatarrow TypeTerm ']' File Line 
+SigmaType : '[' Name MaybeType '|' TypeTerm ']' File Line 
                   { sigDesugar $7 $8 ($2, $3) $5 }
 TypeList :: { [RawTerm] }
          : TypeTerm '&' TypeTerm { $1:$3:[] }
