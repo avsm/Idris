@@ -41,9 +41,12 @@ Load things in this order:
 >           (infile, batch) <- usage args
 >           ctxt <- ioTac $ addEquality emptyContext (name "Eq") (name "refl")
 >           (ctxt, defs) <- processInput ctxt initState "builtins.idr"
+>           print (idris_fixities defs)
 >           ctxt <- ioTac $ prims ctxt
 >           (ctxt, defs) <- processInput ctxt defs "prelude.idr"
+>           print (idris_fixities defs)
 >           (ctxt, defs) <- processInput ctxt defs infile
+>           print (idris_fixities defs)
 >           repl defs ctxt batch
 
 > usage [fname] = return (fname, Nothing)
@@ -80,10 +83,10 @@ these days instead...
 >     let decls = idris_decls ist
 >     let opts = idris_options ist
 >     let fixes = idris_fixities ist
->     prelude <- readLib defaultLibPath file
->     let ptree = parse prelude file
+>     content <- readLib defaultLibPath file
+>     let ptree = parse content file
 >     case ptree of
->       Success ds -> do let defs' = makeIvorFuns defs ds
+>       Success ds -> do let defs' = makeIvorFuns defs ds fixes
 >                        let alldefs = defs++defs'
 >                        ((ctxt, metas), fixes') <- case (addIvor alldefs defs' ctxt fixes) of
 >                             OK x fixes' -> return (x, fixes')

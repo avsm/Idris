@@ -1,6 +1,6 @@
 include "nat.idr";
 
-infixr 6 ::;
+infixr 5 ::;
 
 data Vect : # -> Nat -> # where
    VNil : Vect A O

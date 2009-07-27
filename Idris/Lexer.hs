@@ -85,6 +85,7 @@ data Token
       | TokenCB
       | TokenOCB
       | TokenCCB
+      | TokenHashOB
       | TokenOSB
       | TokenCSB
       | TokenConcat
@@ -182,6 +183,7 @@ lexer cont (']':cs) = cont TokenCSB cs
 lexer cont ('?':'=':cs) = cont TokenMightEqual cs
 lexer cont (';':cs) = cont TokenSemi cs
 lexer cont ('\\':cs) = cont TokenLambda cs
+lexer cont ('#':'(':cs) = cont TokenHashOB cs
 lexer cont ('#':cs) = cont TokenType cs
 lexer cont (',':cs) = cont TokenComma cs
 lexer cont ('|':'(':cs) = cont TokenLazyBracket cs

@@ -39,8 +39,8 @@ into an ivor definition, with all the necessary placeholders added.
 >                                vdef = Patterns $ map (mkPat ectx imp) (zip (repeat id) def) in
 >                                PWithClause vpats vscr vdef
 
-> makeIvorFuns :: Ctxt IvorFun -> [Decl] -> Ctxt IvorFun
-> makeIvorFuns is defs = mif is [] [] defDo [] defs
+> makeIvorFuns :: Ctxt IvorFun -> [Decl] -> UserOps -> Ctxt IvorFun
+> makeIvorFuns is defs uo = mif is [] [] defDo uo defs
 
 > mif :: Ctxt IvorFun -> -- init
 >        Ctxt IvorFun -> -- new

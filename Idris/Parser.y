@@ -39,6 +39,7 @@ import Debug.Trace
       ';'             { TokenSemi }
       '|'             { TokenBar }
       '\\'            { TokenLambda }
+      hashbrack       { TokenHashOB }
       '('             { TokenOB }
       ')'             { TokenCB }
       '{'             { TokenOCB }
@@ -282,7 +283,7 @@ SimpleAppTerm : SimpleAppTerm File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 
 
 Term :: { RawTerm }
 Term : NoAppTerm { $1 }
-     | '[' TypeTerm ']' { $2 }
+     | hashbrack TypeTerm ')' { $2 }
      | Term File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
      | Term ImplicitTerm '}' File Line %prec APP 
                    { RAppImp $4 $5 (fst $2) $1 (snd $2) }

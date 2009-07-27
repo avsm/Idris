@@ -121,6 +121,7 @@ let arg = t - 1 in s
 >     tr (SLet n v sc) = trans (SLet n (tr v) (tr sc))
 >     tr (SCCase b alts) = trans (SCCase (tr b) (map tralt alts))
 >     tr (SInfix op l r) = trans (SInfix op (tr l) (tr r))
+>     tr (SLazy s) = trans (SLazy (tr s))
 >     tr s = trans s
 
 >     tralt (SAlt n t args rhs) = SAlt n t args (tr rhs)
