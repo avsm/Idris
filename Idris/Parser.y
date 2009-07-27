@@ -145,6 +145,7 @@ import Debug.Trace
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname lazy
+          '['
 %left APP
 
 
@@ -372,10 +373,14 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
          | '(' TypeTerm ')' { bracket $2 }
          | '(' TypeTerm '=' TypeTerm File Line ')' { RInfix $5 $6 JMEq $2 $4 }
          | SimpleAppTerm { $1 }
-         | '[' Term ']' { $2 }
+         | hashbrack Term ')' { $2 }
          | TypeTerm userinfix TypeTerm File Line { RUserInfix $4 $5 False $2 $1 $3 }
          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
+         | SigmaType { $1 }
 
+SigmaType :: { RawTerm }
+SigmaType : '[' Name MaybeType fatarrow TypeTerm ']' File Line 
+                  { sigDesugar $7 $8 ($2, $3) $5 }
 TypeList :: { [RawTerm] }
          : TypeTerm '&' TypeTerm { $1:$3:[] }
          | TypeTerm '&' TypeList { $1:$3 }
@@ -385,7 +390,7 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
           | '(' Term ')' { bracket $2 }
           | metavar { RMetavar $1 }
           | '!' Name File Line { RExpVar $3 $4 $2 }
---          | '{' TypedBinds '}' arrow NoAppTerm
+--          | '{' TypedBind '}' arrow NoAppTerm
 --                { doBind (Pi Im) $2 $5 }
           | Constant { RConst $1 }
           | refl { RRefl }
@@ -394,8 +399,11 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
           | '_' { RPlaceholder }
           | DoBlock { RDo $1 }
           | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair")) $2 }
-
+--          | '[' TermList ']' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Exists")) $2 }
 --          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
+          | SigmaType { $1 }
+          | '[' Term ']' File Line 
+                { mkApp $4 $5 (RVar $4 $5 (UN "Exists")) [$2] }
 
 TermList :: { [RawTerm] }
          : Term ',' Term { $1:$3:[] }
@@ -572,6 +580,11 @@ pairDesugar :: String -> Int -> RawTerm -> [RawTerm] -> RawTerm
 pairDesugar file line pair [x,y] = mkApp file line pair [x,y]
 pairDesugar file line pair (x:y:xs) 
     = pairDesugar file line pair ((mkApp file line pair [x,y]):xs)
+
+sigDesugar :: String -> Int -> (Id, RawTerm) -> RawTerm -> RawTerm
+sigDesugar file line (n, tm) sc
+    = mkApp file line (RVar file line (UN "Sigma")) [tm, lam]
+   where lam = RBind n (Lam tm) sc
 
 }
 

@@ -41,12 +41,9 @@ Load things in this order:
 >           (infile, batch) <- usage args
 >           ctxt <- ioTac $ addEquality emptyContext (name "Eq") (name "refl")
 >           (ctxt, defs) <- processInput ctxt initState "builtins.idr"
->           print (idris_fixities defs)
 >           ctxt <- ioTac $ prims ctxt
 >           (ctxt, defs) <- processInput ctxt defs "prelude.idr"
->           print (idris_fixities defs)
 >           (ctxt, defs) <- processInput ctxt defs infile
->           print (idris_fixities defs)
 >           repl defs ctxt batch
 
 > usage [fname] = return (fname, Nothing)

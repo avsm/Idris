@@ -65,12 +65,12 @@ data IO : # -> # where
 
 data IORef A = MkIORef Int;
 
-bind : (IO A) -> (A -> (IO B)) -> (IO B);
+bind : (IO a) -> (a -> (IO b)) -> (IO b);
 bind (IOReturn a) k = k a;
 bind (IODo c p) k = IODo c (\x => (bind (p x) k));
 -- bind (IOError str) k = IOError str;
 
-return : A -> (IO A);
+return : a -> (IO a);
 return x = IOReturn x;
 
 data IOException = IOExcept String; 

@@ -6,10 +6,10 @@ data __Empty = ;
 data Sigma : (A:#)->(P:A->#)-># where
    Exists : {P:A->#} -> {a:A} -> P a -> Sigma A P;
 
-getSigIdx : (s:Sigma A P) -> A;
+getSigIdx : {P:a->#} ->  (s:Sigma a P) -> a;
 getSigIdx (Exists {a} v) = a;
 
-getSigVal : (s:Sigma A P) -> P (getSigIdx s);
+getSigVal : {P:a->#} -> (s:Sigma a P) -> P (getSigIdx s);
 getSigVal (Exists v) = v;
 
 data Pair a b = mkPair a b;

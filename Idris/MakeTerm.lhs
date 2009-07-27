@@ -233,7 +233,8 @@ of things we need to define to complete the program (i.e. metavariables)
 >                = return ((ctxt, metas), (op, (assoc, prec)):uo)
 > addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
 >     = trace ("Processing "++ show n ++ " " ++ show lazy) $ case def of
->         PattDef ps -> do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
+>         PattDef ps -> -- trace (show ps) $
+>                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ((ctxt, metas), uo)
 >                            else do r <- addMeta raw ctxt metas newdefs
 >                                    return (r, uo)
