@@ -211,11 +211,17 @@ Flag : nocg { NoCG }
 --         | Name '=' Term ';' { RealDecl (TermDef $1 $3) }
 
 Fixity :: { [Decl] }
-Fixity : FixDec int Userinfixes ';' { map (\x -> Fixity x $1 $2) $3 }
+Fixity : FixDec int UserInfixes ';' { map (\x -> Fixity x $1 $2) $3 }
 
-Userinfixes :: { [String] }
-Userinfixes : userinfix { [$1] }
-            | userinfix ',' Userinfixes { $1:$3 }
+UserInfixes :: { [String] }
+UserInfixes : UserInfix { [$1] }
+            | UserInfix ',' UserInfixes { $1:$3 }
+
+-- - is an annoying special case so we can have prefix negation.
+
+UserInfix :: { String }
+UserInfix : userinfix { $1 }
+          | '-' { "-" }
 
 FixDec :: { Fixity }
 FixDec : infixl { LeftAssoc }
@@ -264,7 +270,7 @@ DataOpt : noelim { NoElim }
 
 Name :: { Id }
 Name : name { $1 }
-     | '(' userinfix ')' { useropFn $2 }
+     | '(' UserInfix ')' { useropFn $2 }
 
 SimpleAppTerm :: { RawTerm }
 SimpleAppTerm : SimpleAppTerm File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
@@ -323,7 +329,7 @@ ImplicitTerm : brackname File Line { ($1, RVar $2 $3 $1) }
 InfixTerm :: { RawTerm }
 InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst (Num 0)) $2 }
 --          | Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
---          | Term '-' Term File Line { RInfix $4 $5  Minus $1 $3 }
+          | Term '-' Term File Line { RUserInfix $4 $5 False "-" $1 $3 }
 --          | Term '*' Term File Line { RInfix $4 $5  Times $1 $3 }
 --          | Term '/' Term File Line { RInfix $4 $5  Divide $1 $3 }
 --          | Term and Term File Line { RInfix $4 $5  OpAnd $1 $3 }

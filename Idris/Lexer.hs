@@ -275,7 +275,7 @@ lexVar cont cs =
 lexOp cont cs = case span isOpChar cs of
                    (":",rest) -> cont TokenColon rest
 --                   ("+",rest) -> cont TokenPlus rest
---                   ("-",rest) -> cont TokenMinus rest
+                   ("-",rest) -> cont TokenMinus rest
 --                   ("*",rest) -> cont TokenTimes rest
 --                   ("/",rest) -> cont TokenDivide rest
                    ("=",rest) -> cont TokenEquals rest

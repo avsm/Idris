@@ -13,6 +13,7 @@
 > import Char
 > import Control.Monad
 > import List
+> import Debug.Trace
 
 > import Idris.AbsSyntax
 > import Idris.MakeTerm
