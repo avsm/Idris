@@ -86,6 +86,8 @@ data Token
       | TokenOCB
       | TokenCCB
       | TokenHashOB
+      | TokenLPair
+      | TokenRPair
       | TokenOSB
       | TokenCSB
       | TokenConcat
@@ -283,12 +285,14 @@ lexOp cont cs = case span isOpChar cs of
 --                   ("/",rest) -> cont TokenDivide rest
                    ("=",rest) -> cont TokenEquals rest
 --                   ("==",rest) -> cont TokenEQ rest
---                   (">",rest) -> cont TokenGT rest
---                   ("<",rest) -> cont TokenLT rest
+                   (">",rest) -> cont TokenGT rest
+                   ("<",rest) -> cont TokenLT rest
 --                   (">=",rest) -> cont TokenGE rest
 --                   ("<=",rest) -> cont TokenLE rest
 --                   ("++",rest) -> cont TokenConcat rest
 --                   ("&&",rest) -> cont TokenAnd rest
+                   ("<<",rest) -> cont TokenLPair rest
+                   (">>",rest) -> cont TokenRPair rest
                    ("&",rest) -> cont TokenTuple rest
 --                   ("||",rest) -> cont TokenOr rest
                    ("...",rest) -> cont TokenEllipsis rest

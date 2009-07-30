@@ -120,6 +120,8 @@ the system to insert a hole for a proof that turns it into the right type.
 >         getClauses parent rds fwds n t fl clauses ((FunClause pat withs ret fl'):ds)
 >             | Just (f,l) <- isnm n (getFn pat)
 >                = getClauses parent rds fwds n t fl ((n, RawClause (mkApp f l pat withs) ret):clauses) ds
+>         getClauses parent rds fwds n t fl clauses ((FunClauseP RPlaceholder [with] ret mv):ds)
+>             = getClauses parent rds fwds n t fl clauses ((FunClauseP parent [with] ret mv):ds)
 >         getClauses parent rds fwds n t fl clauses ((FunClauseP pat withs ret mv):ds)
 >             | Just (f,l) <- isnm n (getFn pat)
 >                 = getClauses parent rds fwds n t fl 

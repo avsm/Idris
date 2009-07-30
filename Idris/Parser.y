@@ -46,6 +46,8 @@ import Debug.Trace
       '}'             { TokenCCB }
       '['             { TokenOSB }
       ']'             { TokenCSB }
+      lpair           { TokenLPair }
+      rpair           { TokenRPair }
       '~'             { TokenTilde }
       '+'             { TokenPlus }
       '-'             { TokenMinus }
@@ -146,7 +148,7 @@ import Debug.Trace
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname lazy
-          '[' '~'
+          '[' '~' lpair PAIR
 %left APP
 
 
@@ -185,7 +187,9 @@ Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
          | DefTerm WithTerms '=' Term Flags ';' File Line 
               { FunClause (mkDef $7 $8 $1) $2 $4 $5 }
          | '|' SimpleAppTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
-         | '|' SimpleAppTerm with NoAppTerm '{' Functions '}'
+         | '|' SimpleAppTerm mightbe Term ';' '[' Name ']' 
+              { FunClauseP RPlaceholder [$2] $4 $7 }
+         | '|' SimpleAppTerm with Term '{' Functions '}'
               { WithClause RPlaceholder [$2] $4 $6 }
 
 WithTerms :: { [RawTerm] }
@@ -220,11 +224,13 @@ UserInfixes :: { [String] }
 UserInfixes : UserInfix { [$1] }
             | UserInfix ',' UserInfixes { $1:$3 }
 
--- - is an annoying special case so we can have prefix negation.
+-- some annoying special cases so we can have operators with other meanings.
 
 UserInfix :: { String }
 UserInfix : userinfix { $1 }
           | '-' { "-" }
+          | '<' { "<" }
+          | '>' { ">" }
 
 FixDec :: { Fixity }
 FixDec : infixl { LeftAssoc }
@@ -340,9 +346,9 @@ InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst (Num 0)) $
 --          | Term or Term File Line { RInfix $4 $5  OpOr $1 $3 }
 --          | Term concat Term File Line { RInfix $4 $5  Concat $1 $3 }
 --          | Term eq Term File Line { RInfix $4 $5  OpEq $1 $3 }
---          | Term '<' Term File Line { RInfix $4 $5  OpLT $1 $3 }
+          | Term '<' Term File Line { RUserInfix $4 $5 False "<" $1 $3 }
 --          | Term le Term File Line { RInfix $4 $5  OpLEq $1 $3 }
---          | Term '>' Term File Line { RInfix $4 $5  OpGT $1 $3 }
+          | Term '>' Term File Line { RUserInfix $4 $5 False ">" $1 $3 }
 --          | Term ge Term File Line { RInfix $4 $5  OpGEq $1 $3 }
           | UserInfixTerm { $1 }
           | NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
@@ -380,7 +386,7 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
          | SigmaType { $1 }
 
 SigmaType :: { RawTerm }
-SigmaType : '[' Name MaybeType '|' TypeTerm ']' File Line 
+SigmaType : '(' Name MaybeType '|' TypeTerm ')' File Line 
                   { sigDesugar $7 $8 ($2, $3) $5 }
 TypeList :: { [RawTerm] }
          : TypeTerm '&' TypeTerm { $1:$3:[] }
@@ -403,8 +409,10 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
 --          | '[' TermList ']' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Exists")) $2 }
 --          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
           | SigmaType { $1 }
-          | '~' NoAppTerm File Line 
-                { mkApp $3 $4 (RVar $3 $4 (UN "Exists")) [$2] }
+          | lpair Term ',' Term rpair File Line %prec PAIR
+                { RApp $6 $7 (RAppImp $6 $7 (UN "a") (RVar $6 $7 (UN "Exists")) $2) $4 }
+          | lpair Term rpair File Line %prec PAIR
+                { RApp $4 $5 (RVar $4 $5 (UN "Exists")) $2 }
 
 TermList :: { [RawTerm] }
          : Term ',' Term { $1:$3:[] }
