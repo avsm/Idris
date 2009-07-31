@@ -191,9 +191,15 @@ Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
               { FunClauseP RPlaceholder [$2] $4 $7 }
          | '|' SimpleAppTerm with Term '{' Functions '}'
               { WithClause RPlaceholder [$2] $4 $6 }
+         | '|' '(' Term ')' '=' Term ';' { FunClause RPlaceholder [$3] $6 [] }
+         | '|' '(' Term ')' mightbe Term ';' '[' Name ']' 
+              { FunClauseP RPlaceholder [$3] $6 $9 }
+         | '|' '(' Term ')' with Term '{' Functions '}'
+              { WithClause RPlaceholder [$3] $6 $8 }
 
 WithTerms :: { [RawTerm] }
 WithTerms : '|' SimpleAppTerm WithTerms { $2:$3 }
+          | '|' '(' Term ')' WithTerms { $3:$5 }
           | { [] }
 
 Functions :: { [ParseDecl] }
@@ -288,6 +294,8 @@ SimpleAppTerm : SimpleAppTerm File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 
               | Name File Line { RVar $2 $3 $1 }
               | Constant { RConst $1 }
               | '_' { RPlaceholder }
+              | empty File Line { RVar $2 $3 (UN "__Empty") }
+              | unit File Line { RVar $2 $3 (UN "__Unit") }
 
 Term :: { RawTerm }
 Term : NoAppTerm { $1 }
