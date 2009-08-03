@@ -186,21 +186,21 @@ Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
               { FunClauseP (mkDef $9 $10 $1) $2 $4 $7 }
          | DefTerm WithTerms '=' Term Flags ';' File Line 
               { FunClause (mkDef $7 $8 $1) $2 $4 $5 }
-         | '|' SimpleAppTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
-         | '|' SimpleAppTerm mightbe Term ';' '[' Name ']' 
+         | '|' WithTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
+         | '|' WithTerm mightbe Term ';' '[' Name ']' 
               { FunClauseP RPlaceholder [$2] $4 $7 }
-         | '|' SimpleAppTerm with Term '{' Functions '}'
+         | '|' WithTerm with Term '{' Functions '}'
               { WithClause RPlaceholder [$2] $4 $6 }
-         | '|' '(' Term ')' '=' Term ';' { FunClause RPlaceholder [$3] $6 [] }
-         | '|' '(' Term ')' mightbe Term ';' '[' Name ']' 
-              { FunClauseP RPlaceholder [$3] $6 $9 }
-         | '|' '(' Term ')' with Term '{' Functions '}'
-              { WithClause RPlaceholder [$3] $6 $8 }
 
 WithTerms :: { [RawTerm] }
-WithTerms : '|' SimpleAppTerm WithTerms { $2:$3 }
+WithTerms : '|' WithTerm WithTerms { $2:$3 }
           | '|' '(' Term ')' WithTerms { $3:$5 }
           | { [] }
+
+WithTerm :: { RawTerm }
+WithTerm : SimpleAppTerm { $1 }
+         | '(' Term ')' { $2 }
+         | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair")) $2 }
 
 Functions :: { [ParseDecl] }
 Functions : Function Functions { $1:$2 }
