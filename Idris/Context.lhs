@@ -5,12 +5,13 @@
 > import qualified Data.Map as Map
 > import Char
 
-> data Id = UN String | MN String Int
+> data Id = UN String | MN String Int | NS Id Id
 >    deriving (Eq, Ord)
 
 > instance Show Id where
 >     show (UN s) = s
 >     show (MN s i) = "__" ++ s ++ "_" ++ show i
+>     show (NS ns n) = show ns ++ "." ++ show n
 
 > type Dict k v = Map.Map k v
 

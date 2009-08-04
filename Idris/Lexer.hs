@@ -71,6 +71,7 @@ data Token
       | TokenInfix
       | TokenInfixL
       | TokenInfixR
+      | TokenParams
       | TokenUsing
       | TokenNoElim
       | TokenCollapsible
@@ -247,6 +248,7 @@ lexVar cont cs =
       ("proof",rest) -> cont TokenProof rest
       ("data",rest) -> cont TokenDataType rest
       ("using",rest) -> cont TokenUsing rest
+      ("params",rest) -> cont TokenParams rest
       ("noElim",rest) -> cont TokenNoElim rest
       ("collapsible",rest) -> cont TokenCollapsible rest
       ("where",rest) -> cont TokenWhere rest

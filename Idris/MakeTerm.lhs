@@ -12,7 +12,7 @@
 Work out how many implicit arguments we need, then translate our definition
 into an ivor definition, with all the necessary placeholders added.
 
-> makeIvorFun ::  [(Id, RawTerm)] -> UndoInfo -> UserOps ->
+> makeIvorFun ::  Implicit -> UndoInfo -> UserOps ->
 >                 Ctxt IvorFun -> Decl -> Function -> [CGFlag] -> IvorFun
 
 > makeIvorFun using ui uo ctxt decl (Function n ty clauses file line) flags
@@ -40,17 +40,17 @@ into an ivor definition, with all the necessary placeholders added.
 >                                PWithClause vpats vscr vdef
 
 > makeIvorFuns :: Ctxt IvorFun -> [Decl] -> UserOps -> Ctxt IvorFun
-> makeIvorFuns is defs uo = mif is [] [] defDo uo defs
+> makeIvorFuns is defs uo = mif is [] (Imp [] [] []) defDo uo defs
 
 > mif :: Ctxt IvorFun -> -- init
 >        Ctxt IvorFun -> -- new
->        [(Id, RawTerm)] -> -- implicits
+>        Implicit -> -- implicits
 >        UndoInfo -> -- do using bind, return
 >        UserOps -> -- Users operators
 >        [Decl] -> Ctxt IvorFun
 > mif ctxt acc using ui uo [] = acc
 > mif ctxt acc using' ui uo ((Using using decls):ds)
->         = mif ctxt (mif ctxt acc (using'++using) ui uo decls) using' ui uo ds
+>         = mif ctxt (mif ctxt acc (addUsing using' (Imp using [] [])) ui uo decls) using' ui uo ds
 > mif ctxt acc using ui uo ((DoUsing bind ret decls):ds)
 >         = mif ctxt (mif ctxt acc using ui' uo decls) using ui uo ds
 >    where ui' = let bimpl = case ctxtLookup acc bind of
@@ -105,7 +105,7 @@ error "Not implemented"
 Add an entry for the type id and for each of the constructors.
 
 > addDataEntries :: Ctxt IvorFun -> Ctxt IvorFun -> Decl ->
->                   Datatype -> [(Id, RawTerm)] -> -- implicits
+>                   Datatype -> Implicit ->
 >                   UndoInfo -> UserOps ->
 >                   [Decl] -> 
 >                   Ctxt IvorFun
@@ -120,7 +120,7 @@ Add an entry for the type id and for each of the constructors.
 >         tytm = Annotation (FileLoc f l) $ makeIvorTerm ui uo tid (ctxt++acc) tyraw
 >         acctmp = addEntry (ctxt++acc) tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                   undefined decl [] [])
->         ddef = makeInductive acctmp tid (getBinders tytm []) cons (using++u) ui uo []
+>         ddef = makeInductive acctmp tid (getBinders tytm []) cons (addUsing using (Imp u [] [])) ui uo []
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                              (DataDef ddef (not (elem NoElim e))) decl [] []) in
 >         addConEntries ctxt acc' cons u using ui uo ds f l
@@ -128,7 +128,7 @@ Add an entry for the type id and for each of the constructors.
      Inductive (toIvorName tid) [] 
 
 > makeInductive :: Ctxt IvorFun -> Id -> ([(Name, ViewTerm)], ViewTerm) ->
->                  [(Id,RawTerm)] -> [(Id, RawTerm)] ->
+>                  [(Id,RawTerm)] -> Implicit ->
 >                  UndoInfo -> UserOps -> [(Name, ViewTerm)] -> Inductive
 > makeInductive ctxt tid (indices, tty) [] using ui uo acc
 >        = Inductive (toIvorName tid) [] indices tty (reverse acc)
@@ -197,13 +197,15 @@ n is a parameter
 >         remAllPs newps (Annotation _ n) = remAllPs newps n
 >         remAllPs newps x = x
 
-> addConEntries :: Ctxt IvorFun -> Ctxt IvorFun -> [(Id,RawTerm)] -> 
->                  [(Id,RawTerm)] -> [(Id,RawTerm)] -> UndoInfo -> UserOps ->
+> addConEntries :: Ctxt IvorFun -> Ctxt IvorFun -> 
+>                  [(Id,RawTerm)] -> -- constructors
+>                  [(Id,RawTerm)] -> -- datatype local 'using'
+>                  Implicit -> UndoInfo -> UserOps -> -- global 'using'
 >                  [Decl] -> String -> Int ->
 >                  Ctxt IvorFun
 > addConEntries ctxt acc [] u using ui uo ds f l = mif ctxt acc using ui uo ds
 > addConEntries ctxt acc ((cid, ty):cs) u using ui uo ds f l
->     = let (tyraw, imp) = addImplWith (u++using) (ctxt++acc) ty
+>     = let (tyraw, imp) = addImplWith (addUsing (Imp u [] []) using) (ctxt++acc) ty
 >           tytm = Annotation (FileLoc f l) $ makeIvorTerm ui uo cid (ctxt++acc) tyraw
 >           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon Constructor [] (getLazy ty)) in
 >           addConEntries ctxt acc' cs u using ui uo ds f l

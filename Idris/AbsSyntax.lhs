@@ -76,6 +76,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >                | WithClause RawTerm [RawTerm] RawTerm [ParseDecl]
 >                | ProofScript Id [ITactic]
 >                | PUsing [(Id,RawTerm)] [ParseDecl]
+>                | PParams [(Id, RawTerm)] [ParseDecl]
 >                | PDoUsing (Id, Id) [ParseDecl]
 >                | PSyntax Id [Id] RawTerm 
 >    deriving Show
@@ -408,6 +409,7 @@ implicit arguments each function has.
 >       ivorFName :: Name,
 >       ivorFType :: (Maybe ViewTerm),
 >       implicitArgs :: Int,
+>       -- paramArgs :: Int,
 >       ivorDef :: IvorDef,
 >       rawDecl :: Decl, -- handy to keep around for display
 >       funFlags :: [CGFlag],
@@ -475,10 +477,10 @@ but not P. [[We also don't want names which appear in the return type, since
 they'll never be inferrable at the call site. (Not done this. Not convinced.) ]]
 
 > addImpl :: Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
-> addImpl = addImpl' True []
+> addImpl = addImpl' True [] []
 
-> addImplWith :: [(Id, RawTerm)] -> Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
-> addImplWith = addImpl' True
+> addImplWith :: Implicit -> Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
+> addImplWith (Imp using params paramnames) = addImpl' True using params
 
 Bool says whether to pi bind unknown names
 Also take a mapping of names to types ('using') --- if any name we need to 
@@ -486,19 +488,22 @@ bind is  in the list, use the given type. Also sort the resulting bindings
 so that they are in the same order as in 'using', and appear after any
 other introduced bindings.
 
+'params' is the arguments that the current group of definitions is parameterised over.
+These should be added as *explicit* arguments.
+
 Need to do it twice, in case the first pass added names in the indices
 (from using)
 
-> addImpl' :: Bool -> [(Id, RawTerm)] -> Ctxt IvorFun -> 
+> addImpl' :: Bool -> [(Id, RawTerm)] -> [(Id, RawTerm)] -> Ctxt IvorFun -> 
 >             RawTerm -> (RawTerm, Int) 
-> addImpl' pi using ctxt raw 
+> addImpl' pi using params ctxt raw 
 >             = let (newargs, totimp) = execState (addImplB [] raw True) ([],0) in
 >                   if pi then 
 >                      let added = pibind (mknew newargs) raw in
 >                         if null using
->                             then (added, totimp)
->                             else let (added', totimp') = addImpl' True [] ctxt added in
->                                   (added', totimp')
+>                           then (added, totimp)
+>                           else let (added', totimp') = addImpl' True [] params ctxt added in
+>                                 (added', totimp')
 >                      else (raw, totimp)
 >     where addImplB :: [Id] -> RawTerm -> Bool -> State ([Id], Int) ()
 >           addImplB env (RVar f l i) argpos
@@ -571,6 +576,20 @@ ready for typechecking
 
 > data UndoInfo = UI Id Int -- bind, bind implicit
 >                    Id Int -- return, return implicit
+
+> data ModInfo = MI Id -- namespace
+>                   [(Id, RawTerm)] -- parameters
+
+Implicit argument information; current using clause and parameters. We also need to know 
+the functions in the current block, and which arguments to add automatically, because the
+programmer doesn't have to write them down inside the param block.
+
+> data Implicit = Imp [(Id, RawTerm)] -- 'using'
+>                     [(Id, RawTerm)] -- extra params
+>                     [(Id, [Id])] -- functions and added parameters in the current block
+
+> addUsing :: Implicit -> Implicit -> Implicit
+> addUsing (Imp a b pns) (Imp a' b' pns') = Imp (a++a') (b++b') (pns++pns')
 
 > defDo = UI (UN "bind") 2
 >            (UN "return") 1 -- IO monad
@@ -653,6 +672,7 @@ Convert a raw term to an ivor term, adding placeholders
 >                                    toIvor ui n expraw
 
 Add placeholders so that implicit arguments can be filled in. Also desugar user infix apps.
+TODO: Add parameters for names in current parameter block.
 
 > addPlaceholders :: Ctxt IvorFun -> UserOps -> RawTerm -> RawTerm
 > addPlaceholders ctxt uo tm = ap [] tm

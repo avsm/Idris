@@ -85,6 +85,7 @@ import Debug.Trace
       infixl          { TokenInfixL }
       infixr          { TokenInfixR }
       using           { TokenUsing }
+      params          { TokenParams }
       noelim          { TokenNoElim }
       collapsible     { TokenCollapsible }
       where           { TokenWhere }
@@ -172,6 +173,7 @@ Declaration: Function { $1 }
            | Latex { RealDecl $1 }
            | Using '{' Program '}' { PUsing $1 $3 }
            | DoUsing '{' Program '}' { PDoUsing $1 $3 } 
+           | Params '{' Program '}' { PParams $1 $3 }
            | syntax Name NamesS '=' Term ';' { PSyntax $2 $3 $5 }
            | cinclude string { RealDecl (CInclude $2) }
            | clib string { RealDecl (CLib $2) }
@@ -194,7 +196,6 @@ Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
 
 WithTerms :: { [RawTerm] }
 WithTerms : '|' WithTerm WithTerms { $2:$3 }
-          | '|' '(' Term ')' WithTerms { $3:$5 }
           | { [] }
 
 WithTerm :: { RawTerm }
@@ -475,7 +476,11 @@ Using :: { [(Id, RawTerm)] }
 
 DoUsing ::{ (Id,Id) }
         : do using '(' Name ',' Name ')' { ($4,$6) }
+
         
+Params :: { [(Id, RawTerm)] }
+       : params '(' UseList ')' { $3 }
+
 UseList :: { [(Id, RawTerm)] }
         : Name ':' Type { [($1, $3)] }
         | Name ':' Type ',' UseList { ($1,$3):$5 }
