@@ -493,10 +493,10 @@ but not P. [[We also don't want names which appear in the return type, since
 they'll never be inferrable at the call site. (Not done this. Not convinced.) ]]
 
 > addImpl :: Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
-> addImpl = addImpl' True [] []
+> addImpl = addImpl' True [] [] Nothing
 
 > addImplWith :: Implicit -> Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
-> addImplWith (Imp using params paramnames) = addImpl' True using params
+> addImplWith (Imp using params paramnames ns) = addImpl' True using params ns
 
 Bool says whether to pi bind unknown names
 Also take a mapping of names to types ('using') --- if any name we need to 
@@ -510,22 +510,22 @@ These should be added as *explicit* arguments.
 Need to do it twice, in case the first pass added names in the indices
 (from using)
 
-> addImpl' :: Bool -> [(Id, RawTerm)] -> [(Id, RawTerm)] -> Ctxt IvorFun -> 
+> addImpl' :: Bool -> [(Id, RawTerm)] -> [(Id, RawTerm)] -> Maybe Id -> Ctxt IvorFun -> 
 >             RawTerm -> (RawTerm, Int) 
-> addImpl' pi using params ctxt raw' 
+> addImpl' pi using params namespace ctxt raw' 
 >             = let raw = parambind params raw'
 >                   (newargs, totimp) = execState (addImplB [] raw True) ([],0) in
 >                   if pi then 
 >                      let added = pibind Im (mknew newargs) raw in
 >                         if null using
 >                           then (added, totimp)
->                           else let (added', totimp') = addImpl' True [] params ctxt added in
+>                           else let (added', totimp') = addImpl' True [] params namespace ctxt added in
 >                                 (added', totimp')
 >                      else (raw, totimp)
 >     where addImplB :: [Id] -> RawTerm -> Bool -> State ([Id], Int) ()
 >           addImplB env (RVar f l i) argpos
 >               | i `elem` env = return ()
->               | Just _ <- ctxtLookup ctxt i = return ()
+>               | Right _ <- ctxtLookup ctxt namespace i = return ()
 
 Only do it in argument position
 
@@ -608,22 +608,24 @@ programmer doesn't have to write them down inside the param block.
 
 > data Implicit = Imp { impUsing :: [(Id, RawTerm)], -- 'using'
 >                       params :: [(Id, RawTerm)], -- extra params
->                       paramNames :: [(Id, [Id])] -- functions and params in the current block
+>                       paramNames :: [(Id, [Id])], -- functions and params in the current block
+>                       thisNamespace :: Maybe Id
 >                     }
 
-> noImplicit = Imp [] [] [] 
+> noImplicit = Imp [] [] [] Nothing
 
 > addUsing :: Implicit -> Implicit -> Implicit
-> addUsing (Imp a b pns) (Imp a' b' pns') = Imp (a++a') (b++b') (pns++pns')
+> addUsing (Imp a b pns ns) (Imp a' b' pns' ns') 
+>              = Imp (a++a') (b++b') (pns++pns') (mplus ns ns')
 
 > addParams :: Implicit -> [(Id, RawTerm)] -> Implicit
-> addParams (Imp a b pns) newps = Imp a (b++newps) pns
+> addParams (Imp a b pns ns) newps = Imp a (b++newps) pns ns
 
 > addParamName :: Implicit -> Id -> Implicit
-> addParamName imp@(Imp u ps ns) n
->     = case lookup n ns of
+> addParamName imp@(Imp u ps pns ns) n
+>     = case lookup n pns of
 >          Just _ -> imp
->          Nothing -> Imp u ps ((n, (map fst ps)):ns)
+>          Nothing -> Imp u ps ((n, (map fst ps)):pns) ns
 
 > defDo = UI (UN "bind") 2
 >            (UN "return") 1 -- IO monad
@@ -714,16 +716,19 @@ FIXME: I think this'll fail if names are shadowed.
 >     -- and don't add placeholders for them. Reset the counter if we get
 >     -- out of an application
 >     where ap ex (RVar f l n)
->               = case ctxtLookup ctxt n of
->                   Just (IvorFun _ (Just ty) imp _ _ _ _) -> 
+>               = case ctxtLookupName ctxt (thisNamespace using) n of
+>                   Right (IvorFun _ (Just ty) imp _ _ _ _, fulln) -> 
 >                     let pargs = case lookup n pnames of
 >                                   Nothing -> []
 >                                   Just ids -> map (RVar f l) ids in
->                     mkApp f l (RVar f l n) 
+>                     mkApp f l (RVar f l fulln)
 >                               ((mkImplicitArgs 
 >                                (map fst (fst (getBinders ty []))) imp ex) ++ pargs)
->                   _ -> RVar f l n
->           ap ex (RExpVar f l n) = RVar f l n
+>                   _ -> RVar f l n -- FIXME: report error if ambiguous name
+>           ap ex (RExpVar f l n)
+>               = case ctxtLookupName ctxt (thisNamespace using) n of
+>                   Right (IvorFun _ (Just ty) imp _ _ _ _, fulln) -> RVar f l fulln
+>                   _ -> RVar f l n -- FIXME: report error if ambiguous name
 >           ap ex (RAppImp file line n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
 >           ap ex (RApp file line f a) = (RApp file line (ap ex f) (ap [] a))
 >           ap ex (RBind n (Pi p l ty) sc)
@@ -785,7 +790,7 @@ in our list of explicit names to add, add it.
 >               return $ mkApp file line (RVar file line bind) 
 >                          ((take bindimpl (repeat RPlaceholder)) ++ [exp, k])
 
-> testCtxt = addEntry newCtxt (UN "Vect") undefined
+> testCtxt = addEntry newCtxt Nothing (UN "Vect") undefined
 
 > dump :: Ctxt IvorFun -> String
 > dump ctxt = concat $ map dumpFn (ctxtAlist ctxt)
@@ -828,10 +833,10 @@ Now built-in operators
 >     unI (Name _ v) [x,y]
 >         | Just op <- getOp v allOps = RInfix "[val]" 0 op x y
 >     unI (Name _ v) args 
->        = case ctxtLookup ctxt (mkRName v) of
->            Just fdata -> mkImpApp "[val]" 0 (implicitArgs fdata) 
+>        = case ctxtLookup ctxt Nothing (mkRName v) of
+>            Right fdata -> mkImpApp "[val]" 0 (implicitArgs fdata) 
 >                                   (argNames (ivorFType fdata)) (RVar "[val]" 0 (mkRName v)) args
->            Nothing -> unwind (RVar "[val]" 0 (mkRName v)) args
+>            _ -> unwind (RVar "[val]" 0 (mkRName v)) args
 >     unI (App f a) args = unI f ((unI a []):args)
 >     unI (Lambda v ty sc) args = unwind (RBind (mkRName v) (Lam (unI ty [])) (unI sc [])) args
 >     unI (Forall v ty sc) args = unwind (RBind (mkRName v) (Pi Ex Eager (unI ty [])) (unI sc [])) args

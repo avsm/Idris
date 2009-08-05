@@ -1,4 +1,4 @@
-> module Idris.Context(Ctxt, Id(..), addEntry, ctxtLookup,
+> module Idris.Context(Ctxt, Id(..), addEntry, ctxtLookup, ctxtLookupName,
 >                      ctxtAlist, newCtxt) where
 
 > import Data.List
@@ -27,13 +27,26 @@ Contexts containing names and type information A context is just a map
 from a to b, but we'll keep it abstract in case we need or want
 something better later
 
+Contexts are divided into namespaces. Entries are added either to a defined namespace, or
+the global namespace. Lookup will look for names in the current namespace then the global
+namespace, and report an error on ambiguous names.
+
 > type Ctxt a = [(Id, a)]
 
-> addEntry :: Ctxt a -> Id -> a -> Ctxt a
-> addEntry ctxt k v = (k,v):ctxt
+> type Err = String
 
-> ctxtLookup :: Ctxt a -> Id -> Maybe a
-> ctxtLookup ctxt k = lookup k ctxt
+> addEntry :: Ctxt a -> Maybe Id -> Id -> a -> Ctxt a
+> addEntry ctxt using k v = (k,v):ctxt
+
+> ctxtLookupName :: Ctxt a -> Maybe Id -> Id -> Either Err (a, Id)
+> ctxtLookupName ctxt namespace k = case lookup k ctxt of
+>                                 Just x -> Right (x, k)
+>                                 Nothing -> Left "No such var"
+
+> ctxtLookup :: Ctxt a -> Maybe Id -> Id -> Either Err a
+> ctxtLookup ctxt namespace k = case ctxtLookupName ctxt namespace k of
+>                                 Right (x, k) -> Right x
+>                                 Left err -> Left err
 
 > ctxtAlist :: Ctxt a -> [(Id,a)]
 > ctxtAlist = id

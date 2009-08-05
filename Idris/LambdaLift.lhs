@@ -248,20 +248,20 @@ Infix operators
 
 > scapply ist (SVar n) args
 >         = let raw = idris_context ist in
->           case ctxtLookup raw (fromIvorName n) of
->             Nothing -> SApp (SVar n) args
->             Just ifn -> let ia = implicitArgs ifn
->                             lz = lazyArgs ifn 
->                             args' = makeLazy (map (ia+) lz) args in
->                             SApp (SVar n) args'
+>           case ctxtLookup raw Nothing (fromIvorName n) of
+>             Left _ -> SApp (SVar n) args
+>             Right ifn -> let ia = implicitArgs ifn
+>                              lz = lazyArgs ifn 
+>                              args' = makeLazy (map (ia+) lz) args in
+>                              SApp (SVar n) args'
 > scapply ist (SCon n i) args
 >         = let raw = idris_context ist in
->           case ctxtLookup raw (fromIvorName n) of
->             Nothing -> SApp (SCon n i) args
->             Just ifn -> let ia = implicitArgs ifn
->                             lz = lazyArgs ifn 
->                             args' = makeLazy (map (ia+) lz) args in
->                             SApp (SCon n i) args'
+>           case ctxtLookup raw Nothing (fromIvorName n) of
+>             Left _ -> SApp (SCon n i) args
+>             Right ifn -> let ia = implicitArgs ifn
+>                              lz = lazyArgs ifn 
+>                              args' = makeLazy (map (ia+) lz) args in
+>                              SApp (SCon n i) args'
 
 Everything else
 

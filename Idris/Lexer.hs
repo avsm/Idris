@@ -118,6 +118,9 @@ data Token
       | TokenEllipsis
       | TokenLambda
       | TokenInclude
+      | TokenModule
+      | TokenNamespace
+      | TokenImport
       | TokenDo
       | TokenIf
       | TokenThen
@@ -249,6 +252,9 @@ lexVar cont cs =
       ("data",rest) -> cont TokenDataType rest
       ("using",rest) -> cont TokenUsing rest
       ("params",rest) -> cont TokenParams rest
+      ("namespace",rest) -> cont TokenNamespace rest
+      ("module",rest) -> cont TokenModule rest
+      ("import",rest) -> cont TokenImport rest
       ("noElim",rest) -> cont TokenNoElim rest
       ("collapsible",rest) -> cont TokenCollapsible rest
       ("where",rest) -> cont TokenWhere rest
