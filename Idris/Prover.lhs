@@ -116,7 +116,7 @@ undone bits, after a Qed
 >     at ctxt (RunTactic tm) = runtac (ivor tm) defaultGoal ctxt
 >     at ctxt Qed = qed ctxt
 
->     ivor t = makeIvorTerm defDo uo (UN "__prf") raw t
+>     ivor t = makeIvorTerm noImplicit defDo uo (UN "__prf") raw t
 
 > eqN = Name Unknown $ name "Eq"
 > replN = Name Unknown $ toIvorName (UN "__eq_repl")
@@ -247,7 +247,8 @@ x: a:A -> b:B -> c:C -> Tactic, send x a b c to runtac below.
 >    gd <- goalData ctxt True goal
 >    let idgoal = unIvor raw ((view.goalType) gd)
 >    let args = getExplicitArgs idgoal
->    let dapp = makeIvorTerm defDo uo (UN "__prf") raw (mkApp "[proof]" 0 dproc args)
+>    let dapp = makeIvorTerm noImplicit defDo uo (UN "__prf") raw 
+>                            (mkApp "[proof]" 0 dproc args)
 >    (isItJust dapp >|> runtac dapp) goal ctxt
 
 Run a tactic computed by mkTac

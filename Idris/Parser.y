@@ -267,7 +267,7 @@ Datatype : data DataOpts Name DefinedData File Line
 DefinedData :: { Either RawTerm ((RawTerm, [(Id, RawTerm)]), [ConParse]) }
 DefinedData : DType Constructors ';' { Right ($1,$2) }
             | ':' Type ';' { Left $2 }
-            | ';' { Left (RConst TYPE) }
+            | ';' File Line { Left (RConst $2 $3 TYPE) }
 
 -- Currently just whether to generate an elim rule, this'll need to be
 -- a list of options if we ever expand this.
@@ -293,7 +293,7 @@ SimpleAppTerm : SimpleAppTerm File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 
               | SimpleAppTerm ImplicitTerm '}' File Line %prec APP 
                    { RAppImp $4 $5 (fst $2) $1 (snd $2) }
               | Name File Line { RVar $2 $3 $1 }
-              | Constant { RConst $1 }
+              | Constant File Line { RConst $2 $3 $1 }
               | '_' { RPlaceholder }
               | empty File Line { RVar $2 $3 (UN "__Empty") }
               | unit File Line { RVar $2 $3 (UN "__Unit") }
@@ -345,7 +345,7 @@ ImplicitTerm : brackname File Line { ($1, RVar $2 $3 $1) }
              | brackname '=' Term { ($1, $3) }
 
 InfixTerm :: { RawTerm }
-InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst (Num 0)) $2 }
+InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst $3 $4 (Num 0)) $2 }
 --          | Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
           | Term '-' Term File Line { RUserInfix $4 $5 False "-" $1 $3 }
 --          | Term '*' Term File Line { RInfix $4 $5  Times $1 $3 }
@@ -408,7 +408,7 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
           | '!' Name File Line { RExpVar $3 $4 $2 }
 --          | '{' TypedBind '}' arrow NoAppTerm
 --                { doBind (Pi Im) $2 $5 }
-          | Constant { RConst $1 }
+          | Constant File Line { RConst $2 $3 $1 }
           | refl { RRefl }
           | empty File Line { RVar $2 $3 (UN "__Empty") }
           | unit File Line { RVar $2 $3 (UN "__Unit") }
@@ -467,8 +467,8 @@ Terms : { [] }
 
 DType :: { (RawTerm, [(Id, RawTerm)]) }
 DType : ':' Type Using where { ($2, $3) }
-      | '=' { (RConst TYPE, []) }
-      | VarList '=' { (mkTyParams $1, []) }
+      | '=' File Line { (RConst $2 $3 TYPE, []) }
+      | VarList '=' File Line { (mkTyParams $3 $4 $1, []) }
 
 Using :: { [(Id, RawTerm)] }
       : { [] }
@@ -583,9 +583,9 @@ mkTyApp file line n ty = mkApp file line (RVar file line n) (getTyArgs ty)
    where getTyArgs (RBind n _ t) = (RVar file line n):(getTyArgs t)
          getTyArgs x = []
 
-mkTyParams :: [Id] -> RawTerm
-mkTyParams [] = RConst TYPE
-mkTyParams (x:xs) = RBind x (Pi Ex Eager (RConst TYPE)) (mkTyParams xs)
+mkTyParams :: String -> Int -> [Id] -> RawTerm
+mkTyParams f l [] = RConst f l TYPE
+mkTyParams f l (x:xs) = RBind x (Pi Ex Eager (RConst f l TYPE)) (mkTyParams f l xs)
 
 mkDatatype :: String -> Int ->
               Id -> Either RawTerm ((RawTerm, [(Id, RawTerm)]), [ConParse]) -> 

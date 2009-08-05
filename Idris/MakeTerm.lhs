@@ -17,25 +17,25 @@ into an ivor definition, with all the necessary placeholders added.
 
 > makeIvorFun using ui uo ctxt decl (Function n ty clauses file line) flags
 >     = let (rty, imp) = addImplWith using ctxt ty
->           ity = makeIvorTerm ui uo n ctxt rty
+>           ity = makeIvorTerm using ui uo n ctxt rty
 >           extCtxt = addEntry ctxt n (IvorFun undefined (Just ity) 
 >                                       imp undefined decl flags (getLazy ty))
 >           pclauses = map (mkPat extCtxt imp) clauses in
 >       IvorFun (toIvorName n) (Just (Annotation (FileLoc file line) ity)) imp 
 >                   (PattDef (Patterns pclauses)) decl flags (getLazy ty)
 >   where mkPat ectx imp (id,(RawClause lhs rhs)) 
->               = let lhs' = addPlaceholders ectx uo lhs in
+>               = let lhs' = addPlaceholders ectx using uo lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
 >                          (fid, pats) ->
 >                            let vpats = map (toIvor ui n) pats
->                                vrhs = makeIvorTerm ui uo n ectx rhs in
+>                                vrhs = makeIvorTerm using ui uo n ectx rhs in
 >                                PClause vpats vrhs
 >         mkPat ectx imp (id,(RawWithClause lhs scr def))
->               = let lhs' = addPlaceholders ectx uo lhs in
+>               = let lhs' = addPlaceholders ectx using uo lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
 >                          (fid, pats) ->
 >                            let vpats = map (toIvor ui n) pats
->                                vscr = makeIvorTerm ui uo n ectx scr
+>                                vscr = makeIvorTerm using ui uo n ectx scr
 >                                vdef = Patterns $ map (mkPat ectx imp) (zip (repeat id) def) in
 >                                PWithClause vpats vscr vdef
 
@@ -51,6 +51,8 @@ into an ivor definition, with all the necessary placeholders added.
 > mif ctxt acc using ui uo [] = acc
 > mif ctxt acc using' ui uo ((Using using decls):ds)
 >         = mif ctxt (mif ctxt acc (addUsing using' (Imp using [] [])) ui uo decls) using' ui uo ds
+> mif ctxt acc using' ui uo ((Params newps decls):ds)
+>         = mif ctxt (mif ctxt acc (addParams using' newps) ui uo decls) using' ui uo ds
 > mif ctxt acc using ui uo ((DoUsing bind ret decls):ds)
 >         = mif ctxt (mif ctxt acc using ui' uo decls) using ui uo ds
 >    where ui' = let bimpl = case ctxtLookup acc bind of
@@ -60,22 +62,30 @@ into an ivor definition, with all the necessary placeholders added.
 >                              Just i -> implicitArgs i
 >                              _ -> 0
 >                     in UI bind bimpl ret rimpl
-> mif ctxt acc using ui uo (decl@(Fun f flags):ds) 
->         = let fn = makeIvorFun using ui uo (ctxt++acc) decl f flags in
+> mif ctxt acc using' ui uo (decl@(Fun f flags):ds) 
+>         = let using = addParamName using' (funId f)
+>               fn = makeIvorFun using ui uo (ctxt++acc) decl f flags in
 >               mif ctxt (addEntry acc (funId f) fn) using ui uo ds
-> mif ctxt acc using ui uo (decl@(Fwd n ty flags):ds) 
->      = let (rty, imp) = addImplWith using (ctxt++acc) ty
->            ity = makeIvorTerm ui uo n (ctxt++acc) rty in
+> mif ctxt acc using' ui uo (decl@(Fwd n ty flags):ds) 
+>      = let using = addParamName using' n
+>            (rty, imp) = addImplWith using (ctxt++acc) ty
+>            ity = makeIvorTerm using ui uo n (ctxt++acc) rty in
 >            mif ctxt (addEntry acc n (IvorFun (toIvorName n) (Just ity) 
 >                              imp Later decl flags (getLazy ty))) using ui uo ds
-> mif ctxt acc using ui uo (decl@(DataDecl d):ds) 
->      = addDataEntries ctxt acc decl d using ui uo ds -- will call mif on ds
+> mif ctxt acc using' ui uo (decl@(DataDecl d):ds) 
+>      = let using = addParamName using' (tyId d) in
+>            addDataEntries ctxt acc decl d using ui uo ds -- will call mif on ds
 > mif ctxt acc using ui uo (decl@(TermDef n tm flags):ds) 
+>     | null $ params using
 >         = let (itmraw, imp) = addImplWith using (ctxt++acc) tm
->               itm = makeIvorTerm ui uo n (ctxt++acc) itmraw in
+>               itm = makeIvorTerm using ui uo n (ctxt++acc) itmraw in
 >               mif ctxt (addEntry acc n 
 >                   (IvorFun (toIvorName n) Nothing imp 
 >                            (SimpleDef itm) decl flags [])) using ui uo ds
+>     | otherwise = let (f,l) = getFileLine tm in
+>                       mif ctxt (addEntry acc n (IvorProblem (f ++ ":" ++ show l ++ ":" ++
+>                                 show n ++ " needs a type declaration in a params block"))) 
+>                                 using ui uo ds
 > mif ctxt acc using ui uo (decl@(LatexDefs ls):ds) 
 >         = mif ctxt (addEntry acc (MN "latex" 0) 
 >              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui uo ds
@@ -111,13 +121,13 @@ Add an entry for the type id and for each of the constructors.
 >                   Ctxt IvorFun
 > addDataEntries ctxt acc decl (Latatype tid tty f l) using ui uo ds = 
 >     let (tyraw, imp) = addImplWith using (ctxt++acc) tty
->         tytm = Annotation (FileLoc f l) $ makeIvorTerm ui uo tid (ctxt++acc) tyraw 
+>         tytm = Annotation (FileLoc f l) $ makeIvorTerm using ui uo tid (ctxt++acc) tyraw 
 >         acc' = addEntry acc tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                  LataDef decl [] []) in
 >         mif ctxt acc' using ui uo ds
 > addDataEntries ctxt acc decl (Datatype tid tty cons u e f l) using ui uo ds = 
 >     let (tyraw, imp) = addImplWith using (ctxt++acc) tty
->         tytm = Annotation (FileLoc f l) $ makeIvorTerm ui uo tid (ctxt++acc) tyraw
+>         tytm = Annotation (FileLoc f l) $ makeIvorTerm using ui uo tid (ctxt++acc) tyraw
 >         acctmp = addEntry (ctxt++acc) tid (IvorFun (toIvorName tid) (Just tytm) imp 
 >                                   undefined decl [] [])
 >         ddef = makeInductive acctmp tid (getBinders tytm []) cons (addUsing using (Imp u [] [])) ui uo []
@@ -134,7 +144,7 @@ Add an entry for the type id and for each of the constructors.
 >        = Inductive (toIvorName tid) [] indices tty (reverse acc)
 > makeInductive ctxt cdec indices ((cid, cty):cs) using ui uo acc
 >        = let (tyraw, imp) = addImplWith using ctxt cty
->              tytm = makeIvorTerm ui uo cdec ctxt tyraw in
+>              tytm = makeIvorTerm using ui uo cdec ctxt tyraw in
 >              makeInductive ctxt cdec
 >                            indices cs using ui uo (((toIvorName cid),tytm):acc)
 
@@ -204,9 +214,10 @@ n is a parameter
 >                  [Decl] -> String -> Int ->
 >                  Ctxt IvorFun
 > addConEntries ctxt acc [] u using ui uo ds f l = mif ctxt acc using ui uo ds
-> addConEntries ctxt acc ((cid, ty):cs) u using ui uo ds f l
->     = let (tyraw, imp) = addImplWith (addUsing (Imp u [] []) using) (ctxt++acc) ty
->           tytm = Annotation (FileLoc f l) $ makeIvorTerm ui uo cid (ctxt++acc) tyraw
+> addConEntries ctxt acc ((cid, ty):cs) u using' ui uo ds f l
+>     = let using = addParamName using' cid
+>           (tyraw, imp) = addImplWith (addUsing (Imp u [] []) using) (ctxt++acc) ty
+>           tytm = Annotation (FileLoc f l) $ makeIvorTerm using ui uo cid (ctxt++acc) tyraw
 >           acc' = addEntry acc cid (IvorFun (toIvorName cid) (Just tytm) imp IDataCon Constructor [] (getLazy ty)) in
 >           addConEntries ctxt acc' cs u using ui uo ds f l
 
@@ -234,7 +245,7 @@ of things we need to define to complete the program (i.e. metavariables)
 > addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _) 
 >                = return ((ctxt, metas), (op, (assoc, prec)):uo)
 > addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
->     = trace ("Processing "++ show n ++ " " ++ show lazy) $ case def of
+>     = trace ("Processing "++ show n ++ " ") $ case def of
 >         PattDef ps -> -- trace (show ps) $
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ((ctxt, metas), uo)

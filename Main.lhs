@@ -230,7 +230,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >   where getTerm tm = do let parsed' = parseTerm tm
 >                         case parsed' of
 >                           Success parsed -> do
->                              let itm = makeIvorTerm defDo uo (UN "__main") raw parsed
+>                              let itm = makeIvorTerm noImplicit defDo uo (UN "__main") raw parsed
 >                              check ctxt itm
 >                           Failure err f l -> ttfail err
 
@@ -251,7 +251,7 @@ If it is an IO type, execute it, otherwise just eval it.
 > icheckType ivs uo ctxt tmin
 >         = case parseTerm tmin of 
 >               Success tm -> 
->                    do let itm = makeIvorTerm defDo uo (UN "__main") ivs tm
+>                    do let itm = makeIvorTerm noImplicit defDo uo (UN "__main") ivs tm
 >                       gtm <- ioTac $ check ctxt itm
 >                       putStrLn $ showImp False (unIvor ivs (viewType gtm))
 >               Failure err _ _ -> putStrLn err

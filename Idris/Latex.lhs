@@ -127,7 +127,7 @@ Main bit for terms
 >           = bracket p 2 $
 >             "\\LET:\\VV{" ++ show n ++ "}\\: = " ++ showP 10 val
 >                    ++ "\\:\\IN\\:" ++ showP 10 sc
->        showP p (RConst c) = latex ctxt defs c
+>        showP p (RConst _ _ c) = latex ctxt defs c
 >        showP p (RInfix _ _ op l r) = bracket p 5 $
 >                                      showP 4 l ++ show op ++ showP 4 r
 

@@ -41,6 +41,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | Prf Proof
 >           | LatexDefs [(Id,String)]
 >           | Using [(Id, RawTerm)] [Decl] -- default implicit args
+>           | Params [(Id, RawTerm)] [Decl] -- default implicit args
 >           | DoUsing Id Id [Decl] -- bind and return names
 >           | CLib String | CInclude String
 >           | Fixity String Fixity Int
@@ -105,6 +106,11 @@ the system to insert a hole for a proof that turns it into the right type.
 >                case (cds [] [] pds) of
 >                   Success d ->
 >                       cds ((Using uses d):rds) fwds ds
+>                   failure -> failure
+>         cds rds fwds ((PParams params pds):ds) = 
+>                case (cds [] [] pds) of
+>                   Success d ->
+>                       cds ((Params params d):rds) fwds ds
 >                   failure -> failure
 >         cds rds fwds ((PDoUsing (ub,ur) pds):ds) = 
 >                case (cds [] [] pds) of
@@ -205,7 +211,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RApp String Int RawTerm RawTerm
 >              | RAppImp String Int Id RawTerm RawTerm -- Name the argument we make explicit
 >              | RBind Id RBinder RawTerm
->              | RConst Constant
+>              | RConst String Int Constant
 >              | RPlaceholder
 >              | RMetavar Id
 >              | RInfix String Int Op RawTerm RawTerm
@@ -261,6 +267,16 @@ Raw terms, as written by the programmer with no implicit arguments added.
 
 > mkLazy :: ViewTerm -> ViewTerm
 > mkLazy t = App (App (Name Unknown (name "__lazy")) Placeholder) t
+
+> getFileLine :: RawTerm -> (String, Int)
+> getFileLine (RApp f l _ _) = (f, l)
+> getFileLine (RAppImp f l _ _ _) = (f, l)
+> getFileLine (RVar f l _) = (f, l)
+> getFileLine (RExpVar f l _) = (f, l)
+> getFileLine (RInfix f l _ _ _) = (f, l)
+> getFileLine (RUserInfix f l _ _ _ _) = (f, l)
+> getFileLine (RConst f l _) = (f, l)
+> getFileLine _ = ("(unknown)", 0)
 
 > getFn :: RawTerm -> RawTerm
 > getFn (RApp _ _ f a) = getFn f
@@ -496,10 +512,11 @@ Need to do it twice, in case the first pass added names in the indices
 
 > addImpl' :: Bool -> [(Id, RawTerm)] -> [(Id, RawTerm)] -> Ctxt IvorFun -> 
 >             RawTerm -> (RawTerm, Int) 
-> addImpl' pi using params ctxt raw 
->             = let (newargs, totimp) = execState (addImplB [] raw True) ([],0) in
+> addImpl' pi using params ctxt raw' 
+>             = let raw = parambind params raw'
+>                   (newargs, totimp) = execState (addImplB [] raw True) ([],0) in
 >                   if pi then 
->                      let added = pibind (mknew newargs) raw in
+>                      let added = pibind Im (mknew newargs) raw in
 >                         if null using
 >                           then (added, totimp)
 >                           else let (added', totimp') = addImpl' True [] params ctxt added in
@@ -553,9 +570,14 @@ Only do it in argument position
 >           addTy n = case lookupIdx n using of
 >                        Just (t, i) -> ((n,t), i)
 >                        _ -> ((n,RPlaceholder), -1)
->           pibind :: [(Id, RawTerm)] -> RawTerm -> RawTerm
->           pibind [] raw = raw
->           pibind ((n, ty):ns) raw = RBind n (Pi Im Eager ty) (pibind ns raw)
+>           pibind :: Plicit -> [(Id, RawTerm)] -> RawTerm -> RawTerm
+>           pibind plicit [] raw = raw
+>           pibind plicit ((n, ty):ns) raw
+>                      = RBind n (Pi plicit Eager ty) (pibind plicit ns raw)
+
+>           parambind :: [(Id, RawTerm)] -> RawTerm -> RawTerm
+>           parambind xs (RBind n b@(Pi Im strict ty) sc) = RBind n b (parambind xs sc)
+>           parambind xs sc = pibind Ex xs sc
 
 Is this, or something like it, in the Haskell libraries?
 
@@ -584,12 +606,24 @@ Implicit argument information; current using clause and parameters. We also need
 the functions in the current block, and which arguments to add automatically, because the
 programmer doesn't have to write them down inside the param block.
 
-> data Implicit = Imp [(Id, RawTerm)] -- 'using'
->                     [(Id, RawTerm)] -- extra params
->                     [(Id, [Id])] -- functions and added parameters in the current block
+> data Implicit = Imp { impUsing :: [(Id, RawTerm)], -- 'using'
+>                       params :: [(Id, RawTerm)], -- extra params
+>                       paramNames :: [(Id, [Id])] -- functions and params in the current block
+>                     }
+
+> noImplicit = Imp [] [] [] 
 
 > addUsing :: Implicit -> Implicit -> Implicit
 > addUsing (Imp a b pns) (Imp a' b' pns') = Imp (a++a') (b++b') (pns++pns')
+
+> addParams :: Implicit -> [(Id, RawTerm)] -> Implicit
+> addParams (Imp a b pns) newps = Imp a (b++newps) pns
+
+> addParamName :: Implicit -> Id -> Implicit
+> addParamName imp@(Imp u ps ns) n
+>     = case lookup n ns of
+>          Just _ -> imp
+>          Nothing -> Imp u ps ((n, (map fst ps)):ns)
 
 > defDo = UI (UN "bind") 2
 >            (UN "return") 1 -- IO monad
@@ -621,7 +655,7 @@ programmer doesn't have to write them down inside the param block.
 >                 val' <- toIvorS val
 >                 sc' <- toIvorS sc
 >                 return $ Let (toIvorName n) ty' val' sc'
->     toIvorS (RConst c) = return $ toIvorConst c
+>     toIvorS (RConst _ _ c) = return $ toIvorConst c
 >     toIvorS RPlaceholder = return Placeholder
 >     toIvorS (RMetavar (UN "")) -- no name, so make on eup
 >                 = do (i, h) <- get
@@ -667,24 +701,27 @@ programmer doesn't have to write them down inside the param block.
 
 Convert a raw term to an ivor term, adding placeholders
 
-> makeIvorTerm :: UndoInfo -> UserOps -> Id -> Ctxt IvorFun -> RawTerm -> ViewTerm
-> makeIvorTerm ui uo n ctxt tm = let expraw = addPlaceholders ctxt uo tm in
->                                    toIvor ui n expraw
+> makeIvorTerm :: Implicit -> UndoInfo -> UserOps -> Id -> Ctxt IvorFun -> RawTerm -> ViewTerm
+> makeIvorTerm using ui uo n ctxt tm = let expraw = addPlaceholders ctxt using uo tm in
+>                                          toIvor ui n expraw
 
 Add placeholders so that implicit arguments can be filled in. Also desugar user infix apps.
-TODO: Add parameters for names in current parameter block.
+FIXME: I think this'll fail if names are shadowed.
 
-> addPlaceholders :: Ctxt IvorFun -> UserOps -> RawTerm -> RawTerm
-> addPlaceholders ctxt uo tm = ap [] tm
+> addPlaceholders :: Ctxt IvorFun -> Implicit -> UserOps -> RawTerm -> RawTerm
+> addPlaceholders ctxt using uo tm = ap [] tm
 >     -- Count the number of args we've made explicit in an application
 >     -- and don't add placeholders for them. Reset the counter if we get
 >     -- out of an application
 >     where ap ex (RVar f l n)
 >               = case ctxtLookup ctxt n of
 >                   Just (IvorFun _ (Just ty) imp _ _ _ _) -> 
+>                     let pargs = case lookup n pnames of
+>                                   Nothing -> []
+>                                   Just ids -> map (RVar f l) ids in
 >                     mkApp f l (RVar f l n) 
->                               (mkImplicitArgs 
->                                (map fst (fst (getBinders ty []))) imp ex)
+>                               ((mkImplicitArgs 
+>                                (map fst (fst (getBinders ty []))) imp ex) ++ pargs)
 >                   _ -> RVar f l n
 >           ap ex (RExpVar f l n) = RVar f l n
 >           ap ex (RAppImp file line n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
@@ -708,6 +745,8 @@ TODO: Add parameters for names in current parameter block.
 >           apdo (DoExp f l r) = DoExp f l (ap [] r)
 >           apdo (DoBinding file line x t r) = DoBinding file line x (ap [] t) (ap [] r)
 >           apdo (DoLet file line x t r) = DoLet file line x (ap [] t) (ap [] r)
+
+>           pnames = paramNames using
 
 Go through the arguments; if an implicit argument has the same name as one
 in our list of explicit names to add, add it.
@@ -775,8 +814,8 @@ FIXME: If a name is bound locally, don't add implicit args.
 Built-in constants firsts
 
 >     unI (Name _ v) []
->         | v == name "Int" = RConst IntType
->         | v == name "String" = RConst StringType
+>         | v == name "Int" = RConst "[val]" 0 IntType
+>         | v == name "String" = RConst "[val]" 0 StringType
 >     unI (Name _ v) [x,y]
 >         | v == name "refl" = RApp "[val]" 0 RRefl y
 
@@ -799,13 +838,13 @@ Now built-in operators
 >     unI (Let v ty val sc) args = unwind (RBind (mkRName v) 
 >                                          (RLet (unI val []) (unI ty [])) 
 >                                          (unI sc [])) args
->     unI Star [] = RConst TYPE
+>     unI Star [] = RConst "[val]" 0 TYPE
 >     unI (Constant c) [] = case (cast c)::Maybe Int of
->                             Just i -> RConst (Num i)
+>                             Just i -> RConst "[val]" 0 (Num i)
 >                             Nothing -> case (cast c)::Maybe String of
->                                           Just s -> RConst (Str s)
+>                                           Just s -> RConst "[val]" 0 (Str s)
 >                                           Nothing -> case (cast c)::Maybe Char of
->                                                        Just c -> RConst (Ch c)
+>                                                        Just c -> RConst "[val]" 0 (Ch c)
 >     unwind = mkImpApp "[val]" 0 0 []
 
 > argNames :: Maybe ViewTerm -> [Id]
@@ -859,7 +898,7 @@ boolean flag (true for showing them)
 >           = bracket p 2 $
 >             "let " ++ show n ++ " : " ++ showP 10 ty ++ " = " ++ showP 10 val
 >                    ++ " in " ++ showP 10 sc
->     showP p (RConst c) = show c
+>     showP p (RConst _ _ c) = show c
 >     showP p (RInfix _ _ op l r) = bracket p 5 $
 >                                   showP 4 l ++ show op ++ showP 4 r
 >     showP _ x = show x
