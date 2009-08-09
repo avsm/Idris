@@ -947,20 +947,26 @@ Only need to worry if the left term is not bracketed. Otherwise leave it alone.
 >                (RUserInfix _ _ False opl a b) c) = 
 >     case (lookup opl ops, lookup opr ops) of
 >       (Just (assocl, precl), Just (assocr, precr)) ->
->         doFix assocl precl assocr precr (fixFix ops a) opl (fixFix ops b) opr (fixFix ops c)
+>         doFix assocl precl assocr precr a opl b opr c
 >       (Nothing, Nothing) -> RError $ file ++ ":" ++ show line ++ ":unknown operators " ++ show opl ++ " and " ++ show opr
 >       (Nothing, _) -> RError $ file ++ ":" ++ show line ++ ":unknown operator " ++ show opl
 >       (_, Nothing) -> RError $ file ++ ":" ++ show line ++ ":unknown operator " ++ show opr
 >  where
 >    doFix al pl ar pr a opl b opr c 
->          | pr > pl = mkOp opl a (mkOp opr b c)
->          | pr < pl = mkOp opr (mkOp opl a b) c
+>          | pr > pl = mkOp True opl (fixFix ops a) (fixFix ops (mkOp False opr b c))
+>          | pr < pl = mkOp True opr (fixFix ops (mkOp False opl a b)) (fixFix ops c)
+
+In the following cases, change the top level operator, put explicit brackets in, then
+rewrite the whole thing again. Termination guaranteed since the size of the expression
+we check (i.e. the non-bracketed part) is smaller.
+
 >          | pr == pl && al == LeftAssoc && ar == LeftAssoc
->                    = mkOp opr (mkOp opl a b) c
+>                    = fixFix ops $ mkOp False opr (mkOp True opl a b) c
 >          | pr == pl && al == RightAssoc && ar == RightAssoc
->                    = mkOp opl a (mkOp opr b c)
+>                    = fixFix ops $ mkOp False opl a (mkOp True opr b c)
 >          | otherwise = RError $ file ++ ":" ++ show line ++ ":ambiguous operators, please add brackets"
->    mkOp op l r = RUserInfix file line True op l r
+
+>    mkOp t op l r = RUserInfix file line t op l r
 
 
 Everything else, we ony work at the top level.
