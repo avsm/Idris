@@ -121,6 +121,7 @@ data Token
       | TokenModule
       | TokenNamespace
       | TokenImport
+      | TokenExport
       | TokenDo
       | TokenIf
       | TokenThen
@@ -255,6 +256,7 @@ lexVar cont cs =
       ("namespace",rest) -> cont TokenNamespace rest
       ("module",rest) -> cont TokenModule rest
       ("import",rest) -> cont TokenImport rest
+      ("export",rest) -> cont TokenExport rest
       ("noElim",rest) -> cont TokenNoElim rest
       ("collapsible",rest) -> cont TokenCollapsible rest
       ("where",rest) -> cont TokenWhere rest

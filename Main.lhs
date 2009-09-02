@@ -84,7 +84,7 @@ these days instead...
 >     let ptree = parse content file
 >     case ptree of
 >       Success ds -> do let defs' = makeIvorFuns defs ds fixes
->                        let alldefs = defs++defs'
+>                        let alldefs = appCtxt defs defs'
 >                        ((ctxt, metas), fixes') <- case (addIvor alldefs defs' ctxt fixes) of
 >                             OK x fixes' -> return (x, fixes')
 >                             Err x fixes' err -> do putStrLn err 

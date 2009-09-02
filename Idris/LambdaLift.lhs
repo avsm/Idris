@@ -15,7 +15,9 @@
 This is the language we're converting directly into Epic code, and the
 output of the lambda lifter
 
-> data SCFun = SCFun [Name] SCBody -- list of args, code for the body.
+SCFun is a top level function, with C export name, list of args, code for the body.
+
+> data SCFun = SCFun (Maybe String) [Name] SCBody 
 >    deriving Show
 
 > data SCBody = SVar Name
@@ -187,8 +189,20 @@ applied.
 Second step, turn the lambda lifted SimpleCases into SCFuns, translating 
 IO operations and do notation as we go.
 
-> scFun :: Context -> IdrisState -> [Name] -> SimpleCase -> SCFun
-> scFun ctxt ist args lifted = SCFun args (toSC ctxt ist lifted)
+> scFun :: Context -> IdrisState -> Id -> [Name] -> SimpleCase -> SCFun
+> scFun ctxt ist fn args lifted = SCFun exportName args (toSC ctxt ist lifted)
+>    where exportName' = do ifn <- ctxtLookup (idris_context ist) Nothing fn
+>                           let decl = rawDecl ifn
+>                           case decl of
+>                             Fun _ fls -> getExpFlag fls
+>                             TermDef _ _ fls -> getExpFlag fls
+>                             _ -> fail ""
+>          exportName = case exportName' of
+>                         Left _ -> Nothing
+>                         Right x -> Just x
+>          getExpFlag [] = fail ""
+>          getExpFlag (CExport c:_) = return c
+>          getExpFlag (_:xs) = getExpFlag xs
 
 > class ToSC a where
 >     toSC :: Context -> IdrisState -> a -> SCBody

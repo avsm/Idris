@@ -97,6 +97,7 @@ import Debug.Trace
       empty           { TokenEmptyType }
       unit            { TokenUnitType }
       include         { TokenInclude }
+      export          { TokenExport }
       do              { TokenDo }
       if              { TokenIf }
       then            { TokenThen }
@@ -218,6 +219,7 @@ Flags : { [] }
 Flag :: { CGFlag }
 Flag : nocg { NoCG }
      | eval { CGEval }
+     | export string { CExport $2 }
 
 --         | Nameproof Script { ProofScript $2 }
 

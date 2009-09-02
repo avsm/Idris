@@ -51,7 +51,7 @@ already simple case trees.
 >                       = -- trace (show (x,def)) $
 >                         let lifted = lambdaLift ctxt ist x args def
 >                             scfuns = map (\ (n,args,sc) -> 
->                                          (n, scFun ctxt ist args sc)) lifted
+>                                          (n, scFun ctxt ist (fromIvorName n) args sc)) lifted
 >                             xs' = allSCs xs in
 >                             scfuns ++ xs'
 
@@ -147,7 +147,8 @@ that we avoid pattern matching where the programmer didn't ask us to.
 > quotename (c:cs) = c:(quotename cs)
 
 > writeDef :: Handle -> (Name, SCFun) -> IO ()
-> writeDef h (n,(SCFun args def)) = do
+> writeDef h (n,(SCFun exportname args def)) = do
+>   maybe (return ()) (\ c -> hPutStrLn h ("export " ++ show c ++ " ")) exportname
 >   hPutStrLn h (show n ++ " (" ++ list args ++ ") -> Any = \n" ++
 >                writeSC n def)
 >    where list [] = ""

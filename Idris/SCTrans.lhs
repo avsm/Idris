@@ -26,7 +26,7 @@ Easier to take 'erasure' as an argument here - don't do constructor
 transformations if we're not doing erasure (could do others).
 
 > transformSC :: Bool -> SCFun -> SCFun
-> transformSC erasure (SCFun ns b) = SCFun ns (tr b) where
+> transformSC erasure (SCFun c ns b) = SCFun c ns (tr b) where
 >     tr tm = if erasure then applyTransformsSC allSCTrans tm
 >                else tm
 

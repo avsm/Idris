@@ -52,8 +52,9 @@ run compile-time function generation, so we never want to generate code
 (e.g. generating foreign functiond defs).
 Also, some functions should be evaluated completely before code generation
 (e.g. for statically knowing the C function to compile)
+Functions may be exported to C, if they have a simple type (no polymorphism, no dependencies).
 
-> data CGFlag = NoCG | CGEval
+> data CGFlag = NoCG | CGEval | CExport String
 >    deriving (Show, Eq)
 
 User defined operators have associativity and precedence
@@ -520,7 +521,7 @@ Need to do it twice, in case the first pass added names in the indices
 >                      let added = pibind Im (mknew newargs) raw in
 >                         if null using
 >                           then (added, totimp)
->                           else let (added', totimp') = addImpl' True [] params namespace ctxt added in
+>                           else let (added', totimp') = addImpl' True [] [] namespace ctxt added in
 >                                 (added', totimp')
 >                      else (raw, totimp)
 >     where addImplB :: [Id] -> RawTerm -> Bool -> State ([Id], Int) ()
