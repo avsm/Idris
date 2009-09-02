@@ -74,7 +74,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >                | FunType Id RawTerm [CGFlag] String Int 
 >                | FunClause RawTerm [RawTerm] RawTerm [CGFlag]
 >                | FunClauseP RawTerm [RawTerm] RawTerm Id
->                | WithClause RawTerm [RawTerm] RawTerm [ParseDecl]
+>                | WithClause RawTerm [RawTerm] Bool RawTerm [ParseDecl]
 >                | ProofScript Id [ITactic]
 >                | PUsing [(Id,RawTerm)] [ParseDecl]
 >                | PParams [(Id, RawTerm)] [ParseDecl]
@@ -133,13 +133,13 @@ the system to insert a hole for a proof that turns it into the right type.
 >             | Just (f,l) <- isnm n (getFn pat)
 >                 = getClauses parent rds fwds n t fl 
 >                       ((n, RawClause (mkApp f l pat withs) (mkhret mv ret)):clauses) ds
->         getClauses parent rds fwds n t fl clauses ((WithClause RPlaceholder [with] ret fl'):ds)
->             = getClauses parent rds fwds n t fl clauses ((WithClause parent [with] ret fl'):ds)
->         getClauses parent rds fwds n t fl clauses ((WithClause pat withs scr defs):ds)
+>         getClauses parent rds fwds n t fl clauses ((WithClause RPlaceholder [with] prf ret fl'):ds)
+>             = getClauses parent rds fwds n t fl clauses ((WithClause parent [with] prf ret fl'):ds)
+>         getClauses parent rds fwds n t fl clauses ((WithClause pat withs prf scr defs):ds)
 >             | Just (f,l) <- isnm n (getFn pat)
 >                 = do wcl <- collectWiths (mkApp f l pat withs) rds fwds n t fl defs
 >                      getClauses parent rds fwds n t fl 
->                          ((n, RawWithClause (mkApp f l pat withs) scr wcl):clauses) ds
+>                          ((n, RawWithClause (mkApp f l pat withs) prf scr wcl):clauses) ds
 >         getClauses parent rds fwds n (t, _, _) fl [] ds 
 >                = cds ((Fwd n t fl):rds) ((n,(t,fl)):fwds) ds
 >         getClauses parent rds fwds n (t,file,line) fl clauses ds =
@@ -409,6 +409,7 @@ Pattern clauses
 > data RawClause = RawClause { lhs :: RawTerm,
 >                              rhs :: RawTerm }
 >                | RawWithClause { lhs :: RawTerm,
+>                                  addproof :: Bool,
 >                                  scrutinee :: RawTerm,
 >                                  defn :: [RawClause] }
 >    deriving Show
@@ -427,7 +428,7 @@ implicit arguments each function has.
 >       implicitArgs :: Int,
 >       -- paramArgs :: Int,
 >       ivorDef :: IvorDef,
->       rawDecl :: Decl, -- handy to keep around for display
+>       rawDecl :: Decl, -- handy to keep around for display + extra data
 >       funFlags :: [CGFlag],
 >       lazyArgs :: [Int]
 >     }

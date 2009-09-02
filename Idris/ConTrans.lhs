@@ -36,13 +36,13 @@ then turn it back into a pclause
 >                    ret' = applyTransforms ctxt ts ret
 >                    args' = getFnArgs lhs' in
 >                    PClause args' ret'
->          doTrans (PWithClause args scr (Patterns pats))
+>          doTrans (PWithClause prf args scr (Patterns pats))
 >              = let pats' = Patterns $ (map doTrans pats)
 >                    lhs = apply (Name Unknown n) args
 >                    lhs' = applyTransforms ctxt ts lhs
 >                    scr' = applyTransforms ctxt ts scr
 >                    args' = getFnArgs lhs' in
->                    PWithClause args' scr' pats'
+>                    PWithClause prf args' scr' pats'
 
 Test transforms: VNil A => VNil
                  VCons a k x xs => VCons x xs
@@ -279,7 +279,7 @@ is either a pattern or unused (modulo recursion), do this to it:
 >      getPlPos acc [] [] = acc
 >      getPlPos acc ((PClause args r):ps) ((PClause args' r'):ps')
 >            = getPlPos (filter (plArg args args' r') acc) ps ps'
->      getPlPos acc ((PWithClause args _ _):ps) ((PClause args' r'):ps')
+>      getPlPos acc ((PWithClause _ args _ _):ps) ((PClause args' r'):ps')
 >            = getPlPos (filter (plArg args args' r') acc) ps ps'
 >      getPlPos acc (_:ps) (_:ps')
 >            = getPlPos acc ps ps'
@@ -287,7 +287,7 @@ is either a pattern or unused (modulo recursion), do this to it:
 >      plArg args args' r' x 
 >            = args!!x == Placeholder && recGuard x n r' (namesIn (args'!!x))
 >      args ((PClause args r):_) = length args
->      args ((PWithClause args _ (Patterns rest)):_) = length args
+>      args ((PWithClause _ args _ (Patterns rest)):_) = length args
 >      args [] = 0
 
 Remove argument positions from the list where those arguments are needed
@@ -297,7 +297,7 @@ after removing them.
 >      noDiscriminate :: [Int] -> [PClause] -> [Int]
 >      noDiscriminate phs ps = indiscriminate phs (map pargs ps)
 >          where pargs (PClause args _) = args
->                pargs (PWithClause args _ _) = args
+>                pargs (PWithClause _ args _ _) = args
 
 Drop argument x, from all patterns, see if they are still pairwise disjoint.
 If so, x can remain a placeholder position.

@@ -182,8 +182,8 @@ Function :: { ParseDecl }
 Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
          | Name ProofScript ';' { ProofScript $1 $2 }
 --         | DefTerm '=' Term Flags ';' { FunClause (mkDef $1) [] $3 $4 }
-         | DefTerm WithTerms with Term '{' Functions '}' File Line
-              { WithClause (mkDef $8 $9 $1) $2 $4 $6 }
+         | DefTerm WithTerms WithP Term '{' Functions '}' File Line
+              { WithClause (mkDef $8 $9 $1) $2 $3 $4 $6 }
          | DefTerm WithTerms mightbe Term ';' '[' Name ']' File Line
               { FunClauseP (mkDef $9 $10 $1) $2 $4 $7 }
          | DefTerm WithTerms '=' Term Flags ';' File Line 
@@ -191,8 +191,12 @@ Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
          | '|' WithTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
          | '|' WithTerm mightbe Term ';' '[' Name ']' 
               { FunClauseP RPlaceholder [$2] $4 $7 }
-         | '|' WithTerm with Term '{' Functions '}'
-              { WithClause RPlaceholder [$2] $4 $6 }
+         | '|' WithTerm WithP Term '{' Functions '}'
+              { WithClause RPlaceholder [$2] $3 $4 $6 }
+
+WithP :: { Bool }
+WithP : with { False }
+      | with proof { True }
 
 WithTerms :: { [RawTerm] }
 WithTerms : '|' WithTerm WithTerms { $2:$3 }
