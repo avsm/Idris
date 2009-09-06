@@ -417,6 +417,7 @@ TypeList :: { [RawTerm] }
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name File Line { RVar $2 $3 $1 }
           | '(' Term ')' { bracket $2 }
+          | '~' NoAppTerm { RPure $2 }
           | metavar { RMetavar $1 }
           | '!' Name File Line { RExpVar $3 $4 $2 }
 --          | '{' TypedBind '}' arrow NoAppTerm

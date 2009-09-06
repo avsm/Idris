@@ -226,6 +226,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RUserInfix String Int Bool String RawTerm RawTerm
 >              | RDo [Do]
 >              | RIdiom RawTerm
+>              | RPure RawTerm -- a term to apply normally inside idiom brackets
 >              | RRefl
 >              | RError String -- Hackety. Found an error in processing, report when you can.
 >    deriving (Show, Eq)
@@ -701,6 +702,7 @@ programmer doesn't have to write them down inside the param block.
 >                            toIvorS tm
 >     toIvorS (RIdiom tm) = do let tm' = unidiom ui tm
 >                              toIvorS tm'
+>     toIvorS (RPure t) = toIvorS t
 >     toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
 >     toIvorS (RError x) = error x
 >     mkName (UN n) i = UN (n++"_"++show i)
@@ -764,6 +766,7 @@ FIXME: I think this'll fail if names are shadowed.
 >                   (RError x) -> RError x
 >           ap ex (RDo ds) = RDo (map apdo ds)
 >           ap ex (RIdiom tm) = RIdiom (ap [] tm)
+>           ap ex (RPure tm) = RPure (ap [] tm)
 >           ap ex r = r
 
 >           apdo (DoExp f l r) = DoExp f l (ap [] r)
@@ -812,14 +815,17 @@ in our list of explicit names to add, add it.
 TODO: Get names out of UndoInfo
 
 > unidiom :: UndoInfo -> RawTerm -> RawTerm
+> unidiom ui@(UI _ _ _ _ _ _ ap apImpl) (RApp file line f (RPure x)) 
+>              = mkApp file line f [x]
 > unidiom ui@(UI _ _ _ _ _ _ ap apImpl) (RApp file line f x) 
 >              = mkApp file line (RVar file line ap)
 >                     ((take apImpl (repeat RPlaceholder)) ++
 >                     [unidiom ui f, x])
 > unidiom ui@(UI _ _ _ _ pure pureImpl _ _) x 
 >              = let pure = UN "pure" 
->                    pureImpl = 1 in
->               mkApp "foo" 0 (RVar "foo" 0 pure)
+>                    pureImpl = 1 
+>                    (file, line) = getFileLine x in
+>               mkApp file line (RVar file line pure)
 >                     ((take pureImpl (repeat RPlaceholder)) ++ [x])
 
 > testCtxt = addEntry newCtxt Nothing (UN "Vect") undefined
