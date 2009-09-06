@@ -54,7 +54,7 @@ Also, some functions should be evaluated completely before code generation
 (e.g. for statically knowing the C function to compile)
 Functions may be exported to C, if they have a simple type (no polymorphism, no dependencies).
 
-> data CGFlag = NoCG | CGEval | CExport String
+> data CGFlag = NoCG | CGEval | CExport String | Inline
 >    deriving (Show, Eq)
 
 User defined operators have associativity and precedence

@@ -98,6 +98,7 @@ import Debug.Trace
       unit            { TokenUnitType }
       include         { TokenInclude }
       export          { TokenExport }
+      inline          { TokenInline }
       do              { TokenDo }
       if              { TokenIf }
       then            { TokenThen }
@@ -219,6 +220,7 @@ Flags : { [] }
 Flag :: { CGFlag }
 Flag : nocg { NoCG }
      | eval { CGEval }
+     | inline { Inline }
      | export string { CExport $2 }
 
 --         | Nameproof Script { ProofScript $2 }

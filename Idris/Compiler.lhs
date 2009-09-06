@@ -14,6 +14,7 @@
 > import System.IO
 > import System.Environment
 > import System.Directory
+> import Monad
 > import Debug.Trace
 
 Get every definition from the context. Convert them all to simple case
@@ -39,7 +40,7 @@ already simple case trees.
 >               let pcomp = map (pmCompDef raw ctxt erasure trans) pdefs
 >               let declouts = filter (/="") (map epicDecl decls)
 >               let clink = filter (/="") (map epicLink decls)
->               let scs = map (\ (n,sc) -> (n, transformSC erasure sc)) 
+>               let scs = map (\ (n, inl, sc) -> (n, inl, transformSC erasure sc)) 
 >                           $ allSCs pcomp
 >               catch (do compileAll raw ctxt ofile clink declouts scs
 >                         return True)
@@ -47,13 +48,15 @@ already simple case trees.
 >                               print e
 >                               return False)
 >    where allSCs [] = []
->          allSCs ((x,(args,def)):xs) 
+>          allSCs ((x,gen,(args,def)):xs) 
 >                       = -- trace (show (x,def)) $
 >                         let lifted = lambdaLift ctxt ist x args def
 >                             scfuns = map (\ (n,args,sc) -> 
 >                                          (n, scFun ctxt ist (fromIvorName n) args sc)) lifted
 >                             xs' = allSCs xs in
->                             scfuns ++ xs'
+>                             mkGen gen scfuns ++ xs'
+>          mkGen gen ((n, d):ds) = (n,gen,d):(mkGen True ds)
+>          mkGen gen [] = []
 
 Convert top level declarations to epic output.
 This is just for the directives to link in C headers, .o file, etc.
@@ -106,16 +109,17 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >              Bool -> -- erasure on
 >              [Transform] ->
 >              (Name, (ViewTerm, Patterns)) -> 
->              (Name, ([Name], SimpleCase))
+>              (Name, Bool, ([Name], SimpleCase))
 > pmCompDef raw ctxt erase ctrans (n, (ty,ps)) 
 > --    = let flags = getFlags n raw in
 > --          case ((NoCG `elem` flags), (CGEval `elem` flags)) of 
 > --             (True, _) -> trace ("Not compiling " ++ show n) (n, [])
 > --             (False, False)e -> 
 >       =  let transpm = transform ctxt ctrans n ps 
+>              gen = isAuxPattern ctxt n
 >              compiledp = pmcomp raw ctxt erase n ty transpm in
 >             -- trace (show n ++ "\n" ++ show transpm)
->              (n, compiledp)
+>              (n, gen, compiledp)
 
      where getFlags n raw = case ctxtLookup raw n of
                               Just i -> funFlags i
@@ -125,8 +129,8 @@ that we avoid pattern matching where the programmer didn't ask us to.
 > compileAll :: Ctxt IvorFun -> Context -> FilePath -> 
 >               [String] -> -- options to pass to epic
 >               [String] -> -- raw epic output
->               [(Name, SCFun)] -> IO ()
-> compileAll ctxt raw ofile clink outputs scs = do
+>               [(Name, Bool, SCFun)] -> IO ()
+> compileAll raw ctxt ofile clink outputs scs = do
 >      (efile, eH) <- tempfile
 >      prel <- readLibFile defaultLibPath "Prelude.e"
 >      hPutStrLn eH prel
@@ -146,9 +150,10 @@ that we avoid pattern matching where the programmer didn't ask us to.
 > quotename (']':cs) = "_CB_"++quotename cs
 > quotename (c:cs) = c:(quotename cs)
 
-> writeDef :: Handle -> (Name, SCFun) -> IO ()
-> writeDef h (n,(SCFun exportname args def)) = do
->   maybe (return ()) (\ c -> hPutStrLn h ("export " ++ show c ++ " ")) exportname
+> writeDef :: Handle -> (Name, Bool, SCFun) -> IO ()
+> writeDef h (n,gen,(SCFun scopts args def)) = do
+>   when (gen || elem SCInline scopts) $ hPutStr h "%inline "
+>   maybe (return ()) (\ c -> hPutStrLn h ("export " ++ show c ++ " ")) (getEName scopts)
 >   hPutStrLn h (show n ++ " (" ++ list args ++ ") -> Any = \n" ++
 >                writeSC n def)
 >    where list [] = ""
@@ -196,6 +201,13 @@ HACK for explicit laziness
 >   writeSC' (SApp (SVar lazy) [_,v])
 >     | lazy == name "__lazy" =
 >         "lazy(" ++ writeSC' v ++ ")"
+
+HACK for string equality
+
+>   writeSC' (SApp (SVar n) [arg1, arg2])
+>     | n == name "__strEq" =
+>         "__epic_streq("++writeSC' arg1++", " ++ writeSC' arg2 ++ ")"
+
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
 >       where list [] = ""
 >             list [a] = writeSC' a

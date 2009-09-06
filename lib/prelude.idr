@@ -6,35 +6,35 @@ infixl 6 <, <=, >, >=;
 infixl 7 +,-,++;
 infixl 8 *,/;
 
-(+) : Int -> Int -> Int;
+(+) : Int -> Int -> Int inline;
 (+) x y = __addInt x y;
 
-(-) : Int -> Int -> Int;
+(-) : Int -> Int -> Int inline;
 (-) x y = __subInt x y;
 
-(*) : Int -> Int -> Int;
+(*) : Int -> Int -> Int inline;
 (*) x y = __mulInt x y;
 
-(/) : Int -> Int -> Int;
+(/) : Int -> Int -> Int inline;
 (/) x y = __divInt x y;
 
-(<) : Int -> Int -> Bool;
+(<) : Int -> Int -> Bool inline;
 (<) x y = __intlt x y;
 
-(<=) : Int -> Int -> Bool;
+(<=) : Int -> Int -> Bool inline;
 (<=) x y = __intleq x y;
 
-(>) : Int -> Int -> Bool;
+(>) : Int -> Int -> Bool inline;
 (>) x y = __intgt x y;
 
-(>=) : Int -> Int -> Bool;
+(>=) : Int -> Int -> Bool inline;
 (>=) x y = __intgeq x y;
 
-(++) : String -> String -> String;
+(++) : String -> String -> String inline;
 (++) x y = __concat x y;
- 
-(==) : a -> a -> Bool;
-(==) x y = __eq _ x y;
+
+(==) : Int -> Int -> Bool inline;
+(==) x y = __eq x y;
  
 include "nat.idr";
 include "maybe.idr";
@@ -49,8 +49,8 @@ infixl 9 .;
 (.) : (b -> c) -> (a -> b) -> a -> c;
 (.) f g x = f (g x);
 
-fst : (a & b) -> a;
+fst : (a & b) -> a inline;
 fst (x, y) = x;
 
-snd : (a & b) -> b;
+snd : (a & b) -> b inline;
 snd (x, y) = y;

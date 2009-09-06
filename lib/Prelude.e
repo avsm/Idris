@@ -2,9 +2,9 @@
 
 -- IO
 
-__epic_id (x:Any) -> Any = x
+%inline __epic_id (x:Any) -> Any = x
 
-__epic_putStr (x:String) -> Unit =
+%inline __epic_putStr (x:String) -> Unit =
     foreign Unit "putStr" (x:String)
 
 __epic_readStr () -> String =
@@ -15,6 +15,9 @@ __epic_append (x:String, y:String) -> String =
 
 __epic_strlen (x:String) -> Int =
     foreign Int "strlen" (x:String)
+
+__epic_streq (x:String, y:String) -> Data =
+    __epic_bool (foreign Int "streq" (x:String, y:String))
 
 __epic_newRef () -> Int =
     foreign Int "newRef" ()
@@ -37,7 +40,7 @@ __epic_doUnlock (l:Int) -> Unit =
 __epic_fork (a:Any, f:Fun) -> Unit =
    lazy foreign Unit "doFork" (f:Fun)
 
-__epic_bool (x:Int) -> Data =
+%inline __epic_bool (x:Int) -> Data =
    if (x==0) then (Con 1 ()) else (Con 0 ())
 
 __epic_toInt (x:String) -> Int = 

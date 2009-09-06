@@ -9,6 +9,7 @@
 > import Control.Monad.State
 > import Data.Typeable
 > import Debug.Trace
+> import Maybe
 
 > import List
 
@@ -17,8 +18,15 @@ output of the lambda lifter
 
 SCFun is a top level function, with C export name, list of args, code for the body.
 
-> data SCFun = SCFun (Maybe String) [Name] SCBody 
+> data SCFun = SCFun [SCOpt] [Name] SCBody 
 >    deriving Show
+
+> data SCOpt = SCInline | SCExport String
+>    deriving (Show, Eq)
+
+> getEName [] = Nothing
+> getEName (SCExport n : xs) = Just n
+> getEName (_:xs) = getEName xs
 
 > data SCBody = SVar Name
 >             | SCon Name Int
@@ -187,22 +195,25 @@ applied.
 >     addLam (n:ns) t = Lambda n Star (addLam ns t)
 
 Second step, turn the lambda lifted SimpleCases into SCFuns, translating 
-IO operations and do notation as we go.
+IO operations and do notation as we go. Pass relevant function flags through
 
 > scFun :: Context -> IdrisState -> Id -> [Name] -> SimpleCase -> SCFun
-> scFun ctxt ist fn args lifted = SCFun exportName args (toSC ctxt ist lifted)
->    where exportName' = do ifn <- ctxtLookup (idris_context ist) Nothing fn
->                           let decl = rawDecl ifn
->                           case decl of
->                             Fun _ fls -> getExpFlag fls
->                             TermDef _ _ fls -> getExpFlag fls
->                             _ -> fail ""
->          exportName = case exportName' of
->                         Left _ -> Nothing
->                         Right x -> Just x
->          getExpFlag [] = fail ""
->          getExpFlag (CExport c:_) = return c
->          getExpFlag (_:xs) = getExpFlag xs
+> scFun ctxt ist fn args lifted = SCFun mkOpts args (toSC ctxt ist lifted)
+>    where mkOpts' = do ifn <- ctxtLookup (idris_context ist) Nothing fn
+>                       let decl = rawDecl ifn
+>                       return $ mapMaybe mkSCOpt (funFlags ifn)
+>                       {- exp <- case decl of
+>                           Fun _ fls -> getExpFlag fls
+>                           TermDef _ _ fls -> getExpFlag fls
+>                            _ -> fail "" -}
+
+>          mkOpts = case mkOpts' of
+>                         Left _ -> []
+>                         Right x -> x
+
+>          mkSCOpt (CExport str) = Just $ SCExport str
+>          mkSCOpt Inline = Just $ SCInline
+>          mkSCOpt _ = Nothing
 
 > class ToSC a where
 >     toSC :: Context -> IdrisState -> a -> SCBody
@@ -255,8 +266,9 @@ Infix operators
 >         | Just op <- getOp n allOps = SInfix op x y
 > scapply ist (SVar n) [_,_,_,_]
 >         | n == opFn JMEq = SUnit
-> scapply ist (SVar n) [_,x,y]
->         | n == opFn OpEq = SInfix OpEq x y
+
+ scapply ist (SVar n) [_,x,y]
+         | n == opFn OpEq = SInfix OpEq x y
 
 > scapply ist f [] = f
 

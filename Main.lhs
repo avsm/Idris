@@ -322,7 +322,8 @@ the appropriate thing, after applying the relevant transformations.
 >                                "Int->Int->Int"
 >              c <- addBinOp c (opFn Concat) ((++)::String->String->String)
 >                                "String->String->String"
->              c <- addExternalFn c (opFn OpEq) 3 constEq "(A:*)A->A->Bool"
+>              c <- addExternalFn c (opFn OpEq) 2 constEq "Int->Int->Bool"
+>              c <- addExternalFn c (name "__strEq") 2 constEq "String->String->Bool"
 >              c <- addExternalFn c (opFn OpLT) 2 intlt "Int->Int->Bool"
 >              c <- addExternalFn c (opFn OpLEq) 2 intle "Int->Int->Bool"
 >              c <- addExternalFn c (opFn OpGT) 2 intgt "Int->Int->Bool"
@@ -336,7 +337,7 @@ the appropriate thing, after applying the relevant transformations.
 >              return c
 
 > constEq :: [ViewTerm] -> Maybe ViewTerm
-> constEq [_, Constant x, Constant y]
+> constEq [Constant x, Constant y]
 >       = case cast x of
 >           Just x' -> if (x'==y)
 >                        then Just $ Name DataCon (name "True")
