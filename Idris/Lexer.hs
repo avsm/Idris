@@ -73,6 +73,7 @@ data Token
       | TokenInfixR
       | TokenParams
       | TokenUsing
+      | TokenIdiom
       | TokenNoElim
       | TokenCollapsible
       | TokenPartial
@@ -91,6 +92,8 @@ data Token
       | TokenRPair
       | TokenOSB
       | TokenCSB
+      | TokenOId
+      | TokenCId
       | TokenConcat
       | TokenTilde
       | TokenPlus
@@ -187,6 +190,8 @@ lexer cont ('{':c:cs)
     | isAlpha c || c=='_' = lexBrackVar cont (c:cs)
 lexer cont ('{':cs) = cont TokenOCB cs
 lexer cont ('}':cs) = cont TokenCCB cs
+lexer cont ('[':'[':cs) = cont TokenOId cs
+lexer cont (']':']':cs) = cont TokenCId cs
 lexer cont ('[':cs) = cont TokenOSB cs
 lexer cont (']':cs) = cont TokenCSB cs
 lexer cont ('?':'=':cs) = cont TokenMightEqual cs
@@ -253,6 +258,7 @@ lexVar cont cs =
       ("proof",rest) -> cont TokenProof rest
       ("data",rest) -> cont TokenDataType rest
       ("using",rest) -> cont TokenUsing rest
+      ("idiom",rest) -> cont TokenIdiom rest
       ("params",rest) -> cont TokenParams rest
       ("namespace",rest) -> cont TokenNamespace rest
       ("module",rest) -> cont TokenModule rest

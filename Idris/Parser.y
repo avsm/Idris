@@ -46,6 +46,8 @@ import Debug.Trace
       '}'             { TokenCCB }
       '['             { TokenOSB }
       ']'             { TokenCSB }
+      oid             { TokenOId }
+      cid             { TokenCId }
       lpair           { TokenLPair }
       rpair           { TokenRPair }
       '~'             { TokenTilde }
@@ -85,6 +87,7 @@ import Debug.Trace
       infixl          { TokenInfixL }
       infixr          { TokenInfixR }
       using           { TokenUsing }
+      idiom           { TokenIdiom }
       params          { TokenParams }
       noelim          { TokenNoElim }
       collapsible     { TokenCollapsible }
@@ -151,7 +154,7 @@ import Debug.Trace
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname lazy
-          '[' '~' lpair PAIR
+          oid '[' '~' lpair PAIR
 %left APP
 
 
@@ -175,6 +178,7 @@ Declaration: Function { $1 }
            | Latex { RealDecl $1 }
            | Using '{' Program '}' { PUsing $1 $3 }
            | DoUsing '{' Program '}' { PDoUsing $1 $3 } 
+           | Idiom '{' Program '}' { PIdiom $1 $3 }
            | Params '{' Program '}' { PParams $1 $3 }
            | syntax Name NamesS '=' Term ';' { PSyntax $2 $3 $5 }
            | cinclude string { RealDecl (CInclude $2) }
@@ -367,6 +371,7 @@ InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst $3 $4 (Num
 --          | Term le Term File Line { RInfix $4 $5  OpLEq $1 $3 }
           | Term '>' Term File Line { RUserInfix $4 $5 False ">" $1 $3 }
 --          | Term ge Term File Line { RInfix $4 $5  OpGEq $1 $3 }
+          | Term arrow Term File Line { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
           | UserInfixTerm { $1 }
           | NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
 
@@ -422,6 +427,7 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
           | unit File Line { RVar $2 $3 (UN "__Unit") }
           | '_' { RPlaceholder }
           | DoBlock { RDo $1 }
+          | oid Term cid { RIdiom $2 }
           | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair")) $2 }
 --          | '[' TermList ']' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Exists")) $2 }
 --          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
@@ -484,6 +490,9 @@ Using :: { [(Id, RawTerm)] }
 
 DoUsing ::{ (Id,Id) }
         : do using '(' Name ',' Name ')' { ($4,$6) }
+
+Idiom ::{ (Id,Id) }
+        : idiom '(' Name ',' Name ')' { ($3,$5) }
 
         
 Params :: { [(Id, RawTerm)] }

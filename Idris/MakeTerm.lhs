@@ -53,7 +53,7 @@ into an ivor definition, with all the necessary placeholders added.
 >         = mif ctxt (mif ctxt acc (addUsing using' (Imp using [] [] (thisNamespace using'))) ui uo decls) using' ui uo ds
 > mif ctxt acc using' ui uo ((Params newps decls):ds)
 >         = mif ctxt (mif ctxt acc (addParams using' newps) ui uo decls) using' ui uo ds
-> mif ctxt acc using ui uo ((DoUsing bind ret decls):ds)
+> mif ctxt acc using ui@(UI _ _ _ _ p pi r ri) uo ((DoUsing bind ret decls):ds)
 >         = mif ctxt (mif ctxt acc using ui' uo decls) using ui uo ds
 >    where ui' = let bimpl = case ctxtLookup acc (thisNamespace using) bind of
 >                              Right i -> implicitArgs i
@@ -61,7 +61,16 @@ into an ivor definition, with all the necessary placeholders added.
 >                    rimpl = case ctxtLookup acc (thisNamespace using) ret of
 >                              Right i -> implicitArgs i
 >                              _ -> 0
->                     in UI bind bimpl ret rimpl
+>                     in UI bind bimpl ret rimpl p pi r ri
+> mif ctxt acc using ui@(UI b bi r ri _ _ _ _) uo ((Idiom pure ap decls):ds)
+>         = mif ctxt (mif ctxt acc using ui' uo decls) using ui uo ds
+>    where ui' = let pureImpl = case ctxtLookup acc (thisNamespace using) pure of
+>                              Right i -> implicitArgs i
+>                              _ -> 0
+>                    apImpl = case ctxtLookup acc (thisNamespace using) ap of
+>                              Right i -> implicitArgs i
+>                              _ -> 0
+>                     in UI b bi r ri pure pureImpl ap apImpl
 > mif ctxt acc using' ui uo (decl@(Fun f flags):ds) 
 >         = let using = addParamName using' (funId f)
 >               fn = makeIvorFun using ui uo (appCtxt ctxt acc) decl f flags in
@@ -249,7 +258,7 @@ of things we need to define to complete the program (i.e. metavariables)
 > addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _) 
 >                = return ((ctxt, metas), (op, (assoc, prec)):uo)
 > addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
->     = trace ("Processing "++ show n ++ " " ++ show tyin) $ case def of
+>     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> -- trace (show ps) $
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ((ctxt, metas), uo)

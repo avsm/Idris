@@ -43,6 +43,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | Using [(Id, RawTerm)] [Decl] -- default implicit args
 >           | Params [(Id, RawTerm)] [Decl] -- default implicit args
 >           | DoUsing Id Id [Decl] -- bind and return names
+>           | Idiom Id Id [Decl] -- pure and ap names
 >           | CLib String | CInclude String
 >           | Fixity String Fixity Int
 >    deriving Show
@@ -80,6 +81,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >                | PUsing [(Id,RawTerm)] [ParseDecl]
 >                | PParams [(Id, RawTerm)] [ParseDecl]
 >                | PDoUsing (Id, Id) [ParseDecl]
+>                | PIdiom (Id, Id) [ParseDecl]
 >                | PSyntax Id [Id] RawTerm 
 >    deriving Show
 
@@ -117,6 +119,11 @@ the system to insert a hole for a proof that turns it into the right type.
 >                case (cds [] [] pds) of
 >                   Success d ->
 >                       cds ((DoUsing ub ur d):rds) fwds ds
+>                   failure -> failure
+>         cds rds fwds ((PIdiom (up,ua) pds):ds) = 
+>                case (cds [] [] pds) of
+>                   Success d ->
+>                       cds ((Idiom up ua d):rds) fwds ds
 >                   failure -> failure
 >         cds rds fwds ((PSyntax name args to):ds) = cds rds fwds ds -- TODO
 >         cds rds fwds (d:ds) = fail $ "Invalid declaration: " ++ show d
@@ -218,6 +225,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RInfix String Int Op RawTerm RawTerm
 >              | RUserInfix String Int Bool String RawTerm RawTerm
 >              | RDo [Do]
+>              | RIdiom RawTerm
 >              | RRefl
 >              | RError String -- Hackety. Found an error in processing, report when you can.
 >    deriving (Show, Eq)
@@ -598,8 +606,12 @@ ready for typechecking
 > fromIvorName :: Name -> Id
 > fromIvorName i = UN (show i)
 
+For desugaring do blocks and idiom brackets
+
 > data UndoInfo = UI Id Int -- bind, bind implicit
 >                    Id Int -- return, return implicit
+>                    Id Int -- pure, pure implicit
+>                    Id Int -- ap, ap implicit
 
 > data ModInfo = MI Id -- namespace
 >                   [(Id, RawTerm)] -- parameters
@@ -631,6 +643,8 @@ programmer doesn't have to write them down inside the param block.
 
 > defDo = UI (UN "bind") 2
 >            (UN "return") 1 -- IO monad
+>            (UN "return") 1 -- IO applicative
+>            (UN "ioApp") 2 
 
 > toIvor :: UndoInfo -> Id -> RawTerm -> ViewTerm
 > toIvor ui fname tm = evalState (toIvorS tm) (0,1)
@@ -685,6 +699,8 @@ programmer doesn't have to write them down inside the param block.
 >                               (apply (Name Unknown (opFn op)) [l',r'])
 >     toIvorS (RDo dos) = do tm <- undo ui dos
 >                            toIvorS tm
+>     toIvorS (RIdiom tm) = do let tm' = unidiom ui tm
+>                              toIvorS tm'
 >     toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
 >     toIvorS (RError x) = error x
 >     mkName (UN n) i = UN (n++"_"++show i)
@@ -747,6 +763,7 @@ FIXME: I think this'll fail if names are shadowed.
 >                              (RApp file line (RVar file line (useropFn op)) l) r)
 >                   (RError x) -> RError x
 >           ap ex (RDo ds) = RDo (map apdo ds)
+>           ap ex (RIdiom tm) = RIdiom (ap [] tm)
 >           ap ex r = r
 
 >           apdo (DoExp f l r) = DoExp f l (ap [] r)
@@ -774,7 +791,7 @@ in our list of explicit names to add, add it.
 > undo :: UndoInfo -> [Do] -> State (Int, Int) RawTerm
 > undo ui [] = fail "The last statement in a 'do' block must be an expression"
 > undo ui [DoExp f l last] = return last
-> undo ui@(UI bind bindimpl _ _) ((DoBinding file line v' ty exp):ds)
+> undo ui@(UI bind bindimpl _ _ _ _ _ _) ((DoBinding file line v' ty exp):ds)
 >          = -- bind exp (\v' . [[ds]])
 >            do ds' <- undo ui ds
 >               let k = RBind v' (Lam ty) ds'
@@ -783,7 +800,7 @@ in our list of explicit names to add, add it.
 > undo ui ((DoLet file line v' ty exp):ds)
 >          = do ds' <- undo ui ds
 >               return $ RBind v' (RLet exp ty) ds'
-> undo ui@(UI bind bindimpl _ _) ((DoExp file line exp):ds)
+> undo ui@(UI bind bindimpl _ _ _ _ _ _) ((DoExp file line exp):ds)
 >          = -- bind exp (\_ . [[ds]])
 >            do ds' <- undo ui ds
 >               (i, h) <- get
@@ -791,6 +808,19 @@ in our list of explicit names to add, add it.
 >               let k = RBind (MN "x" i) (Lam RPlaceholder) ds'
 >               return $ mkApp file line (RVar file line bind) 
 >                          ((take bindimpl (repeat RPlaceholder)) ++ [exp, k])
+
+TODO: Get names out of UndoInfo
+
+> unidiom :: UndoInfo -> RawTerm -> RawTerm
+> unidiom ui@(UI _ _ _ _ _ _ ap apImpl) (RApp file line f x) 
+>              = mkApp file line (RVar file line ap)
+>                     ((take apImpl (repeat RPlaceholder)) ++
+>                     [unidiom ui f, x])
+> unidiom ui@(UI _ _ _ _ pure pureImpl _ _) x 
+>              = let pure = UN "pure" 
+>                    pureImpl = 1 in
+>               mkApp "foo" 0 (RVar "foo" 0 pure)
+>                     ((take pureImpl (repeat RPlaceholder)) ++ [x])
 
 > testCtxt = addEntry newCtxt Nothing (UN "Vect") undefined
 
