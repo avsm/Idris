@@ -190,8 +190,8 @@ lexer cont ('{':c:cs)
     | isAlpha c || c=='_' = lexBrackVar cont (c:cs)
 lexer cont ('{':cs) = cont TokenOCB cs
 lexer cont ('}':cs) = cont TokenCCB cs
-lexer cont ('[':'[':cs) = cont TokenOId cs
-lexer cont (']':']':cs) = cont TokenCId cs
+lexer cont ('[':'|':cs) = cont TokenOId cs
+lexer cont ('|':']':cs) = cont TokenCId cs
 lexer cont ('[':cs) = cont TokenOSB cs
 lexer cont (']':cs) = cont TokenCSB cs
 lexer cont ('?':'=':cs) = cont TokenMightEqual cs
