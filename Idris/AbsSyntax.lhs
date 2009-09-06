@@ -815,16 +815,18 @@ in our list of explicit names to add, add it.
 TODO: Get names out of UndoInfo
 
 > unidiom :: UndoInfo -> RawTerm -> RawTerm
-> unidiom ui@(UI _ _ _ _ _ _ ap apImpl) (RApp file line f (RPure x)) 
->              = mkApp file line f [x]
+> unidiom ui@(UI _ _ _ _ pure pureImpl _ _) (RApp file line f (RPure x)) 
+>         = mkApp file line (RVar file line pure)
+>                ((take pureImpl (repeat RPlaceholder)) ++ [mkApp file line f [x]])
+> unidiom ui@(UI _ _ _ _ pure pureImpl _ _) (RApp file line f RPlaceholder) 
+>         = mkApp file line (RVar file line pure)
+>                ((take pureImpl (repeat RPlaceholder)) ++ [mkApp file line f [RPlaceholder]])
 > unidiom ui@(UI _ _ _ _ _ _ ap apImpl) (RApp file line f x) 
 >              = mkApp file line (RVar file line ap)
 >                     ((take apImpl (repeat RPlaceholder)) ++
 >                     [unidiom ui f, x])
 > unidiom ui@(UI _ _ _ _ pure pureImpl _ _) x 
->              = let pure = UN "pure" 
->                    pureImpl = 1 
->                    (file, line) = getFileLine x in
+>              = let (file, line) = getFileLine x in
 >               mkApp file line (RVar file line pure)
 >                     ((take pureImpl (repeat RPlaceholder)) ++ [x])
 

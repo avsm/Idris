@@ -136,6 +136,9 @@ First arugment says whether to eta expand
 Hoover up all the arguments to nested lambdsa, and make a new function.
 with env and newargs. Apply it to the environment only.
 
+FIXME: Invent a unique name for the lifted are n. Epic can deal with it, but it's still
+a bit unpleasant.
+
 >          liftLam env newargs (Lambda n ty sc) 
 >                      = liftLam env (newargs++[n]) sc
 >          liftLam env newargs x = do
