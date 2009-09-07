@@ -70,8 +70,10 @@ bind (IOReturn a) k = k a;
 bind (IODo c p) k = IODo c (\x => (bind (p x) k));
 -- bind (IOError str) k = IOError str;
 
-return : a -> (IO a);
-return x = IOReturn x;
+{-
+ioReturn : a -> (IO a);
+ioReturn x = IOReturn x;
+-}
 
 ioApp : IO (a -> b) -> IO a -> IO b;
 ioApp {a} {b} fn arg = do { f : (a->b) <- fn; -- grr

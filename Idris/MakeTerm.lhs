@@ -55,12 +55,12 @@ into an ivor definition, with all the necessary placeholders added.
 >         = mif ctxt (mif ctxt acc (addParams using' newps) ui uo decls) using' ui uo ds
 > mif ctxt acc using ui@(UI _ _ _ _ p pi r ri) uo ((DoUsing bind ret decls):ds)
 >         = mif ctxt (mif ctxt acc using ui' uo decls) using ui uo ds
->    where ui' = let bimpl = case ctxtLookup acc (thisNamespace using) bind of
+>    where ui' = let bimpl = case ctxtLookup (appCtxt ctxt acc) (thisNamespace using) bind of
 >                              Right i -> implicitArgs i
->                              _ -> 0
->                    rimpl = case ctxtLookup acc (thisNamespace using) ret of
+>                              _ -> error $ "Can't find " ++ show bind -- 0
+>                    rimpl = case ctxtLookup (appCtxt ctxt acc) (thisNamespace using) ret of
 >                              Right i -> implicitArgs i
->                              _ -> 0
+>                              _ -> error $ "Can't find " ++ show ret -- 0
 >                     in UI bind bimpl ret rimpl p pi r ri
 > mif ctxt acc using ui@(UI b bi r ri _ _ _ _) uo ((Idiom pure ap decls):ds)
 >         = mif ctxt (mif ctxt acc using ui' uo decls) using ui uo ds

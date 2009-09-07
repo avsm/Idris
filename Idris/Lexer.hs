@@ -127,6 +127,7 @@ data Token
       | TokenExport
       | TokenInline
       | TokenDo
+      | TokenReturn
       | TokenIf
       | TokenThen
       | TokenElse
@@ -286,6 +287,7 @@ lexVar cont cs =
       ("refl",rest) -> cont TokenRefl rest
       ("include",rest) -> cont TokenInclude rest
       ("do",rest) -> cont TokenDo rest
+      ("return",rest) -> cont TokenReturn rest
       ("if",rest) -> cont TokenIf rest
       ("then",rest) -> cont TokenThen rest
       ("else",rest) -> cont TokenElse rest

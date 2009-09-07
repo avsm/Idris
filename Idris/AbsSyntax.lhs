@@ -225,6 +225,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RInfix String Int Op RawTerm RawTerm
 >              | RUserInfix String Int Bool String RawTerm RawTerm
 >              | RDo [Do]
+>              | RReturn String Int
 >              | RIdiom RawTerm
 >              | RPure RawTerm -- a term to apply normally inside idiom brackets
 >              | RRefl
@@ -643,8 +644,8 @@ programmer doesn't have to write them down inside the param block.
 >          Nothing -> Imp u ps ((n, (map fst ps)):pns) ns
 
 > defDo = UI (UN "bind") 2
->            (UN "return") 1 -- IO monad
->            (UN "return") 1 -- IO applicative
+>            (UN "IOReturn") 1 -- IO monad
+>            (UN "IOReturn") 1 -- IO applicative
 >            (UN "ioApp") 2 
 
 > toIvor :: UndoInfo -> Id -> RawTerm -> ViewTerm
@@ -700,6 +701,9 @@ programmer doesn't have to write them down inside the param block.
 >                               (apply (Name Unknown (opFn op)) [l',r'])
 >     toIvorS (RDo dos) = do tm <- undo ui dos
 >                            toIvorS tm
+>     toIvorS (RReturn f l)
+>       = do let (UI _ _ ret retImpl _ _ _ _) = ui
+>            toIvorS $ mkApp f l (RVar f l ret) (take retImpl (repeat RPlaceholder))
 >     toIvorS (RIdiom tm) = do let tm' = unidiom ui tm
 >                              toIvorS tm'
 >     toIvorS (RPure t) = toIvorS t
@@ -811,6 +815,20 @@ in our list of explicit names to add, add it.
 >               let k = RBind (MN "x" i) (Lam RPlaceholder) ds'
 >               return $ mkApp file line (RVar file line bind) 
 >                          ((take bindimpl (repeat RPlaceholder)) ++ [exp, k])
+
+-- > unret :: UndoInfo -> RawTerm -> RawTerm
+-- > unret (UI _ _ ret retImpl _ _ _ _) (RApp f l (RVar _ _ (UN "return")) arg)
+-- >       = mkApp f l (RVar f l ret) ((take retImpl (repeat RPlaceholder)) ++ [arg])
+-- > unret ui (RApp f l x a) = RApp f l (unret ui x) (unret ui a)
+-- > unret ui (RAppImp f l n x a) = RAppImp f l n (unret ui x) (unret ui a)
+-- > unret ui (RInfix f l op x y) = RInfix f l op (unret ui x) (unret ui y)
+-- > unret ui (RBind n (Pi pl z tm) sc) = RBind n (Pi pl z (unret ui tm)) (unret ui sc)
+-- > unret ui (RBind n (Lam tm) sc) = RBind n (Lam (unret ui tm)) (unret ui sc)
+-- > unret ui (RBind n (RLet tm ty) sc) = RBind n (RLet (unret ui tm) (unret ui ty)) (unret ui sc)
+-- > unret ui (RUserInfix f l b n x y) = RUserInfix f l b n (unret ui x) (unret ui y)
+-- > unret ui (RIdiom tm) = RIdiom (unret ui tm)
+-- > unret ui (RPure tm) = RPure (unret ui tm)
+-- > unret ui x = x
 
 TODO: Get names out of UndoInfo
 

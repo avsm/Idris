@@ -103,6 +103,7 @@ import Debug.Trace
       export          { TokenExport }
       inline          { TokenInline }
       do              { TokenDo }
+      return          { TokenReturn }
       if              { TokenIf }
       then            { TokenThen }
       else            { TokenElse }
@@ -154,7 +155,7 @@ import Debug.Trace
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname lazy
-          oid '[' '~' lpair PAIR
+          oid '[' '~' lpair PAIR return
 %left APP
 
 
@@ -416,6 +417,7 @@ TypeList :: { [RawTerm] }
 
 NoAppTerm :: { RawTerm }
 NoAppTerm : Name File Line { RVar $2 $3 $1 }
+          | return File Line { RReturn $2 $3 }
           | '(' Term ')' { bracket $2 }
           | '~' NoAppTerm { RPure $2 }
           | metavar { RMetavar $1 }
