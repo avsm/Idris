@@ -42,7 +42,7 @@ already simple case trees.
 >               let clink = filter (/="") (map epicLink decls)
 >               let scs = map (\ (n, inl, sc) -> (n, inl, transformSC erasure sc)) 
 >                           $ allSCs pcomp
->               catch (do compileAll raw ctxt ofile clink declouts scs
+>               catch (do compileAll raw ctxt ofile erasure clink declouts scs
 >                         return True)
 >                     (\e -> do putStrLn "Compilation error"
 >                               print e
@@ -126,16 +126,16 @@ that we avoid pattern matching where the programmer didn't ask us to.
                               Nothing -> []
 
 
-> compileAll :: Ctxt IvorFun -> Context -> FilePath -> 
+> compileAll :: Ctxt IvorFun -> Context -> FilePath -> Bool ->
 >               [String] -> -- options to pass to epic
 >               [String] -> -- raw epic output
 >               [(Name, Bool, SCFun)] -> IO ()
-> compileAll raw ctxt ofile clink outputs scs = do
+> compileAll raw ctxt ofile erasure clink outputs scs = do
 >      (efile, eH) <- tempfile
 >      prel <- readLibFile defaultLibPath "Prelude.e"
 >      hPutStrLn eH prel
 >      mapM_ (hPutStrLn eH) outputs
->      mapM_ (writeDef eH) scs
+>      mapM_ (writeDef eH erasure) scs
 >      hClose eH
 >      let cmd = "epic " ++ efile ++ " -o " ++ ofile ++ " " ++
 >                concat (map (' ':) clink)
@@ -150,12 +150,12 @@ that we avoid pattern matching where the programmer didn't ask us to.
 > quotename (']':cs) = "_CB_"++quotename cs
 > quotename (c:cs) = c:(quotename cs)
 
-> writeDef :: Handle -> (Name, Bool, SCFun) -> IO ()
-> writeDef h (n,gen,(SCFun scopts args def)) = do
+> writeDef :: Handle -> Bool -> (Name, Bool, SCFun) -> IO ()
+> writeDef h erasure (n,gen,(SCFun scopts args def)) = do
 >   when (gen || elem SCInline scopts) $ hPutStr h "%inline "
 >   maybe (return ()) (\ c -> hPutStrLn h ("export " ++ show c ++ " ")) (getEName scopts)
 >   hPutStrLn h (show n ++ " (" ++ list args ++ ") -> Any = \n" ++
->                writeSC n def)
+>                writeSC n erasure def)
 >    where list [] = ""
 >          list [a] = quotename (show a) ++ " : Any"
 >          list (x:xs) = quotename (show x) ++ " : Any, " ++ list xs
@@ -163,12 +163,12 @@ that we avoid pattern matching where the programmer didn't ask us to.
 Write out a constructor name, turning constructors of IO commands into
 the relevant IO operation
 
-> writeSC :: Name -> SCBody -> String
-> writeSC fname b = writeSC' b where
+> writeSC :: Name -> Bool -> SCBody -> String
+> writeSC fname erasure b = writeSC' b where
 >   writeSC' (SVar n) = quotename (show n)
 >   writeSC' (SCon n i) = writeCon n i ++ "()"
 >   writeSC' (SApp (SCon n i) (fn:args:[]))
->     | n == name "Foreign" = writeFCall fn args fname
+>     | n == name "Foreign" = writeFCall fn erasure args fname
 >   writeSC' (SApp (SCon n i) args) = writeCon n i ++ "(" ++ list args ++ ")"
 >     where list [] = ""
 >           list [a] = writeSC' a
@@ -215,13 +215,13 @@ HACK for string equality
 >   writeSC' (SLet n val b) = "let " ++ show n ++ " : Any = " ++ writeSC' val
 >                          ++ " in ("  ++ writeSC' b ++ ")"
 >   writeSC' (SCCase b alts) = "case " ++ writeSC' b ++ " of { " ++ 
->                              writeAlts fname alts
+>                              writeAlts fname erasure alts
 >                             ++ "}"
 >   writeSC' (SIf x t e) = "(if (" ++ writeSC' x ++ ") then (" ++
 >                          writeSC' t ++ ") else (" ++ writeSC' e ++ "))"
 >   writeSC' (SIfZero x t e) = "(if (" ++ writeSC' x ++ "==0) then (" ++
 >                          writeSC' t ++ ") else (" ++ writeSC' e ++ "))"
->   writeSC' (SInfix op l r) = boolOp op (writeOp op (writeSC' l) (writeSC' r))
+>   writeSC' (SInfix op l r) = boolOp erasure op (writeOp op (writeSC' l) (writeSC' r))
 >   writeSC' (SConst c) = writeConst c
 >   writeSC' (SLazy b) = "lazy(" ++ writeSC' b ++ ")"
 >   writeSC' SUnit = "42"
@@ -243,7 +243,7 @@ HACK for string equality
 > writeOp Concat l r = "__epic_append(" ++ l ++", " ++ r ++")"
 > writeOp op l r = "(" ++ l ++ ") " ++ show op ++ " (" ++ r ++ ")"
 
-> boolOp op c = if retBool op then
+> boolOp erasure op c = if (not erasure) && (retBool op) then
 >                   "__epic_bool(" ++ c ++ ")" else c
 >    where retBool OpLT = True
 >          retBool OpEq = True
@@ -252,30 +252,30 @@ HACK for string equality
 >          retBool OpGEq = True
 >          retBool _ = False
 
-> writeAlts n [] = ""
-> writeAlts n [a] = writeAlt n a
-> writeAlts n (x:xs) = writeAlt n x ++ " | " ++ writeAlts n xs
+> writeAlts n e [] = ""
+> writeAlts n e [a] = writeAlt n e a
+> writeAlts n e (x:xs) = writeAlt n e x ++ " | " ++ writeAlts n e xs
 
-> writeAlt n (SAlt _ t args b) = "Con " ++ show t ++ " (" ++ list args ++ ") -> "
->                                ++ writeSC n b
+> writeAlt n e (SAlt _ t args b) = "Con " ++ show t ++ " (" ++ list args ++ ") -> "
+>                                ++ writeSC n e b
 >    where list [] = ""
 >          list [a] = show a ++ ":Any"
 >          list (x:xs) = show x ++ ":Any, " ++ list xs
-> writeAlt n (SDefault b) = "Default -> " ++ writeSC n b
-> writeAlt n _ = "Default -> error \"unhandled case in " ++ show n ++ "\""
+> writeAlt n e (SDefault b) = "Default -> " ++ writeSC n e b
+> writeAlt n e _ = "Default -> error \"unhandled case in " ++ show n ++ "\""
 
 Chars are just treated as Ints by the compiler, so convert here.
 
 > writeConst (Ch c) = show $ fromEnum c
 > writeConst c = show c
 
-> writeFCall :: SCBody -> SCBody -> Name -> String
-> writeFCall (SApp (SCon ffun _) [SConst (Str fname),argtys,retty]) arglist topname = 
+> writeFCall :: SCBody -> Bool -> SCBody -> Name -> String
+> writeFCall (SApp (SCon ffun _) [SConst (Str fname),argtys,retty]) e arglist topname = 
 >     "foreign " ++ fToEpic retty ++ " " ++ show fname ++ 
 >               " (" ++ build (zip (extract arglist) (extract argtys)) ++ ")"
 >     where build [] = ""
->           build [(x,ty)] = writeSC topname x ++ ":" ++ (fToEpic ty)
->           build ((x,ty):xs) = writeSC topname x ++ ":" ++ (fToEpic ty) ++ 
+>           build [(x,ty)] = writeSC topname e x ++ ":" ++ (fToEpic ty)
+>           build ((x,ty):xs) = writeSC topname e x ++ ":" ++ (fToEpic ty) ++ 
 >                               ", " ++ build xs
 
 This'll work for FArgList and List, because the penultimate is always the 
@@ -289,7 +289,7 @@ after forcing optimisation...
 >           extract x = error (show x)
 >           exTy arg = fToEpic arg
 
-> writeFCall _ _ _ = error "Ill-formed foreign function call"
+> writeFCall _ _ _ _ = error "Ill-formed foreign function call"
 
 
 Convert a constructor application of type 'FType' to an epic type. Just do

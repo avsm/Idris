@@ -327,7 +327,7 @@ intermediate functions for when this isn't the case
 >                v' <- deIO' v
 >                k' <- deIO' k
 >                return $ Let (bname i) Star -- type irrelevant
->                             (mkLazy v') (quickSimpl (App k' (Name Unknown (bname i))))
+>                             v' (quickSimpl (App k' (Name Unknown (bname i))))
 >      | bind == (name "unsafeBind") 
 >           = do i <- get
 >                put (i+1)
@@ -343,12 +343,18 @@ intermediate functions for when this isn't the case
 >      | (not erase) && iodo == (name "IODo") 
 >         = do k' <- deIO' k
 >              c' <- deIO' c
->              return (quickSimpl (App k' c'))
+>              i <- get
+>              put (i+1)
+>              return $ Let (bname i) Star
+>                           c' (quickSimpl (App k' (Name Unknown (bname i))))
 >  deIO' (App (App (Name _ iodo) c) k) -- (with forcing)
 >      | erase && iodo == (name "IODo") 
 >         = do k' <- deIO' k
 >              c' <- deIO' c
->              return (quickSimpl (App k' c'))
+>              i <- get
+>              put (i+1)
+>              return $ Let (bname i) Star
+>                           c' (quickSimpl (App k' (Name Unknown (bname i))))
 >  deIO' (App f a) = do f' <- deIO' f
 >                       a' <- deIO' a
 >                       return (App f' a')

@@ -269,7 +269,8 @@ of things we need to define to complete the program (i.e. metavariables)
 >                         do tm' <- case (CGEval `elem` flags) of
 >                              False -> return tm
 >                              True -> do ctm <- check ctxt tm
->                                         return (view (evalnew ctxt ctm))
+>                                         let ans = view (evalnew ctxt ctm)
+>                                         return ans
 >                            ctxt <- case tyin of
 >                                 Nothing -> addDef ctxt name tm'
 >                                 Just ty -> addTypedDef ctxt name tm' ty

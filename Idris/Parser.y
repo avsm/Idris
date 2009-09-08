@@ -6,6 +6,7 @@ module Idris.Parser where
 import Data.Char
 import Ivor.TT
 import System.IO.Unsafe
+import List
 
 import Idris.AbsSyntax
 import Idris.Lexer
@@ -186,7 +187,7 @@ Declaration: Function { $1 }
            | clib string { RealDecl (CLib $2) }
 
 Function :: { ParseDecl }
-Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
+Function : Name ':' Type Flags File Line ';' { FunType $1 $3 (nub $4) $5 $6 }
          | Name ProofScript ';' { ProofScript $1 $2 }
 --         | DefTerm '=' Term Flags ';' { FunClause (mkDef $1) [] $3 $4 }
          | DefTerm WithTerms WithP Term '{' Functions '}' File Line
@@ -194,7 +195,7 @@ Function : Name ':' Type Flags File Line ';' { FunType $1 $3 $4 $5 $6 }
          | DefTerm WithTerms mightbe Term ';' '[' Name ']' File Line
               { FunClauseP (mkDef $9 $10 $1) $2 $4 $7 }
          | DefTerm WithTerms '=' Term Flags ';' File Line 
-              { FunClause (mkDef $7 $8 $1) $2 $4 $5 }
+              { FunClause (mkDef $7 $8 $1) $2 $4 (nub $5) }
          | '|' WithTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
          | '|' WithTerm mightbe Term ';' '[' Name ']' 
               { FunClauseP RPlaceholder [$2] $4 $7 }
@@ -220,13 +221,13 @@ Functions : Function Functions { $1:$2 }
 
 Flags :: { [CGFlag] }
 Flags : { [] }
-      | Flag Flags { $1:$2 }
+      | Flag Flags { $1 ++ $2 }
 
-Flag :: { CGFlag }
-Flag : nocg { NoCG }
-     | eval { CGEval }
-     | inline { Inline }
-     | export string { CExport $2 }
+Flag :: { [CGFlag] }
+Flag : nocg { [NoCG] }
+     | eval { [CGEval, Inline] }
+     | inline { [Inline] }
+     | export string { [CExport $2] }
 
 --         | Nameproof Script { ProofScript $2 }
 
