@@ -266,11 +266,14 @@ of things we need to define to complete the program (i.e. metavariables)
 >                                    return (r, uo)
 >                                                                     
 >         SimpleDef tm -> 
->                         do tm' <- case (CGEval `elem` flags) of
->                              False -> return tm
->                              True -> do ctm <- check ctxt tm
->                                         let ans = view (evalnew ctxt ctm)
->                                         return ans
+>                         do tm' <- case (getSpec flags) of
+>                              Nothing -> return tm
+>                              Just [] -> do ctm <- check ctxt tm
+>                                            let ans = view (evalnew ctxt ctm)
+>                                            return ans
+>                              Just specfns -> do ctm <- check ctxt tm
+>                                                 let ans = view (evalnewWithout ctxt ctm specfns)
+>                                                 return ans
 >                            ctxt <- case tyin of
 >                                 Nothing -> addDef ctxt name tm'
 >                                 Just ty -> addTypedDef ctxt name tm' ty
@@ -297,6 +300,10 @@ of things we need to define to complete the program (i.e. metavariables)
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
 >         _ -> return ((ctxt, metas), uo)
 >    where unjust (Just x) = x
+>          getSpec [] = Nothing
+>          getSpec (CGEval:_) = Just []
+>          getSpec (CGSpec ns:_) = Just (map toIvorName ns)
+>          getSpec (_:ns) = getSpec ns
 
 > addMeta :: Ctxt IvorFun -> Context -> 
 >           [(Name, ViewTerm)] -> [(Name, ViewTerm)] -> 

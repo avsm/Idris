@@ -162,6 +162,7 @@ data Token
       | TokenLaTeX
       | TokenNoCG
       | TokenEval
+      | TokenSpec
       | TokenCInclude
       | TokenCLib
       | TokenEOF
@@ -336,6 +337,7 @@ lexSpecial cont cs =
       ("latex",rest) -> cont TokenLaTeX rest
       ("nocg",rest) -> cont TokenNoCG rest
       ("eval",rest) -> cont TokenEval rest
+      ("spec",rest) -> cont TokenSpec rest
       ("include",rest) -> cont TokenCInclude rest
       ("lib",rest) -> cont TokenCLib rest
 -- tactics

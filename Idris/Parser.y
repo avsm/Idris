@@ -132,6 +132,7 @@ import Debug.Trace
       latex           { TokenLaTeX }
       nocg            { TokenNoCG }
       eval            { TokenEval }
+      spec            { TokenSpec }
       cinclude        { TokenCInclude }
       clib            { TokenCLib }
 
@@ -226,6 +227,7 @@ Flags : { [] }
 Flag :: { [CGFlag] }
 Flag : nocg { [NoCG] }
      | eval { [CGEval, Inline] }
+     | spec '(' Names ')' { [CGSpec $3] }
      | inline { [Inline] }
      | export string { [CExport $2] }
 
