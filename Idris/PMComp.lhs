@@ -327,7 +327,9 @@ intermediate functions for when this isn't the case
 >                v' <- deIO' v
 >                k' <- deIO' k
 >                return $ Let (bname i) Star -- type irrelevant
->                             v' (quickSimpl (App k' (Name Unknown (bname i))))
+>                          (App (App (Name Unknown (name "__effect")) Placeholder) v')
+>                              (App (App (Name Unknown (name "__effect")) Placeholder)
+>                               (quickSimpl (App k' (Name Unknown (bname i)))))
 >      | bind == (name "unsafeBind") 
 >           = do i <- get
 >                put (i+1)
@@ -346,7 +348,9 @@ intermediate functions for when this isn't the case
 >              i <- get
 >              put (i+1)
 >              return $ Let (bname i) Star
->                           c' (quickSimpl (App k' (Name Unknown (bname i))))
+>                         (App (App (Name Unknown (name "__effect")) Placeholder) c')
+>                          (App (App (Name Unknown (name "__effect")) Placeholder)
+>                            (quickSimpl (App k' (Name Unknown (bname i)))))
 >  deIO' (App (App (Name _ iodo) c) k) -- (with forcing)
 >      | erase && iodo == (name "IODo") 
 >         = do k' <- deIO' k
@@ -354,7 +358,9 @@ intermediate functions for when this isn't the case
 >              i <- get
 >              put (i+1)
 >              return $ Let (bname i) Star
->                           c' (quickSimpl (App k' (Name Unknown (bname i))))
+>                         (App (App (Name Unknown (name "__effect")) Placeholder) c')
+>                          (App (App (Name Unknown (name "__effect")) Placeholder)
+>                           (quickSimpl (App k' (Name Unknown (bname i)))))
 >  deIO' (App f a) = do f' <- deIO' f
 >                       a' <- deIO' a
 >                       return (App f' a')

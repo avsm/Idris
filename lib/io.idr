@@ -182,22 +182,28 @@ _fread
   = mkForeign (FFun "freadStr" (Cons FPtr Nil) FStr) %eval;
 _fwrite
   = mkForeign (FFun "fputStr" (Cons FPtr (Cons FStr Nil)) FUnit) %eval;
+_feof
+  = mkForeign (FFun "feof" (Cons FPtr Nil) FInt) %eval;
 
 gc_details
   = mkForeign (FFun "epicMemInfo" Nil FUnit) %eval;
 
-fopen : String -> String -> (IO File);
+fopen : String -> String -> IO File;
 fopen str mode = do { h <- _fopen str mode;
 		      return (FHandle h); };
 
-fclose : File -> (IO ());
+fclose : File -> IO ();
 fclose (FHandle h) = _fclose h;
 
-fread : File -> (IO String);
+fread : File -> IO String;
 fread (FHandle h) = _fread h;
 
-fwrite : File -> String -> (IO ());
+fwrite : File -> String -> IO ();
 fwrite (FHandle h) str = _fwrite h str;
+
+feof : File -> IO Bool;
+feof (FHandle h) = do { eof <- _feof h;
+     	      	      	return (not (eof==0)); };
 
 sequence : (List (IO a)) -> (IO (List a));
 sequence Nil = return Nil;

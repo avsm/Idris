@@ -196,11 +196,14 @@ TMP HACK until we do coercions on primitives properly
 >     | n == name "unsafeNative" =
 >         "__epic_native(" ++ writeSC' arg ++ ")"
 
-HACK for explicit laziness
+HACK for explicit laziness, and marking effectfullness
 
 >   writeSC' (SApp (SVar lazy) [_,v])
 >     | lazy == name "__lazy" =
 >         "lazy(" ++ writeSC' v ++ ")"
+>   writeSC' (SApp (SVar effect) [_,v])
+>     | effect == name "__effect" =
+>         "%effect(" ++ writeSC' v ++ ")"
 
 HACK for string equality
 
