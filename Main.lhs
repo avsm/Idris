@@ -1,6 +1,6 @@
 > module Main where
 
-> import Ivor.TT
+> import Ivor.TT hiding (transform)
 > import Ivor.Shell
 
 > import System
@@ -83,14 +83,14 @@ these days instead...
 >     content <- readLib defaultLibPath file
 >     let ptree = parse content file
 >     case ptree of
->       Success ds -> do let defs' = makeIvorFuns defs ds fixes
+>       Success ds -> do let (defs', ops) = makeIvorFuns defs ds fixes
 >                        let alldefs = appCtxt defs defs'
->                        ((ctxt, metas), fixes') <- case (addIvor alldefs defs' ctxt fixes) of
+>                        ((ctxt, metas), fixes') <- case (addIvor alldefs defs' ctxt ops) of
 >                             OK x fixes' -> return (x, fixes')
 >                             Err x fixes' err -> do putStrLn err 
 >                                                    return (x, fixes')
->                        let ist = addTransforms (IState alldefs (decls++ds) metas opts [] []) ctxt 
->                        return (ctxt, ist { idris_fixities = fixes' })
+>                        let ist = addTransforms (IState alldefs (decls++ds) metas opts ops []) ctxt 
+>                        return (ctxt, ist { idris_fixities = ops } ) -- fixes' })
 >       Failure err f ln -> fail err
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context

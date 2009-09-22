@@ -46,6 +46,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | Idiom Id Id [Decl] -- pure and ap names
 >           | CLib String | CInclude String
 >           | Fixity String Fixity Int
+>           | Transform RawTerm RawTerm
 >    deriving Show
 
 Flags for controlling compilation. In particular, some functions exist only
@@ -63,8 +64,11 @@ User defined operators have associativity and precedence
 > data Fixity = LeftAssoc | RightAssoc | NonAssoc
 >    deriving (Show, Eq)
 
-> type UserOps = [(String, (Fixity, Int))]
+> type Fixities = [(String, (Fixity, Int))]
 
+> data UserOps = UO { fixityDecls :: Fixities,
+>                     transforms :: [(ViewTerm, ViewTerm)] }
+>              deriving Show
 
 Function types and clauses are given separately, so we'll parse them
 separately then collect them together into a list of Decls
@@ -456,6 +460,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >     gdefs [] = []
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(LatexDefs _)) _ _):ds) = gdefs ds
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Fixity _ _ _)) _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(Transform _ _)) _ _):ds) = gdefs ds
 >     gdefs ((n, ifun):ds)
 >        = let iname = ivorFName ifun in
 >             case (ivorFType ifun, ivorDef ifun) of
@@ -489,12 +494,12 @@ A transformation is a function converting a ViewTerm to a new form.
 >       idris_decls :: [Decl], -- all checked declarations
 >       idris_metavars :: [(Name, ViewTerm)], -- things still to prove
 >       idris_options :: [Opt], -- global options
->       idris_fixities :: [(String, (Fixity, Int))], -- infix operators and precedences
+>       idris_fixities :: UserOps, -- infix operators and precedences
 >       idris_transforms :: [Transform] -- optimisations
 >     }
 
 > initState :: IdrisState
-> initState = IState newCtxt [] [] [ShowRunTime] [] []
+> initState = IState newCtxt [] [] [ShowRunTime] (UO [] []) []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting
@@ -728,14 +733,15 @@ programmer doesn't have to write them down inside the param block.
 Convert a raw term to an ivor term, adding placeholders
 
 > makeIvorTerm :: Implicit -> UndoInfo -> UserOps -> Id -> Ctxt IvorFun -> RawTerm -> ViewTerm
-> makeIvorTerm using ui uo n ctxt tm = let expraw = addPlaceholders ctxt using uo tm in
->                                          toIvor ui n expraw
+> makeIvorTerm using ui uo n ctxt tm 
+>                  = let expraw = addPlaceholders ctxt using uo tm in
+>                                 toIvor ui n expraw
 
 Add placeholders so that implicit arguments can be filled in. Also desugar user infix apps.
 FIXME: I think this'll fail if names are shadowed.
 
 > addPlaceholders :: Ctxt IvorFun -> Implicit -> UserOps -> RawTerm -> RawTerm
-> addPlaceholders ctxt using uo tm = ap [] tm
+> addPlaceholders ctxt using (UO uo _) tm = ap [] tm
 >     -- Count the number of args we've made explicit in an application
 >     -- and don't add placeholders for them. Reset the counter if we get
 >     -- out of an application
@@ -997,7 +1003,7 @@ Correct the precedences in a user defined infix operator term.
 [a opl b opr c] ==> ([a] opl [b]) opr [c] if (prec opr == prec opl and fixity both = L)
 error in all other cases
 
-> fixFix :: UserOps -> RawTerm -> RawTerm
+> fixFix :: Fixities -> RawTerm -> RawTerm
 
 Only need to worry if the left term is not bracketed. Otherwise leave it alone.
 

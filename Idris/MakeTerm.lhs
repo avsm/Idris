@@ -39,7 +39,7 @@ into an ivor definition, with all the necessary placeholders added.
 >                                vdef = Patterns $ map (mkPat ectx imp) (zip (repeat id) def) in
 >                                PWithClause prf vpats vscr vdef
 
-> makeIvorFuns :: Ctxt IvorFun -> [Decl] -> UserOps -> Ctxt IvorFun
+> makeIvorFuns :: Ctxt IvorFun -> [Decl] -> UserOps -> (Ctxt IvorFun, UserOps)
 > makeIvorFuns is defs uo = mif is newCtxt noImplicit defDo uo defs
 
 > mif :: Ctxt IvorFun -> -- init
@@ -47,14 +47,17 @@ into an ivor definition, with all the necessary placeholders added.
 >        Implicit -> -- implicits
 >        UndoInfo -> -- do using bind, return
 >        UserOps -> -- Users operators
->        [Decl] -> Ctxt IvorFun
-> mif ctxt acc using ui uo [] = acc
+>        [Decl] -> (Ctxt IvorFun, UserOps)
+> mif ctxt acc using ui uo [] = (acc, uo)
 > mif ctxt acc using' ui uo ((Using using decls):ds)
->         = mif ctxt (mif ctxt acc (addUsing using' (Imp using [] [] (thisNamespace using'))) ui uo decls) using' ui uo ds
+>         = let (acc', uo') = mif ctxt acc (addUsing using' (Imp using [] [] (thisNamespace using'))) ui uo decls in
+>               mif ctxt acc' using' ui uo' ds
 > mif ctxt acc using' ui uo ((Params newps decls):ds)
->         = mif ctxt (mif ctxt acc (addParams using' newps) ui uo decls) using' ui uo ds
+>         = let (acc', uo') = (mif ctxt acc (addParams using' newps) ui uo decls) in
+>               mif ctxt acc' using' ui uo' ds
 > mif ctxt acc using ui@(UI _ _ _ _ p pi r ri) uo ((DoUsing bind ret decls):ds)
->         = mif ctxt (mif ctxt acc using ui' uo decls) using ui uo ds
+>         = let (acc', uo') = (mif ctxt acc using ui' uo decls) in
+>              mif ctxt acc' using ui uo' ds
 >    where ui' = let bimpl = case ctxtLookup (appCtxt ctxt acc) (thisNamespace using) bind of
 >                              Right i -> implicitArgs i
 >                              _ -> error $ "Can't find " ++ show bind -- 0
@@ -63,7 +66,8 @@ into an ivor definition, with all the necessary placeholders added.
 >                              _ -> error $ "Can't find " ++ show ret -- 0
 >                     in UI bind bimpl ret rimpl p pi r ri
 > mif ctxt acc using ui@(UI b bi r ri _ _ _ _) uo ((Idiom pure ap decls):ds)
->         = mif ctxt (mif ctxt acc using ui' uo decls) using ui uo ds
+>         = let (acc', uo') = (mif ctxt acc using ui' uo decls) in
+>             mif ctxt acc' using ui uo' ds
 >    where ui' = let pureImpl = case ctxtLookup acc (thisNamespace using) pure of
 >                              Right i -> implicitArgs i
 >                              _ -> 0
@@ -84,7 +88,7 @@ into an ivor definition, with all the necessary placeholders added.
 > mif ctxt acc using' ui uo (decl@(DataDecl d):ds) 
 >      = let using = addParamName using' (tyId d) in
 >            addDataEntries ctxt acc decl d using ui uo ds -- will call mif on ds
-> mif ctxt acc using ui uo (decl@(TermDef n tm flags):ds) 
+> mif ctxt acc using ui uo@(UO _ trans) (decl@(TermDef n tm flags):ds) 
 >     | null $ params using
 >         = let (itmraw, imp) = addImplWith using (appCtxt ctxt acc) tm
 >               itm = makeIvorTerm using ui uo n (appCtxt ctxt acc) itmraw in
@@ -99,10 +103,18 @@ into an ivor definition, with all the necessary placeholders added.
 > mif ctxt acc using ui uo (decl@(LatexDefs ls):ds) 
 >         = mif ctxt (addEntry acc (thisNamespace using) (MN "latex" 0) 
 >              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui uo ds
-> mif ctxt acc using ui uo (decl@(Fixity op assoc prec):ds) 
+> mif ctxt acc using ui (UO fix trans) (decl@(Fixity op assoc prec):ds) 
 >         = mif ctxt (addEntry acc (thisNamespace using) (MN "fixity" (length ds)) 
 >              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui 
->                   ((op,(assoc,prec)):uo) ds
+>                   (UO ((op,(assoc,prec)):fix) trans) ds
+> mif ctxt acc using ui uo@(UO fix trans) (decl@(Transform lhs rhs):ds) 
+>         = let lhsraw = addPlaceholders (appCtxt ctxt acc) using uo lhs
+>               rhsraw = addPlaceholders (appCtxt ctxt acc) using uo rhs
+>               lhstm = makeIvorTerm using ui uo (MN "LHS" 0) ctxt lhsraw
+>               rhstm = makeIvorTerm using ui uo (MN "RHS" 0) ctxt rhsraw in
+>           mif ctxt (addEntry acc (thisNamespace using) (MN "transform" (length ds)) 
+>              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui 
+>                   (UO fix ((lhstm, rhstm):trans)) ds
 > mif ctxt acc using ui uo (decl@(Prf (Proof n _ scr)):ds) 
 >     = case ctxtLookup acc (thisNamespace using) n of
 >          Left _ -> -- add the script and process the type later, should
@@ -128,7 +140,7 @@ Add an entry for the type id and for each of the constructors.
 >                   Datatype -> Implicit ->
 >                   UndoInfo -> UserOps ->
 >                   [Decl] -> 
->                   Ctxt IvorFun
+>                   (Ctxt IvorFun, UserOps)
 > addDataEntries ctxt acc decl (Latatype tid tty f l) using ui uo ds = 
 >     let (tyraw, imp) = addImplWith using (appCtxt ctxt acc) tty
 >         tytm = Annotation (FileLoc f l) $ makeIvorTerm using ui uo tid (appCtxt ctxt acc) tyraw 
@@ -224,7 +236,7 @@ n is a parameter
 >                  [(Id,RawTerm)] -> -- datatype local 'using'
 >                  Implicit -> UndoInfo -> UserOps -> -- global 'using'
 >                  [Decl] -> String -> Int ->
->                  Ctxt IvorFun
+>                  (Ctxt IvorFun, UserOps)
 > addConEntries ctxt acc [] u using ui uo ds f l = mif ctxt acc using ui uo ds
 > addConEntries ctxt acc ((cid, ty):cs) u using' ui uo ds f l
 >     = let using = addParamName using' cid
@@ -255,9 +267,11 @@ of things we need to define to complete the program (i.e. metavariables)
 >               TTM ((Context, [(Name, ViewTerm)]), UserOps)
 > addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _ _) 
 >                = return ((ctxt, metas), uo)
-> addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _) 
->                = return ((ctxt, metas), (op, (assoc, prec)):uo)
-> addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
+> addIvorDef raw (UO fix trans) (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _) 
+>                = return ((ctxt, metas), UO fix trans)
+> addIvorDef raw (UO fix trans) (ctxt, metas) (n,IvorFun name tyin _ def f@(Transform lhs rhs) _ _)
+>                = return ((ctxt, metas), UO fix trans)
+> addIvorDef raw uo@(UO fix trans) (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
 >     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> -- trace (show ps) $
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
@@ -269,10 +283,10 @@ of things we need to define to complete the program (i.e. metavariables)
 >                         do tm' <- case (getSpec flags) of
 >                              Nothing -> return tm
 >                              Just [] -> do ctm <- check ctxt tm
->                                            let ans = view (evalnew ctxt ctm)
+>                                            let ans = allTrans trans (view (evalnew ctxt ctm))
 >                                            return ans
 >                              Just specfns -> do ctm <- check ctxt tm
->                                                 let ans = view (evalnewWithout ctxt ctm specfns)
+>                                                 let ans = allTrans trans (view (evalnewWithout ctxt ctm specfns))
 >                                                 return ans
 >                            ctxt <- case tyin of
 >                                 Nothing -> addDef ctxt name tm'
@@ -320,3 +334,5 @@ of things we need to define to complete the program (i.e. metavariables)
 >          dumpArgs [] = ""
 >          dumpArgs ((n,ty):xs) = "    " ++ show n ++ " : " ++showImp False ty
 >                                 ++ "\n" ++ dumpArgs xs
+
+> allTrans ts tm = foldl (\tm (l,r) -> transform l r tm) tm ts

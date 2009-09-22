@@ -73,6 +73,7 @@ import Debug.Trace
       and             { TokenAnd }
       arrow           { TokenArrow }
       fatarrow        { TokenFatArrow }
+      transarrow      { TokenTransArrow }
       leftarrow       { TokenLeftArrow }
       inttype         { TokenIntType }
       chartype        { TokenCharType }
@@ -133,6 +134,7 @@ import Debug.Trace
       nocg            { TokenNoCG }
       eval            { TokenEval }
       spec            { TokenSpec }
+      transform       { TokenTransform }
       cinclude        { TokenCInclude }
       clib            { TokenCLib }
 
@@ -157,7 +159,7 @@ import Debug.Trace
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname lazy
-          oid '[' '~' lpair PAIR return
+          oid '[' '~' lpair PAIR return transarrow
 %left APP
 
 
@@ -183,9 +185,13 @@ Declaration: Function { $1 }
            | DoUsing '{' Program '}' { PDoUsing $1 $3 } 
            | Idiom '{' Program '}' { PIdiom $1 $3 }
            | Params '{' Program '}' { PParams $1 $3 }
+           | Transform { RealDecl $1 }
            | syntax Name NamesS '=' Term ';' { PSyntax $2 $3 $5 }
            | cinclude string { RealDecl (CInclude $2) }
            | clib string { RealDecl (CLib $2) }
+
+Transform :: { Decl }
+Transform : transform Term fatarrow Term ';' { Transform $2 $4 }
 
 Function :: { ParseDecl }
 Function : Name ':' Type Flags File Line ';' { FunType $1 $3 (nub $4) $5 $6 }
@@ -564,7 +570,7 @@ Line :: { LineNumber }
 File :: { String } 
      : {- empty -} %prec NONE  {% getFileName }
 
-Ops :: { UserOps } 
+Ops :: { Fixities } 
      : {- empty -} %prec NONE  {% getOps }
 
 {

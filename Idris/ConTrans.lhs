@@ -6,7 +6,7 @@ Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 >                       applyTransforms, transform) where
 
 > import Idris.AbsSyntax
-> import Ivor.TT
+> import Ivor.TT hiding (transform)
 
 > import Maybe
 > import List

@@ -338,7 +338,8 @@ intermediate functions for when this isn't the case
 > deIO erase t = deIO' t where
 
 >  deIO' (App (App (App (App (Name _ bind) _) _) v) k)
->      | bind == (name "bind") 
+>      | bind == (name "bind") || 
+>        bind == (name "ibind") || bind == (name "ibinda")
 >           = do i <- get
 >                put (i+1)
 >                v' <- deIO' v

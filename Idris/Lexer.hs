@@ -7,7 +7,7 @@ import Idris.AbsSyntax
 
 type LineNumber = Int
 
-type P a = String -> String -> LineNumber -> UserOps -> Result a
+type P a = String -> String -> LineNumber -> Fixities -> Result a
 
 getLineNo :: P LineNumber
 getLineNo = \s fn l ops -> Success l
@@ -18,7 +18,7 @@ getFileName = \s fn l ops -> Success fn
 getContent :: P String
 getContent = \s fn l ops -> Success s
 
-getOps :: P UserOps
+getOps :: P Fixities
 getOps = \s fn l ops -> Success ops
 
 thenP :: P a -> (a -> P b) -> P b
@@ -111,6 +111,7 @@ data Token
       | TokenLT
       | TokenArrow
       | TokenFatArrow
+      | TokenTransArrow
       | TokenLeftArrow
       | TokenColon
       | TokenSemi
@@ -163,6 +164,7 @@ data Token
       | TokenNoCG
       | TokenEval
       | TokenSpec
+      | TokenTransform
       | TokenCInclude
       | TokenCLib
       | TokenEOF
@@ -321,6 +323,7 @@ lexOp cont cs = case span isOpChar cs of
                    ("!",rest) -> cont TokenBang rest
                    ("->", rest) -> cont TokenArrow rest
                    ("=>", rest) -> cont TokenFatArrow rest
+                   -- ("==>", rest) -> cont TokenTransArrow rest
                    ("<-", rest) -> cont TokenLeftArrow rest
                    ("~", rest) -> cont TokenTilde rest
                    (op,rest) -> cont (TokenInfixName op) rest
@@ -338,6 +341,7 @@ lexSpecial cont cs =
       ("nocg",rest) -> cont TokenNoCG rest
       ("eval",rest) -> cont TokenEval rest
       ("spec",rest) -> cont TokenSpec rest
+      ("transform",rest) -> cont TokenTransform rest
       ("include",rest) -> cont TokenCInclude rest
       ("lib",rest) -> cont TokenCLib rest
 -- tactics
