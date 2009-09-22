@@ -10,6 +10,7 @@ Pattern matching compiler, convert to simple case expressions
 > import Data.Typeable
 > import Debug.Trace
 > import Control.Monad.State
+> import List hiding (partition)
 
 Simple case statements are either a case analysis, just a term. ErrorCase 
 and Impossible are distinct in that 'Impossible' should be the default 
@@ -137,10 +138,26 @@ Reorder variables so that one with most disjoint cases is first.
 will at least be looked at last, and we'll be matching on the real arguments
 rather than indices.)
 
->          reOrder cs vs = (reverseAll cs, reverse vs)
->          reverseAll [] = []
->          reverseAll ((Clause args rest):cs) 
->                       = (Clause (reverse args) rest):(reverseAll cs)
+>          reOrder cs vs = let djs = (reverse.sort.(mapI 0 dj).transpose.allArgs) cs in
+>                              (pickAll (map snd djs) cs, pick (map snd djs) vs)
+>          pickAll _ [] = []
+>          pickAll djs ((Clause args rest):cs) 
+>                       = (Clause (pick djs args) rest):(pickAll djs cs)
+>          allArgs [] = []
+>          allArgs ((Clause args rest):cs) = args:(allArgs cs)
+
+>          pick [] _ = []
+>          pick (i:is) xs = xs!!i : (pick is xs)
+
+Count the number of different constructor forms in xs
+
+>          dj xs = dj' [] xs
+>          dj' acc [] = length (nub acc)
+>          dj' acc (PCon n i p:xs) = dj' (n:acc) xs
+>          dj' acc (_:xs) = dj' acc xs
+
+>          mapI i f [] = []
+>          mapI i f (x:xs) = (f x, i):(mapI (i+1) f xs)
 
 > match :: Ctxt IvorFun -> Context -> 
 >          [ViewTerm] -> -- arguments
@@ -341,6 +358,9 @@ intermediate functions for when this isn't the case
 >      | erase && ret == (name "IOReturn") = deIO' a
 >  deIO' (App (App (Name _ upio) _) a)
 >      | upio == (name "unsafePerformIO") = deIO' a
+>  deIO' (App (App (Name _ iolift) _) io)
+>      | iolift == (name "IOLift")  -- Just skip this
+>         = deIO' io
 >  deIO' (App (App (App (Name _ iodo) _) c) k) -- (without forcing)
 >      | (not erase) && iodo == (name "IODo") 
 >         = do k' <- deIO' k

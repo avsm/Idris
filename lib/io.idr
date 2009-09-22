@@ -33,6 +33,8 @@ fapp : {xs,ys:List FType} ->
 fapp fNil fxs = fxs;
 fapp (fCons fx fxs) fys = fCons fx (fapp fxs fys);
 
+data IO : # -> #;
+
 data Command : # where
     PutStr : String -> Command
   | GetStr : Command
@@ -43,6 +45,7 @@ data Command : # where
   | NewRef : Command
   | ReadRef : # -> Int -> Command
   | WriteRef : {A:#} -> Int -> A -> Command
+  | IOLift : {A:#} -> (IO A) -> Command 
   | Foreign : (f:ForeignFun) -> 
 	      (args:FArgList (f_args f)) -> Command;
 
@@ -56,6 +59,7 @@ Response (DoUnlock l) = ();
 Response NewRef = Int;
 Response (ReadRef A i) = A;
 Response (WriteRef i val) = ();
+Response (IOLift {A} f) = A;
 Response (Foreign t args) = i_ftype (f_retType t);
 
 data IO : # -> # where
@@ -69,6 +73,10 @@ bind : (IO a) -> (a -> (IO b)) -> (IO b);
 bind (IOReturn a) k = k a;
 bind (IODo c p) k = IODo c (\x => (bind (p x) k));
 -- bind (IOError str) k = IOError str;
+
+kbind : (IO a) -> (a -> b) -> (IO b);
+kbind (IOReturn a) k = IOReturn (k a);
+kbind (IODo c p) k = IODo c (\x => (kbind (p x) k));
 
 {-
 ioReturn : a -> (IO a);
@@ -114,7 +122,7 @@ putStrLn : String -> (IO ());
 putStrLn str = do { putStr str;
 		    putStr "\n"; };
 
-fork : (IO ()) -> (IO ());
+fork : |(proc:IO ()) -> (IO ());
 fork proc = IODo (Fork proc) (\a => (IOReturn a));
 
 newLock : Int -> (IO Lock);
