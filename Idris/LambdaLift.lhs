@@ -105,7 +105,7 @@ name, arguments, body
 >              -- do it again, we undo some of the work forcing has done since
 >              -- we've reduced arity there.
 >              (body, SCS _ defs) = runState (liftSC args sc) (SCS 0 []) in
->              (root,args,body):defs
+>                  (root,args,body):defs
 >    where liftSC env (SCase tm alts) = do tm' <- lift env tm
 >                                          alts' <- mapM (liftAlt env) alts
 >                                          return (SCase tm' (sort alts'))
@@ -257,6 +257,7 @@ Chars are just treated as Ints by the compiler, so convert here.
 >                                Just s -> SConst (Str s)
 >                                Nothing -> case (cast c)::Maybe Char of
 >                                             Just c -> SConst (Num (fromEnum c))
+>        sc' (Annotation _ x) args = sc' x args
 >        sc' x args = SUnit -- no runtime meaning
 
 scapply deals with special cases for infix operators, IO, etc.

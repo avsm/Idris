@@ -111,12 +111,13 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("definition", "d", showdef, "Show the erased version of a function or type", True),
 >       ("options","o", options, "Set options", True),
 >       ("help", "h", help, "Show help text",True),
+>       ("xdebug", "xd", debug, "Show some internal stuff", False),
 >       ("?", "?", help, "Show help text",True)]
 
 > type Command = IdrisState -> Context -> [String] -> IO REPLRes
 
 > quit, tmtype, prove, metavars, tcomp, texec :: Command 
-> norm, help, options, showdef :: Command
+> debug, norm, help, options, showdef :: Command
 
 > quit _ _ _ = do return Quit
 > tmtype (IState raw _ _ _ uo _) ctxt tms = do icheckType raw uo ctxt (unwords tms)
@@ -143,6 +144,9 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                      return (NewCtxt ist ctxt')
 > latex ist ctxt (nm:defs) 
 >           = do latexDump (idris_context ist) (latexDefs defs) (UN nm)
+>                return Continue
+> debug ist ctxt []
+>           = do print (idris_fixities ist)
 >                return Continue
 > tcomp ist ctxt [] 
 >           = do putStrLn "Please give an output filename"
@@ -279,6 +283,7 @@ the appropriate thing, after applying the relevant transformations.
 >     = do case getPatternDef ctxt (name n) of
 >            Right (ty, pats) -> showPats n (transform ctxt 
 >                                              (idris_transforms ist)
+>                                              (transforms (idris_fixities ist))
 >                                               (name n) pats)
 >            _ -> case getInductive ctxt (name n) of
 >                   Right ind -> showInductive n ctxt (idris_transforms ist) 

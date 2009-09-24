@@ -233,7 +233,7 @@ Flags : { [] }
 Flag :: { [CGFlag] }
 Flag : nocg { [NoCG] }
      | eval { [CGEval, Inline] }
-     | spec '(' Names ')' { [CGSpec $3] }
+     | spec '(' NameInts ')' { [CGSpec $3] }
      | inline { [Inline] }
      | export string { [CExport $2] }
 
@@ -349,6 +349,12 @@ TypedBind : Name ':' Type { map ( \x -> (x,$3)) [$1] }
 Names :: { [Id] }
 Names : Name { [$1] }
       | Name ',' Names { $1:$3 }
+
+NameInts :: { [(Id, Int)] }
+NameInts : Name int { [($1,$2)] }
+         | Name { [($1, 0)] }
+         | Name ',' NameInts { ($1,0):$3 }
+         | Name int ',' NameInts { ($1,$2):$4 }
 
 BrackNames :: { [Id] }
 BrackNames : brackname { [$1] }

@@ -37,7 +37,8 @@ already simple case trees.
 >               let erasure = not $ NoErasure `elem` (idris_options ist)
 >               let pdefs = getCompileDefs raw ctxt
 >               let trans = idris_transforms ist
->               let pcomp = map (pmCompDef raw ctxt erasure trans) pdefs
+>               let vtrans = transforms (idris_fixities ist)
+>               let pcomp = map (pmCompDef raw ctxt erasure trans vtrans) pdefs
 >               let declouts = filter (/="") (map epicDecl decls)
 >               let clink = filter (/="") (map epicLink decls)
 >               let scs = map (\ (n, inl, sc) -> (n, inl, transformSC erasure sc)) 
@@ -107,18 +108,19 @@ that we avoid pattern matching where the programmer didn't ask us to.
 
 > pmCompDef :: Ctxt IvorFun -> Context -> 
 >              Bool -> -- erasure on
->              [Transform] ->
+>              [Transform] -> -- optimisations
+>              [(ViewTerm, ViewTerm)] -> -- user level transforms
 >              (Name, (ViewTerm, Patterns)) -> 
 >              (Name, Bool, ([Name], SimpleCase))
-> pmCompDef raw ctxt erase ctrans (n, (ty,ps)) 
+> pmCompDef raw ctxt erase ctrans vtrans (n, (ty,ps)) 
 > --    = let flags = getFlags n raw in
 > --          case ((NoCG `elem` flags), (CGEval `elem` flags)) of 
 > --             (True, _) -> trace ("Not compiling " ++ show n) (n, [])
 > --             (False, False)e -> 
->       =  let transpm = transform ctxt ctrans n ps 
+>       =  let transpm = transform ctxt ctrans vtrans n ps 
 >              gen = isAuxPattern ctxt n
 >              compiledp = pmcomp raw ctxt erase n ty transpm in
->             -- trace (show n ++ "\n" ++ show transpm)
+>              -- trace (if n == name "copyRecInt" then show n ++ "\n" ++ show compiledp else "")
 >              (n, gen, compiledp)
 
      where getFlags n raw = case ctxtLookup raw n of

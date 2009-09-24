@@ -71,6 +71,7 @@ data IORef A = MkIORef Int;
 
 bind : (IO a) -> (a -> (IO b)) -> (IO b);
 bind (IOReturn a) k = k a;
+-- bind (IODo (IOLift {A} c) p) k = bind (bind c p) k;
 bind (IODo c p) k = IODo c (\x => (bind (p x) k));
 -- bind (IOError str) k = IOError str;
 

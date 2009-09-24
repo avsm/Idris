@@ -7,6 +7,7 @@ Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 
 > import Idris.AbsSyntax
 > import Ivor.TT hiding (transform)
+> import qualified Ivor.ViewTerm(transform)
 
 > import Maybe
 > import List
@@ -28,12 +29,15 @@ Do all this before any pattern match compilation or lambda lifting.
 To do this uniformly, turn a pattern def into an application of the lhs, 
 then turn it back into a pclause
 
-> transform :: Context -> [Transform] -> Name -> Patterns -> Patterns
-> transform ctxt ts n (Patterns ps) = Patterns $ (map doTrans ps)
+Also apply user level transforms (vts) at this stage.
+
+> transform :: Context -> [Transform] -> [(ViewTerm, ViewTerm)] -> 
+>              Name -> Patterns -> Patterns
+> transform ctxt ts vts n (Patterns ps) = Patterns $ (map doTrans ps)
 >    where doTrans (PClause args ret) 
 >              = let lhs = apply (Name Unknown n) args
 >                    lhs' = applyTransforms ctxt ts lhs
->                    ret' = applyTransforms ctxt ts ret
+>                    ret' = applyTransforms ctxt ts (allTrans vts ret)
 >                    args' = getFnArgs lhs' in
 >                    PClause args' ret'
 >          doTrans (PWithClause prf args scr (Patterns pats))
@@ -43,6 +47,9 @@ then turn it back into a pclause
 >                    scr' = applyTransforms ctxt ts scr
 >                    args' = getFnArgs lhs' in
 >                    PWithClause prf args' scr' pats'
+
+
+> allTrans ts tm = foldl (\tm (l,r) -> Ivor.ViewTerm.transform l r tm) tm ts
 
 Test transforms: VNil A => VNil
                  VCons a k x xs => VCons x xs
@@ -342,10 +349,10 @@ True -- Complex term, just drop it.
 > makePTransform :: Ctxt IvorFun -> Context -> [Transform] ->
 >                   (Name, (ViewTerm, Patterns)) -> [Transform]
 > makePTransform raw ctxt ctrans (n, (ty, patsin)) 
->   = let pats = transform ctxt ctrans n patsin in
+>   = let pats = transform ctxt ctrans [] n patsin in
 >       case getPatternDef ctxt n of
 >        Right (_, idpatsin) ->
->            let idpats = transform ctxt ctrans n idpatsin
+>            let idpats = transform ctxt ctrans [] n idpatsin
 >                numargs = args pats
 >                placeholders = getPlaceholders ctxt n pats idpats in 
 >             -- trace (show (placeholders, n)) $

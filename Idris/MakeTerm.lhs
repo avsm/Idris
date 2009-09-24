@@ -283,10 +283,10 @@ of things we need to define to complete the program (i.e. metavariables)
 >                         do tm' <- case (getSpec flags) of
 >                              Nothing -> return tm
 >                              Just [] -> do ctm <- check ctxt tm
->                                            let ans = allTrans trans (view (evalnew ctxt ctm))
+>                                            let ans = view (evalnew ctxt ctm)
 >                                            return ans
 >                              Just specfns -> do ctm <- check ctxt tm
->                                                 let ans = allTrans trans (view (evalnewWithout ctxt ctm specfns))
+>                                                 let ans = view (evalnewLimit ctxt ctm specfns)
 >                                                 return ans
 >                            ctxt <- case tyin of
 >                                 Nothing -> addDef ctxt name tm'
@@ -316,7 +316,7 @@ of things we need to define to complete the program (i.e. metavariables)
 >    where unjust (Just x) = x
 >          getSpec [] = Nothing
 >          getSpec (CGEval:_) = Just []
->          getSpec (CGSpec ns:_) = Just (map toIvorName ns)
+>          getSpec (CGSpec ns:_) = Just (map (\ (x, i) -> (toIvorName x, i)) ns)
 >          getSpec (_:ns) = getSpec ns
 
 > addMeta :: Ctxt IvorFun -> Context -> 
@@ -334,5 +334,3 @@ of things we need to define to complete the program (i.e. metavariables)
 >          dumpArgs [] = ""
 >          dumpArgs ((n,ty):xs) = "    " ++ show n ++ " : " ++showImp False ty
 >                                 ++ "\n" ++ dumpArgs xs
-
-> allTrans ts tm = foldl (\tm (l,r) -> transform l r tm) tm ts
