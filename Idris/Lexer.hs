@@ -164,6 +164,8 @@ data Token
       | TokenNoCG
       | TokenEval
       | TokenSpec
+      | TokenFreeze
+      | TokenThaw
       | TokenTransform
       | TokenCInclude
       | TokenCLib
@@ -341,6 +343,8 @@ lexSpecial cont cs =
       ("nocg",rest) -> cont TokenNoCG rest
       ("eval",rest) -> cont TokenEval rest
       ("spec",rest) -> cont TokenSpec rest
+      ("freeze",rest) -> cont TokenFreeze rest
+      ("thaw",rest) -> cont TokenThaw rest
       ("transform",rest) -> cont TokenTransform rest
       ("include",rest) -> cont TokenCInclude rest
       ("lib",rest) -> cont TokenCLib rest

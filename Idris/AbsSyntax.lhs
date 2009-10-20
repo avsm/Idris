@@ -47,6 +47,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | CLib String | CInclude String
 >           | Fixity String Fixity Int
 >           | Transform RawTerm RawTerm
+>           | Freeze Id
 >    deriving Show
 
 Flags for controlling compilation. In particular, some functions exist only
@@ -67,7 +68,8 @@ User defined operators have associativity and precedence
 > type Fixities = [(String, (Fixity, Int))]
 
 > data UserOps = UO { fixityDecls :: Fixities,
->                     transforms :: [(ViewTerm, ViewTerm)] }
+>                     transforms :: [(ViewTerm, ViewTerm)],
+>                     frozen :: [Id] }
 >              deriving Show
 
 Function types and clauses are given separately, so we'll parse them
@@ -461,6 +463,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(LatexDefs _)) _ _):ds) = gdefs ds
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Fixity _ _ _)) _ _):ds) = gdefs ds
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Transform _ _)) _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(Freeze _)) _ _):ds) = gdefs ds
 >     gdefs ((n, ifun):ds)
 >        = let iname = ivorFName ifun in
 >             case (ivorFType ifun, ivorDef ifun) of
@@ -499,7 +502,7 @@ A transformation is a function converting a ViewTerm to a new form.
 >     }
 
 > initState :: IdrisState
-> initState = IState newCtxt [] [] [ShowRunTime] (UO [] []) []
+> initState = IState newCtxt [] [] [ShowRunTime] (UO [] [] []) []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting
@@ -741,7 +744,7 @@ Add placeholders so that implicit arguments can be filled in. Also desugar user 
 FIXME: I think this'll fail if names are shadowed.
 
 > addPlaceholders :: Ctxt IvorFun -> Implicit -> UserOps -> RawTerm -> RawTerm
-> addPlaceholders ctxt using (UO uo _) tm = ap [] tm
+> addPlaceholders ctxt using (UO uo _ _) tm = ap [] tm
 >     -- Count the number of args we've made explicit in an application
 >     -- and don't add placeholders for them. Reset the counter if we get
 >     -- out of an application

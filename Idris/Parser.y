@@ -134,6 +134,8 @@ import Debug.Trace
       nocg            { TokenNoCG }
       eval            { TokenEval }
       spec            { TokenSpec }
+      freeze          { TokenFreeze }
+      thaw            { TokenThaw }
       transform       { TokenTransform }
       cinclude        { TokenCInclude }
       clib            { TokenCLib }
@@ -181,6 +183,7 @@ Declaration :: { ParseDecl }
 Declaration: Function { $1 }
            | Datatype { RealDecl (DataDecl $1) }
            | Latex { RealDecl $1 }
+           | freeze name ';' { RealDecl (Freeze $2) }
            | Using '{' Program '}' { PUsing $1 $3 }
            | DoUsing '{' Program '}' { PDoUsing $1 $3 } 
            | Idiom '{' Program '}' { PIdiom $1 $3 }
@@ -234,6 +237,7 @@ Flag :: { [CGFlag] }
 Flag : nocg { [NoCG] }
      | eval { [CGEval, Inline] }
      | spec '(' NameInts ')' { [CGSpec $3] }
+     | spec { [CGSpec []] }
      | inline { [Inline] }
      | export string { [CExport $2] }
 

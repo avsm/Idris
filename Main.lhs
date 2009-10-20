@@ -90,7 +90,7 @@ these days instead...
 >                             Err x fixes' err -> do putStrLn err 
 >                                                    return (x, fixes')
 >                        let ist = addTransforms (IState alldefs (decls++ds) metas opts ops []) ctxt 
->                        return (ctxt, ist { idris_fixities = ops } ) -- fixes' })
+>                        return (ctxt, ist { idris_fixities = fixes' })
 >       Failure err f ln -> fail err
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context

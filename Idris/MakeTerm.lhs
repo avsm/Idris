@@ -88,7 +88,7 @@ into an ivor definition, with all the necessary placeholders added.
 > mif ctxt acc using' ui uo (decl@(DataDecl d):ds) 
 >      = let using = addParamName using' (tyId d) in
 >            addDataEntries ctxt acc decl d using ui uo ds -- will call mif on ds
-> mif ctxt acc using ui uo@(UO _ trans) (decl@(TermDef n tm flags):ds) 
+> mif ctxt acc using ui uo@(UO _ trans _) (decl@(TermDef n tm flags):ds) 
 >     | null $ params using
 >         = let (itmraw, imp) = addImplWith using (appCtxt ctxt acc) tm
 >               itm = makeIvorTerm using ui uo n (appCtxt ctxt acc) itmraw in
@@ -103,18 +103,26 @@ into an ivor definition, with all the necessary placeholders added.
 > mif ctxt acc using ui uo (decl@(LatexDefs ls):ds) 
 >         = mif ctxt (addEntry acc (thisNamespace using) (MN "latex" 0) 
 >              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui uo ds
-> mif ctxt acc using ui (UO fix trans) (decl@(Fixity op assoc prec):ds) 
+> mif ctxt acc using ui (UO fix trans fr) (decl@(Fixity op assoc prec):ds) 
 >         = mif ctxt (addEntry acc (thisNamespace using) (MN "fixity" (length ds)) 
 >              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui 
->                   (UO ((op,(assoc,prec)):fix) trans) ds
-> mif ctxt acc using ui uo@(UO fix trans) (decl@(Transform lhs rhs):ds) 
+>                   (UO ((op,(assoc,prec)):fix) trans fr) ds
+> mif ctxt acc using ui uo@(UO fix trans fr) (decl@(Transform lhs rhs):ds) 
 >         = let lhsraw = addPlaceholders (appCtxt ctxt acc) using uo lhs
 >               rhsraw = addPlaceholders (appCtxt ctxt acc) using uo rhs
 >               lhstm = makeIvorTerm using ui uo (MN "LHS" 0) ctxt lhsraw
 >               rhstm = makeIvorTerm using ui uo (MN "RHS" 0) ctxt rhsraw in
 >           mif ctxt (addEntry acc (thisNamespace using) (MN "transform" (length ds)) 
 >              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui 
->                   (UO fix ((lhstm, rhstm):trans)) ds
+>                   (UO fix ((lhstm, rhstm):trans) fr) ds
+
+Don't add yet! Or everything will be frozen in advance, rather than being 
+frozen after they are needed.
+
+> mif ctxt acc using ui uo@(UO fix trans fr) (decl@(Freeze frfn):ds) 
+>     = mif ctxt (addEntry acc (thisNamespace using) (MN "freeze" (length ds))
+>                 (IvorFun undefined Nothing 0 undefined decl [] [])) using ui 
+>                 (UO fix trans fr) ds
 > mif ctxt acc using ui uo (decl@(Prf (Proof n _ scr)):ds) 
 >     = case ctxtLookup acc (thisNamespace using) n of
 >          Left _ -> -- add the script and process the type later, should
@@ -262,16 +270,21 @@ of things we need to define to complete the program (i.e. metavariables)
 >                                          Right (ok, fixes) -> addivs ok fixes ds
 >                                          Left err -> Err acc fixes (idrisError all err)
 
+Add a definition to Ivor. UserOps have been finalised already, by makeIvorFuns,
+except frozen things, which need to be added as we go, in order.
+
 > addIvorDef :: Ctxt IvorFun -> UserOps -> (Context, [(Name, ViewTerm)]) -> 
 >                (Id, IvorFun) -> 
 >               TTM ((Context, [(Name, ViewTerm)]), UserOps)
 > addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _ _) 
 >                = return ((ctxt, metas), uo)
-> addIvorDef raw (UO fix trans) (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _) 
->                = return ((ctxt, metas), UO fix trans)
-> addIvorDef raw (UO fix trans) (ctxt, metas) (n,IvorFun name tyin _ def f@(Transform lhs rhs) _ _)
->                = return ((ctxt, metas), UO fix trans)
-> addIvorDef raw uo@(UO fix trans) (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
+> addIvorDef raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _) 
+>                = return ((ctxt, metas), UO fix trans fr)
+> addIvorDef raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Transform lhs rhs) _ _)
+>                = return ((ctxt, metas), UO fix trans fr)
+> addIvorDef raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Freeze frfn) _ _)
+>                = return ((ctxt, metas), UO fix trans (frfn:fr))
+> addIvorDef raw uo@(UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
 >     = trace ("Processing "++ show n) $ case def of
 >         PattDef ps -> -- trace (show ps) $
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
@@ -280,7 +293,7 @@ of things we need to define to complete the program (i.e. metavariables)
 >                                    return (r, uo)
 >                                                                     
 >         SimpleDef tm -> 
->                         do tm' <- case (getSpec flags) of
+>                         do tm' <- case (getSpec flags fr) of
 >                              Nothing -> return tm
 >                              Just [] -> do ctm <- check ctxt tm
 >                                            let ans = view (evalnew ctxt ctm)
@@ -314,10 +327,14 @@ of things we need to define to complete the program (i.e. metavariables)
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
 >         _ -> return ((ctxt, metas), uo)
 >    where unjust (Just x) = x
->          getSpec [] = Nothing
->          getSpec (CGEval:_) = Just []
->          getSpec (CGSpec ns:_) = Just (map (\ (x, i) -> (toIvorName x, i)) ns)
->          getSpec (_:ns) = getSpec ns
+>          getSpec [] fr
+>             = Just (map (\x -> (toIvorName x, 0)) fr)
+>          getSpec (CGEval:_) fr 
+>             = Just (map (\x -> (toIvorName x, 0)) fr)
+>          getSpec (CGSpec ns:_) fr
+>             = Just $ (map (\ (x, i) -> (toIvorName x, i)) ns) ++
+>                      (map (\x -> (toIvorName x, 0)) fr)
+>          getSpec (_:ns) fr = getSpec ns fr
 
 > addMeta :: Ctxt IvorFun -> Context -> 
 >           [(Name, ViewTerm)] -> [(Name, ViewTerm)] -> 
