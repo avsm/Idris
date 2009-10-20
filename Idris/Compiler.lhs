@@ -243,6 +243,7 @@ HACK for string equality
 >   | n == name "DoLock" = "__epic_doLock"
 >   | n == name "DoUnlock" = "__epic_doUnlock"
 >   | n == name "Fork" = "__epic_fork"
+>   | n == name "While" = "%while"
 >   | otherwise = "Con " ++ show i
 
 > writeOp Concat l r = "__epic_append(" ++ l ++", " ++ r ++")"

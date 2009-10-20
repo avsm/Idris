@@ -328,7 +328,7 @@ except frozen things, which need to be added as we go, in order.
 >         _ -> return ((ctxt, metas), uo)
 >    where unjust (Just x) = x
 >          getSpec [] fr
->             = Just (map (\x -> (toIvorName x, 0)) fr)
+>             = Nothing
 >          getSpec (CGEval:_) fr 
 >             = Just (map (\x -> (toIvorName x, 0)) fr)
 >          getSpec (CGSpec ns:_) fr

@@ -45,6 +45,7 @@ data Command : # where
   | NewRef : Command
   | ReadRef : # -> Int -> Command
   | WriteRef : {A:#} -> Int -> A -> Command
+  | While : (IO Bool) -> (IO ()) -> Command
   | IOLift : {A:#} -> (IO A) -> Command 
   | Foreign : (f:ForeignFun) -> 
 	      (args:FArgList (f_args f)) -> Command;
@@ -59,6 +60,7 @@ Response (DoUnlock l) = ();
 Response NewRef = Int;
 Response (ReadRef A i) = A;
 Response (WriteRef i val) = ();
+Response (While test body) = ();
 Response (IOLift {A} f) = A;
 Response (Foreign t args) = i_ftype (f_retType t);
 
@@ -78,6 +80,9 @@ bind (IODo c p) k = IODo c (\x => (bind (p x) k));
 kbind : (IO a) -> (a -> b) -> (IO b);
 kbind (IOReturn a) k = IOReturn (k a);
 kbind (IODo c p) k = IODo c (\x => (kbind (p x) k));
+
+while : |(test:IO Bool) -> |(body: IO ()) -> IO ();
+while test body = IODo (While test body) (\a => (IOReturn II));
 
 {-
 ioReturn : a -> (IO a);

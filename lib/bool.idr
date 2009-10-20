@@ -4,6 +4,8 @@ not : Bool -> Bool;
 not True = False;
 not False = True;
 
+%transform not (not ?x) => ?x;
+
 if_then_else : Bool -> |(t:A) -> |(e:A) -> A;
 if_then_else True t f = t;
 if_then_else False t f = f;
