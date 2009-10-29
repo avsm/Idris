@@ -735,6 +735,7 @@ programmer doesn't have to write them down inside the param block.
 > toIvorConst CharType = Name Unknown (name "Char")
 > toIvorConst IntType = Name Unknown (name "Int")
 > toIvorConst FloatType = Name Unknown (name "Float")
+> toIvorConst CharType = Name Unknown (name "Char")
 > toIvorConst PtrType = Name Unknown (name "Ptr")
 > toIvorConst (Builtin ty) = Name Unknown (name ty)
 
@@ -922,8 +923,6 @@ Now built-in operators
 >                                           Just s -> RConst "[val]" 0 (Str s)
 >                                           Nothing -> case (cast c)::Maybe Char of
 >                                                        Just c -> RConst "[val]" 0 (Ch c)
->     unI (Annotation _ x) args = unI x args
-
 >     unwind = mkImpApp "[val]" 0 0 []
 
 > argNames :: Maybe ViewTerm -> [Id]
