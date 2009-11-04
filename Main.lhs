@@ -12,8 +12,10 @@
 > import Data.Typeable
 > import Char
 > import Control.Monad
+> import Control.Exception
 > import List
 > import Debug.Trace
+> import Prelude hiding (catch)
 
 > import Idris.AbsSyntax
 > import Idris.MakeTerm
@@ -210,7 +212,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                            do addHistory (':':command)
 >                               runCommand (words command) commands
 >                        Just exprinput -> 
->                            do termInput True raw fixes ctxt exprinput
+>                            do termInput' raw fixes ctxt exprinput
 >                               addHistory exprinput
 >                               return Continue
 >               case (res, inp') of
@@ -228,6 +230,11 @@ Command; minimal abbreviation; function to run it; description; visibility
 >      matchesAbbrev [] _ = True
 >      matchesAbbrev (a:xs) (c:cs) | a == c = matchesAbbrev xs cs
 >                                  | otherwise = False
+>
+>      termInput' r f c inp = handle handler $ termInput True r f c inp
+>         where handler StackOverflow = putStrLn "Stack overflow"
+>               handler UserInterrupt = putStrLn "Interrupted"
+>               handler e             = throwIO e
 
 > termInput runio raw uo ctxt tm 
 >         = case getTerm tm of
