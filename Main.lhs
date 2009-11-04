@@ -203,7 +203,9 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                        Nothing -> readline ("Idris> ")
 >                        Just s -> return (Just s)
 >               res <- case inp of
->                        Nothing -> return Continue
+>                        Nothing ->
+>                            do putChar '\n'
+>                               return Quit
 >                        Just (':':command) -> 
 >                            do addHistory (':':command)
 >                               runCommand (words command) commands
