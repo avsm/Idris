@@ -207,6 +207,15 @@ HACK for explicit laziness, and marking effectfullness
 >     | effect == name "__effect" =
 >         "%effect(" ++ writeSC' v ++ ")"
 
+Epic has if/then/else, so just use that
+
+>   writeSC' (SApp (SVar ite) [_,v,SLazy t,SLazy e])
+>     | ite == name "if_then_else" =
+>         writeSC' (SIf v t e)
+>   writeSC' (SApp (SVar ite) [_,v,t,e])
+>     | ite == name "if_then_else" =
+>         writeSC' (SIf v t e)
+
 HACK for string equality
 
 >   writeSC' (SApp (SVar n) [arg1, arg2])
@@ -229,7 +238,7 @@ HACK for string equality
 >   writeSC' (SInfix op l r) = boolOp erasure op (writeOp op (writeSC' l) (writeSC' r))
 >   writeSC' (SConst c) = writeConst c
 >   writeSC' (SLazy b) = "lazy(" ++ writeSC' b ++ ")"
->   writeSC' SUnit = "42"
+>   writeSC' SUnit = "%unused"
 >   writeSC' SError = "error \"error\""
 
 > writeCon :: Name -> Int -> String

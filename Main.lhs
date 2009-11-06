@@ -281,7 +281,9 @@ the appropriate thing, after applying the relevant transformations.
 >           return Continue
 > showdef ist ctxt (n:_)
 >     = do case getPatternDef ctxt (name n) of
->            Right (ty, pats) -> showPats n (transform ctxt 
+>            Right (ty, pats) -> do showPDefs n (idris_context ist) (transform ctxt [] (transforms (idris_fixities ist)) (name n) pats)
+>                                   putStrLn "Compiles as:\n"
+>                                   showPats n (idris_context ist) (transform ctxt 
 >                                              (idris_transforms ist)
 >                                              (transforms (idris_fixities ist))
 >                                               (name n) pats)
@@ -291,11 +293,19 @@ the appropriate thing, after applying the relevant transformations.
 >                   _ -> putStrLn $ n ++ " not defined"
 >          return Continue
 
-> showPats :: String -> Patterns -> IO ()
-> showPats n (Patterns ps) = putStrLn $ concat (map (\x -> showp' x ++ "\n") ps)
+> showPats :: String -> Ctxt IvorFun -> Patterns -> IO ()
+> showPats n ivs (Patterns ps) = putStrLn $ concat (map (\x -> showp' x ++ "\n") ps)
 >   where showp' (PClause args ty) 
->                    = n ++ " " ++ concat (map (\x -> showarg (show x)) args) ++ "= " ++ show ty
+>                    = n ++ " " ++ concat (map (\x -> showarg (show x)) args) ++ "= " ++ showId ty
 >         showarg x = if (' ' `elem` x) then "(" ++ x ++ ") " else x ++ " "
+>         showId res = show res -- showImp True (unIvor ivs res)
+
+> showPDefs :: String -> Ctxt IvorFun -> Patterns -> IO ()
+> showPDefs n ivs (Patterns ps) = putStrLn $ concat (map (\x -> showp' x ++ "\n") ps)
+>   where showp' (PClause args ty) 
+>                    = n ++ " " ++ concat (map (\x -> showarg (show x)) args) ++ "= " ++ showId ty
+>         showarg x = if (' ' `elem` x) then "(" ++ x ++ ") " else x ++ " "
+>         showId res = showImp False (unIvor ivs res)
 
 > showInductive :: String -> Context -> [Transform] -> 
 >                  [(Name, ViewTerm)] -> IO ()

@@ -193,7 +193,7 @@ _fopen
 _fclose 
   = mkForeign (FFun "fileClose" (Cons FPtr Nil) FUnit) %eval;
 _fread
-  = mkForeign (FFun "freadStr" (Cons FPtr Nil) FStr) %eval;
+  = mkForeign (FFun "freadStr" (Cons FPtr Nil) (FAny String)) %eval;
 _fwrite
   = mkForeign (FFun "fputStr" (Cons FPtr (Cons FStr Nil)) FUnit) %eval;
 _feof

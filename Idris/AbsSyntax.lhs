@@ -917,6 +917,8 @@ Now built-in operators
 >                                           Just s -> RConst "[val]" 0 (Str s)
 >                                           Nothing -> case (cast c)::Maybe Char of
 >                                                        Just c -> RConst "[val]" 0 (Ch c)
+>     unI (Annotation _ x) args = unI x args
+
 >     unwind = mkImpApp "[val]" 0 0 []
 
 > argNames :: Maybe ViewTerm -> [Id]

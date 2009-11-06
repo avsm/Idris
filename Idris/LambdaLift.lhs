@@ -105,7 +105,7 @@ name, arguments, body
 >              -- do it again, we undo some of the work forcing has done since
 >              -- we've reduced arity there.
 >              (body, SCS _ defs) = runState (liftSC args sc) (SCS 0 []) in
->                  (root,args,body):defs
+>                  addRoot root args body defs
 >    where liftSC env (SCase tm alts) = do tm' <- lift env tm
 >                                          alts' <- mapM (liftAlt env) alts
 >                                          return (SCase tm' (sort alts'))
@@ -303,4 +303,11 @@ Everything else
 >   where ml' True arg = SLazy arg
 >         ml' False arg = arg
 
-
+> addRoot :: Name -> [Name] -> SimpleCase -> [(Name, [Name], SimpleCase)] 
+>            -> [(Name, [Name], SimpleCase)] 
+> addRoot root [] body@(Tm (Name _ n)) defs =
+>         case lookupT n defs of
+>           Just (as,b) -> (root, as, b):defs
+>           _ -> (root, [], body):defs
+>     where lookupT n ds = lookup n (map (\ (x,y,z) -> (x, (y,z))) ds)
+> addRoot root args body defs = (root, args, body):defs
