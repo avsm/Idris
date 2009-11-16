@@ -21,7 +21,7 @@ SCFun is a top level function, with C export name, list of args, code for the bo
 > data SCFun = SCFun [SCOpt] [Name] SCBody 
 >    deriving Show
 
-> data SCOpt = SCInline | SCExport String
+> data SCOpt = SCInline | SCStrict | SCExport String
 >    deriving (Show, Eq)
 
 > getEName [] = Nothing
@@ -204,7 +204,9 @@ IO operations and do notation as we go. Pass relevant function flags through
 > scFun ctxt ist fn args lifted = SCFun mkOpts args (toSC ctxt ist lifted)
 >    where mkOpts' = do ifn <- ctxtLookup (idris_context ist) Nothing fn
 >                       let decl = rawDecl ifn
->                       return $ mapMaybe mkSCOpt (funFlags ifn)
+>                       let opts = if (null (lazyArgs ifn)) 
+>                                    then [SCStrict] else []
+>                       return $ opts ++ mapMaybe mkSCOpt (funFlags ifn)
 >                       {- exp <- case decl of
 >                           Fun _ fls -> getExpFlag fls
 >                           TermDef _ _ fls -> getExpFlag fls

@@ -46,6 +46,7 @@ data Command : # where
   | ReadRef : # -> Int -> Command
   | WriteRef : {A:#} -> Int -> A -> Command
   | While : (IO Bool) -> (IO ()) -> Command
+  | WhileAcc : {A:#} -> (IO Bool) -> A -> (IO A) -> Command
   | IOLift : {A:#} -> (IO A) -> Command 
   | Foreign : (f:ForeignFun) -> 
 	      (args:FArgList (f_args f)) -> Command;
@@ -61,6 +62,7 @@ Response NewRef = Int;
 Response (ReadRef A i) = A;
 Response (WriteRef i val) = ();
 Response (While test body) = ();
+Response (WhileAcc {A} test acc body) = A;
 Response (IOLift {A} f) = A;
 Response (Foreign t args) = i_ftype (f_retType t);
 
@@ -83,6 +85,19 @@ kbind (IODo c p) k = IODo c (\x => (kbind (p x) k));
 
 while : |(test:IO Bool) -> |(body: IO ()) -> IO ();
 while test body = IODo (While test body) (\a => (IOReturn II));
+
+while_accTR : Bool -> 
+              |(test:IO Bool) -> acc -> |(body: acc -> IO acc) -> IO acc;
+
+while_acc : |(test:IO Bool) -> acc -> |(body: acc -> IO acc) -> IO acc;
+while_acc test acc body = do { test' <- test;
+	       	   	       while_accTR test' test acc body; };
+
+while_accTR True test acc body = do { acc' <- body acc;
+	       	       	              while_acc test acc' body; };
+while_accTR False test acc body = return acc;
+
+-- while_acc test acc body = IODo (WhileAcc test acc body) (\a => (IOReturn a));
 
 {-
 ioReturn : a -> (IO a);

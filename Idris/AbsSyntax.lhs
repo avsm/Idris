@@ -953,7 +953,7 @@ boolean flag (true for showing them)
 >           | otherwise = showP 1 f
 >     showP p (RBind n (Lam ty) sc)
 >           = bracket p 2 $ 
->             "\\ " ++ show n ++ " : " ++ showP 10 ty ++ " . " ++ showP 10 sc
+>             "\\ " ++ show n ++ " : " ++ showP 10 ty ++ " => " ++ showP 10 sc
 >     showP p (RBind n (Pi im _ ty) sc)
 >           | internal n && not imp -- hack for spotting unused names quickly!
 >              = bracket p 2 $ showP 1 ty ++ " -> " ++ showP 10 sc

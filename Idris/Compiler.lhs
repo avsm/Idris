@@ -155,6 +155,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 > writeDef :: Handle -> Bool -> (Name, Bool, SCFun) -> IO ()
 > writeDef h erasure (n,gen,(SCFun scopts args def)) = do
 >   when (gen || elem SCInline scopts) $ hPutStr h "%inline "
+>   when (elem SCStrict scopts) $ hPutStr h "%strict "
 >   maybe (return ()) (\ c -> hPutStrLn h ("export " ++ show c ++ " ")) (getEName scopts)
 >   hPutStrLn h (show n ++ " (" ++ list args ++ ") -> Any = \n" ++
 >                writeSC n erasure def)
@@ -167,14 +168,18 @@ the relevant IO operation
 
 > writeSC :: Name -> Bool -> SCBody -> String
 > writeSC fname erasure b = writeSC' b where
+
+>   list [] = ""
+>   list [a] = writeSC' a
+>   list (x:xs) = writeSC' x ++ ", " ++ list xs
+
 >   writeSC' (SVar n) = quotename (show n)
 >   writeSC' (SCon n i) = writeCon n i ++ "()"
 >   writeSC' (SApp (SCon n i) (fn:args:[]))
 >     | n == name "Foreign" = writeFCall fn erasure args fname
+>   -- writeSC' (SApp (SCon n i) (_:args))
+>   --   | n == name "WhileAcc" = writeCon n i ++ "(" ++ list args ++ ")"
 >   writeSC' (SApp (SCon n i) args) = writeCon n i ++ "(" ++ list args ++ ")"
->     where list [] = ""
->           list [a] = writeSC' a
->           list (x:xs) = writeSC' x ++ ", " ++ list xs
 
 Fork is a special case, because its argument needs to be evaluated lazily
 or it'll be evaluated by the time we run the thread!
