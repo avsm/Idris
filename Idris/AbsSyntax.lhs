@@ -917,12 +917,10 @@ Now built-in operators
 >                                          (RLet (unI val []) (unI ty [])) 
 >                                          (unI sc [])) args
 >     unI Star [] = RConst "[val]" 0 TYPE
->     unI (Constant c) [] = case (cast c)::Maybe Int of
->                             Just i -> RConst "[val]" 0 (Num i)
->                             Nothing -> case (cast c)::Maybe String of
->                                           Just s -> RConst "[val]" 0 (Str s)
->                                           Nothing -> case (cast c)::Maybe Char of
->                                                        Just c -> RConst "[val]" 0 (Ch c)
+>     unI (Constant c) [] = let try f = fmap (RConst "[val]" 0 . f) $ cast c
+>                           in  fromJust $ msum [try Num, try Str, try Ch, try Fl]
+>     unI (Annotation _ x) args = unI x args
+
 >     unwind = mkImpApp "[val]" 0 0 []
 
 > argNames :: Maybe ViewTerm -> [Id]
