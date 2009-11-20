@@ -398,6 +398,60 @@ InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst $3 $4 (Num
 UserInfixTerm :: { RawTerm }
 UserInfixTerm : Term userinfix Term File Line { RUserInfix $4 $5 False $2 $1 $3 }
 
+Section :: { RawTerm }
+Section : '(' userinfix Term File Line ')'
+               { RBind (MN "X" 0) (Lam RPlaceholder) 
+                       (RUserInfix $4 $5 False $2 (RVar $4 $5 (MN "X" 0)) $3) }
+        | '(' Term userinfix File Line ')'
+               { RBind (MN "X" 0) (Lam RPlaceholder) 
+                       (RUserInfix $4 $5 False $3 $2 (RVar $4 $5 (MN "X" 0))) }
+        | '(' BuiltinOp Term File Line ')'
+               { RBind (MN "X" 0) (Lam RPlaceholder) 
+                       (RUserInfix $4 $5 False $2 (RVar $4 $5 (MN "X" 0)) $3) }
+        | '(' Term BuiltinOp File Line ')'
+               { RBind (MN "X" 0) (Lam RPlaceholder) 
+                       (RUserInfix $4 $5 False $3 $2 (RVar $4 $5 (MN "X" 0))) }
+        | '(' Term '-' File Line ')'
+               { RBind (MN "X" 0) (Lam RPlaceholder) 
+                       (RUserInfix $4 $5 False "-" $2 (RVar $4 $5 (MN "X" 0))) }
+
+-- Special cases for ->
+
+        | '(' Term arrow File Line ')'
+               { RBind (MN "X" 0) (Lam RPlaceholder) 
+                       (RBind (MN "X" 1) (Pi Ex Eager $2) (RVar $4 $5 (MN "X" 0))) }
+        | '(' arrow Term File Line ')'
+               { RBind (MN "X" 0) (Lam RPlaceholder) 
+                       (RBind (MN "X" 1) (Pi Ex Eager (RVar $4 $5 (MN "X" 0))) $3) }       
+        | '(' arrow File Line ')'
+               { RBind (MN "X" 0) (Lam RPlaceholder)
+                       (RBind (MN "X" 1) (Lam RPlaceholder)
+                    (RBind (MN "X" 2) (Pi Ex Eager (RVar $3 $4 (MN "X" 0)))
+                       (RVar $3 $4 (MN "X" 1)))) }
+
+ -- Special cases for pairing
+
+        | '(' ',' File Line ')' 
+              {  RBind (MN "X" 0) (Lam RPlaceholder)
+                   (RBind (MN "X" 1) (Lam RPlaceholder)
+                       (pairDesugar $3 $4 (RVar $3 $4 (UN "mkPair"))
+                                    [RVar $3 $4 (MN "X" 0),
+                                     RVar $3 $4 (MN "X" 1)])) }
+        | '(' Term ',' File Line ')' 
+              {  RBind (MN "X" 0) (Lam RPlaceholder)
+                       (pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair"))
+                                    [$2,
+                                     RVar $4 $5 (MN "X" 0)]) }
+        | '(' ',' Term File Line ')' 
+              {  RBind (MN "X" 0) (Lam RPlaceholder)
+                       (pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair"))
+                                    [RVar $4 $5 (MN "X" 0), $3]) }
+
+
+BuiltinOp :: { String }
+BuiltinOp : '<' { "<" }
+          | '>' { ">" }
+
 MaybeType :: { RawTerm }
 MaybeType : { RPlaceholder}
           | ':' TypeTerm { $2 }
@@ -453,7 +507,8 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
           | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair")) $2 }
 --          | '[' TermList ']' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Exists")) $2 }
 --          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
-          | SigmaType { $1 }
+          | SigmaType { $1 } 
+          | Section { $1 }
           | lpair Term ',' Term rpair File Line %prec PAIR
                 { RApp $6 $7 (RAppImp $6 $7 (UN "a") (RVar $6 $7 (UN "Exists")) $2) $4 }
           | lpair Term rpair File Line %prec PAIR
