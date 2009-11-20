@@ -222,6 +222,7 @@ WithTerms : '|' WithTerm WithTerms { $2:$3 }
 
 WithTerm :: { RawTerm }
 WithTerm : SimpleAppTerm { $1 }
+         | SigmaTerm { $1 }
          | '(' Term ')' { $2 }
          | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair")) $2 }
 
@@ -509,7 +510,10 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
 --          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
           | SigmaType { $1 } 
           | Section { $1 }
-          | lpair Term ',' Term rpair File Line %prec PAIR
+          | SigmaTerm { $1 }
+
+SigmaTerm :: { RawTerm }
+SigmaTerm : lpair Term ',' Term rpair File Line %prec PAIR
                 { RApp $6 $7 (RAppImp $6 $7 (UN "a") (RVar $6 $7 (UN "Exists")) $2) $4 }
           | lpair Term rpair File Line %prec PAIR
                 { RApp $4 $5 (RVar $4 $5 (UN "Exists")) $2 }
