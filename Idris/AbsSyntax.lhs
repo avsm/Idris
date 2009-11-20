@@ -376,6 +376,7 @@ Then built-in functions for coercing between types
 Finally some primitive operations on primitive types.
 
 >         | StringLength | StringGetIndex | StringSubstr
+>         | StringHead | StringTail | StringCons
 >    deriving Eq
 
 > allOps = [Plus,Minus,Times,Divide,Concat,JMEq,OpEq,OpLT,OpLEq,OpGT,OpGEq]
@@ -417,6 +418,9 @@ Finally some primitive operations on primitive types.
 > opFn StringLength = (name "__strlen")
 > opFn StringGetIndex = (name "__strgetIdx")
 > opFn StringSubstr = (name "__substr")
+> opFn StringHead = (name "__strHead")
+> opFn StringTail = (name "__strTail")
+> opFn StringCons = (name "__strCons")
 
 > useropFn fn = UN $ "__op_" ++ concat (map opC fn) where
 >     opC c = "_" ++ show (fromEnum c)
@@ -728,6 +732,7 @@ programmer doesn't have to write them down inside the param block.
 > toIvorConst (Fl f) = Constant f
 > toIvorConst TYPE = Star
 > toIvorConst StringType = Name Unknown (name "String")
+> toIvorConst CharType = Name Unknown (name "Char")
 > toIvorConst IntType = Name Unknown (name "Int")
 > toIvorConst FloatType = Name Unknown (name "Float")
 > toIvorConst PtrType = Name Unknown (name "Ptr")

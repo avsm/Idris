@@ -229,6 +229,15 @@ HACK for string equality
 >     | n == name "__strLT" =
 >         "__epic_strlt("++writeSC' arg1++", " ++ writeSC' arg2 ++ ")"
 
+>     | n == name "__strCons" =
+>         "__epic_strcons("++writeSC' arg1++", " ++ writeSC' arg2 ++ ")"
+
+>   writeSC' (SApp (SVar n) [arg1])
+>     | n == name "__strHead" =
+>         "__epic_strhead("++writeSC' arg1++ ")"
+>     | n == name "__strTail" =
+>         "__epic_strtail("++writeSC' arg1++ ")"
+
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
 >       where list [] = ""
 >             list [a] = writeSC' a

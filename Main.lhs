@@ -349,6 +349,9 @@ the appropriate thing, after applying the relevant transformations.
 >              c <- addExternalFn c (opFn IntToChar) 1 intToChar "Int->Char"
 >              c <- addExternalFn c (opFn CharToInt) 1 charToInt "Char->Int"
 >              c <- addExternalFn c (opFn StringLength) 1 stringLen "String->Int"
+>              c <- addExternalFn c (opFn StringHead) 1 stringHead "String->Char"
+>              c <- addExternalFn c (opFn StringTail) 1 stringTail "String->String"
+>              c <- addExternalFn c (opFn StringCons) 2 stringCons "Char->String->String"
 >              c <- addExternalFn c (name "__lazy") 1 runLazy "(A:*)A->A"
 >              c <- addExternalFn c (name "__effect") 1 runEffect "(A:*)A->A"
 >              return c
@@ -448,6 +451,25 @@ the appropriate thing, after applying the relevant transformations.
 >                            (Just s) -> Just (Constant (length s))
 >                            _ -> Nothing
 > stringLen _ = Nothing
+
+> stringHead :: [ViewTerm] -> Maybe ViewTerm
+> stringHead [Constant x] = case cast x :: Maybe String of
+>                            (Just (s:ss)) -> Just (Constant s)
+>                            _ -> Nothing
+> stringHead _ = Nothing
+
+> stringTail :: [ViewTerm] -> Maybe ViewTerm
+> stringTail [Constant x] = case cast x :: Maybe String of
+>                            (Just (s:ss)) -> Just (Constant ss)
+>                            _ -> Nothing
+> stringTail _ = Nothing
+
+> stringCons :: [ViewTerm] -> Maybe ViewTerm
+> stringCons [Constant x, Constant y] 
+>             = case (cast x, cast y) of
+>                   (Just s, Just ss) -> Just (Constant ((s:ss) :: String))
+>                   _ -> Nothing
+> stringCons _ = Nothing
 
 > runLazy :: [ViewTerm] -> Maybe ViewTerm
 > runLazy [_,x] = Just x

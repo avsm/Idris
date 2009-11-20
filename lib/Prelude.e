@@ -16,6 +16,15 @@ __epic_append (x:String, y:String) -> String =
 __epic_strlen (x:String) -> Int =
     foreign Int "strlen" (x:String)
 
+__epic_strhead (x:String) -> Int =
+    foreign Int "strHead" (x:String)
+
+__epic_strtail (x:String) -> String =
+    foreign String "strTail" (x:String)
+
+__epic_strcons (h:Int, x:String) -> String =
+    foreign String "strCons" (h:Int, x:String)
+
 __epic_streq (x:String, y:String) -> Data =
     foreign Int "streq" (x:String, y:String)
 
