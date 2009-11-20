@@ -28,6 +28,10 @@ foldl : (a -> b -> a) -> a -> (List b) -> a;
 foldl f z Nil = z;
 foldl f z (Cons x xs) = foldl f (f z x) xs;
 
+foldr : (a -> b -> b) -> b -> (List a) -> b;
+foldr f z Nil = z;
+foldr f z (Cons x xs) = f x (foldr f z xs);
+
 rev : (List a) -> (List a);
 rev xs = foldl (flip Cons) Nil xs;
 

@@ -347,6 +347,8 @@ the appropriate thing, after applying the relevant transformations.
 >                                "Int->Int->Int"
 >              c <- addBinOp c (opFn Concat) ((++)::String->String->String)
 >                                "String->String->String"
+>              c <- addBinOp c (opFn StringGetIndex) ((!!)::String->Int->Char)
+>                                "String->Int->Char"
 >              c <- addExternalFn c (opFn OpEq) 2 constEq "Int->Int->Bool"
 >              c <- addExternalFn c (name "__strEq") 2 constEq "String->String->Bool"
 >              c <- addExternalFn c (name "__strLT") 2 constLT "String->String->Bool"

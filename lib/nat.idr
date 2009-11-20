@@ -25,12 +25,6 @@ natToInt : Nat -> Int;
 natToInt O = 0;
 natToInt (S k) = 1+(natToInt k);
 
-showNat : Nat -> String;
-showNat n = __toString (natToInt n);
-
-showInt : Int -> String;
-showInt x = __toString x;
-
 ----------- plus theorems -----------
 
 plus_nO : (n:Nat) -> ((plus n O) = n);
