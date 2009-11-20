@@ -252,7 +252,7 @@ If it is an IO type, execute it, otherwise just eval it.
 > execEval :: Bool -> Ctxt IvorFun -> Context -> (Term, ViewTerm) -> IO ()
 > execEval True ivs ctxt (tm, (App (Name _ io) _))
 >          | io == name "IO" = do catch (exec ctxt tm)
->                                       (\e -> print e)
+>                                       (\e -> print (e :: IOError))
 >                                 -- putStrLn $ show (whnf ctxt tm)
 > execEval runio ivs ctxt (tm, _) 
 >         = do let res = (evalnew ctxt tm)
