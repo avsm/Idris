@@ -46,7 +46,7 @@ data Command : # where
   | ReadRef : # -> Int -> Command
   | WriteRef : {A:#} -> Int -> A -> Command
   | While : (IO Bool) -> (IO ()) -> Command
-  | WhileAcc : {A:#} -> (IO Bool) -> A -> (IO A) -> Command
+  | WhileAcc : {A:#} -> (IO Bool) -> A -> (A -> IO A) -> Command
   | IOLift : {A:#} -> (IO A) -> Command 
   | Foreign : (f:ForeignFun) -> 
 	      (args:FArgList (f_args f)) -> Command;
@@ -90,14 +90,16 @@ while_accTR : Bool ->
               |(test:IO Bool) -> acc -> |(body: acc -> IO acc) -> IO acc;
 
 while_acc : |(test:IO Bool) -> acc -> |(body: acc -> IO acc) -> IO acc;
+{-
 while_acc test acc body = do { test' <- test;
 	       	   	       while_accTR test' test acc body; };
 
 while_accTR True test acc body = do { acc' <- body acc;
-	       	       	              while_acc test acc' body; };
+	    	      	       	      test' <- test;
+	       	       	              while_accTR test' test acc' body; };
 while_accTR False test acc body = return acc;
-
--- while_acc test acc body = IODo (WhileAcc test acc body) (\a => (IOReturn a));
+-}
+while_acc test acc body = IODo (WhileAcc test acc body) (\a => (IOReturn a));
 
 {-
 ioReturn : a -> (IO a);
@@ -216,6 +218,9 @@ _feof
 
 gc_details
   = mkForeign (FFun "epicMemInfo" Nil FUnit) %eval;
+
+gc_collect
+  = mkForeign (FFun "epicGC" Nil FUnit) %eval;
 
 fopen : String -> String -> IO File;
 fopen str mode = do { h <- _fopen str mode;

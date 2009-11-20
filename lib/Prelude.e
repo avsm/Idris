@@ -19,6 +19,9 @@ __epic_strlen (x:String) -> Int =
 __epic_streq (x:String, y:String) -> Data =
     foreign Int "streq" (x:String, y:String)
 
+%inline __epic_strlt (x:String, y:String) -> Data =
+    foreign Int "strlt" (x:String, y:String)
+
 __epic_newRef () -> Int =
     foreign Int "newRef" ()
 

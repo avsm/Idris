@@ -339,6 +339,7 @@ the appropriate thing, after applying the relevant transformations.
 >                                "String->String->String"
 >              c <- addExternalFn c (opFn OpEq) 2 constEq "Int->Int->Bool"
 >              c <- addExternalFn c (name "__strEq") 2 constEq "String->String->Bool"
+>              c <- addExternalFn c (name "__strLT") 2 constLT "String->String->Bool"
 >              c <- addExternalFn c (opFn OpLT) 2 intlt "Int->Int->Bool"
 >              c <- addExternalFn c (opFn OpLEq) 2 intle "Int->Int->Bool"
 >              c <- addExternalFn c (opFn OpGT) 2 intgt "Int->Int->Bool"
@@ -359,11 +360,20 @@ the appropriate thing, after applying the relevant transformations.
 >                        then Just $ Name DataCon (name "True")
 >                        else Just $ Name DataCon (name "False")
 >           _ -> Just $ Name DataCon (name "False")
+> constEq _ = Nothing
+
+> constLT :: [ViewTerm] -> Maybe ViewTerm
+> constLT [Constant x, Constant y]
+>       = case (cast x, cast y) :: (Maybe String, Maybe String) of
+>           (Just x', Just y') -> if (x'<y')
+>                        then Just $ Name DataCon (name "True")
+>                        else Just $ Name DataCon (name "False")
+>           _ -> Just $ Name DataCon (name "False")
 
  constEq [_, x, y] = if (x == y) then Just $ Name DataCon (name "True")
                         else Just $ Name DataCon (name "False")
 
-> constEq _ = Nothing
+> constLT _ = Nothing
 
 > intlt :: [ViewTerm] -> Maybe ViewTerm
 > intlt [Constant x, Constant y]

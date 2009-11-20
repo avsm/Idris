@@ -177,8 +177,8 @@ the relevant IO operation
 >   writeSC' (SCon n i) = writeCon n i ++ "()"
 >   writeSC' (SApp (SCon n i) (fn:args:[]))
 >     | n == name "Foreign" = writeFCall fn erasure args fname
->   -- writeSC' (SApp (SCon n i) (_:args))
->   --   | n == name "WhileAcc" = writeCon n i ++ "(" ++ list args ++ ")"
+>   writeSC' (SApp (SCon n i) (_:args))
+>     | n == name "WhileAcc" = writeCon n i ++ "(" ++ list args ++ ")"
 >   writeSC' (SApp (SCon n i) args) = writeCon n i ++ "(" ++ list args ++ ")"
 
 Fork is a special case, because its argument needs to be evaluated lazily
@@ -226,6 +226,8 @@ HACK for string equality
 >   writeSC' (SApp (SVar n) [arg1, arg2])
 >     | n == name "__strEq" =
 >         "__epic_streq("++writeSC' arg1++", " ++ writeSC' arg2 ++ ")"
+>     | n == name "__strLT" =
+>         "__epic_strlt("++writeSC' arg1++", " ++ writeSC' arg2 ++ ")"
 
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
 >       where list [] = ""
@@ -258,6 +260,7 @@ HACK for string equality
 >   | n == name "DoUnlock" = "__epic_doUnlock"
 >   | n == name "Fork" = "__epic_fork"
 >   | n == name "While" = "%while"
+>   | n == name "WhileAcc" = "%while"
 >   | otherwise = "Con " ++ show i
 
 > writeOp Concat l r = "__epic_append(" ++ l ++", " ++ r ++")"
