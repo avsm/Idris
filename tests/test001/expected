@@ -1,0 +1,16 @@
+Importing builtins.idr ... /Users/edwin/lib/idris/builtins.idr
+Importing bool.idr ... /Users/edwin/lib/idris/bool.idr
+Importing prelude.idr ... /Users/edwin/lib/idris/prelude.idr
+Importing vect.idr ... /Users/edwin/lib/idris/vect.idr
+Importing nat.idr ... /Users/edwin/lib/idris/nat.idr
+Importing tactics.idr ... /Users/edwin/lib/idris/tactics.idr
+Importing either.idr ... /Users/edwin/lib/idris/either.idr
+Importing io.idr ... /Users/edwin/lib/idris/io.idr
+Importing list.idr ... /Users/edwin/lib/idris/list.idr
+Importing maybe.idr ... /Users/edwin/lib/idris/maybe.idr
+Importing nat.idr ... already loaded
+Importing test001.idr ... ./test001.idr
+Importing string.idr ... /Users/edwin/lib/idris/string.idr
+Importing list.idr ... already loaded
+Output test001
+5

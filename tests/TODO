@@ -1,0 +1,19 @@
+Tests currently cover:
+
+* basic stuff
+* with rule (basic use of it)
+* sigma types
+* proofs
+* constructing and specialising dsl interpreters
+
+Need tests for:
+
+* type errors
+* failed proofs
+* operator sections
+* provisional definitions
+
+... and a quicker way of loading include files to speed up the tests
+would be nice!
+... also allow multiple commands to be executed in batch mode from the
+same instance.

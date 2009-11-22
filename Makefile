@@ -19,6 +19,9 @@ package: all install
 cabal-package:
 	runhaskell Setup.lhs sdist
 
+test: .PHONY
+	make -C tests
+
 clean:
 	runhaskell Setup.lhs clean
 

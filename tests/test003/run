@@ -1,0 +1,4 @@
+#!/bin/bash
+idris test003.idr :c test003 2> /dev/null
+./test003
+rm -f test003
