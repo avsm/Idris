@@ -54,11 +54,22 @@ Load things in this order:
 > usage [fname] = return (fname, (NoArgs, []))
 > usage (fname:opts) = do o <- mkArgs opts
 >                         return (fname, o)
-> usage _ = do putStrLn $ "Idris version " ++ idris_version
->              putStrLn $ "--------------" ++ take (length idris_version) (repeat '-')
->              putStrLn $ "Usage:"
->              putStrLn $ "\tidris <source file> [command]"
->              exitWith (ExitFailure 1)
+> usage _ = umessage
+
+> umessage = 
+>   do putStrLn $ "Idris version " ++ idris_version
+>      putStrLn $ "--------------" ++ take (length idris_version) (repeat '-')
+>      putStrLn $ "Usage:"
+>      putStrLn $ "\tidris <source file> [options]"
+>      putStrLn $ "\n\tAvailable options:"
+>      putStrLn $ "\t\t -o <executable>   Compile to an executable"
+>      putStrLn $ "\t\t --run             Compile and run"
+>      putStrLn $ "\t\t --nospec          Turn off specialisation and transformation rules"
+>      putStrLn $ "\t\t --noerasure       Turn off erasure optimisations"
+>      putStrLn $ "\t\t --cmd <command>   Run a command in batch mode"
+>      putStrLn $ "\t\t --verbose         Debugging output"
+>      putStrLn $ "\n"
+>      exitWith (ExitFailure 1)
 
 > mkArgs xs = mkA' [] [] xs where
 >     mkA' [] opts [] = return (NoArgs, opts)
@@ -77,7 +88,8 @@ Load things in this order:
 >           = mkA' args (NoErasure:opts) xs
 >     mkA' args opts ("--cmd":b:xs)
 >           = mkA' (b:args) opts xs
->     mkA' args opts (x:xs) = fail $ "Unrecognised option " ++ x
+>     mkA' args opts (x:xs) = do putStrLn $ "Unrecognised option " ++ x ++ "\n"
+>                                umessage
 
 Time functions
 FIXME: These use System.Time which is deprecated. Find out what to use
@@ -108,7 +120,7 @@ these days instead...
 >     content <- readLib defaultLibPath file
 >     let ptree = parse content file
 >     case ptree of
->       Success ds -> do let (defs', ops) = makeIvorFuns defs ds fixes
+>       Success ds -> do let (defs', ops) = makeIvorFuns opts defs ds fixes
 >                        let alldefs = appCtxt defs defs'
 >                        ((ctxt, metas), fixes') <- case (addIvor opts alldefs defs' ctxt ops) of
 >                             OK x fixes' -> return (x, fixes')
