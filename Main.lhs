@@ -38,23 +38,46 @@ Load things in this order:
 
 > idris_version = "0.1.2"
 
+> data Args = Batch [String]
+>           | NoArgs
+
 > main :: IO ()
 > main = do args <- getArgs
->           (infile, batch) <- usage args
+>           (infile, (batch, opts)) <- usage args
 >           ctxt <- ioTac $ addEquality emptyContext (name "Eq") (name "refl")
->           (ctxt, defs) <- processInput ctxt initState "builtins.idr"
+>           (ctxt, defs) <- processInput ctxt (initState opts) "builtins.idr"
 >           ctxt <- ioTac $ prims ctxt
 >           (ctxt, defs) <- processInput ctxt defs "prelude.idr"
 >           (ctxt, defs) <- processInput ctxt defs infile
 >           repl defs ctxt batch
 
-> usage [fname] = return (fname, Nothing)
-> usage (fname:opts) = return (fname, Just (unwords opts))
+> usage [fname] = return (fname, (NoArgs, []))
+> usage (fname:opts) = do o <- mkArgs opts
+>                         return (fname, o)
 > usage _ = do putStrLn $ "Idris version " ++ idris_version
 >              putStrLn $ "--------------" ++ take (length idris_version) (repeat '-')
 >              putStrLn $ "Usage:"
 >              putStrLn $ "\tidris <source file> [command]"
 >              exitWith (ExitFailure 1)
+
+> mkArgs xs = mkA' [] [] xs where
+>     mkA' [] opts [] = return (NoArgs, opts)
+>     mkA' args opts [] = return (Batch (reverse args), opts)
+>     mkA' args opts ("-o":output:xs) 
+>           = mkA' ((":c " ++ output):args) opts xs
+>     mkA' args opts ("--run":xs) 
+>           = mkA' (":e":args) opts xs
+>     mkA' args opts ("-v":xs)
+>           = mkA' args (Verbose:opts) xs
+>     mkA' args opts ("--verbose":xs)
+>           = mkA' args (Verbose:opts) xs
+>     mkA' args opts ("--nospec":xs)
+>           = mkA' args (NoSpec:opts) xs
+>     mkA' args opts ("--noerasure":xs)
+>           = mkA' args (NoErasure:opts) xs
+>     mkA' args opts ("--cmd":b:xs)
+>           = mkA' (b:args) opts xs
+>     mkA' args opts (x:xs) = fail $ "Unrecognised option " ++ x
 
 Time functions
 FIXME: These use System.Time which is deprecated. Find out what to use
@@ -87,7 +110,7 @@ these days instead...
 >     case ptree of
 >       Success ds -> do let (defs', ops) = makeIvorFuns defs ds fixes
 >                        let alldefs = appCtxt defs defs'
->                        ((ctxt, metas), fixes') <- case (addIvor alldefs defs' ctxt ops) of
+>                        ((ctxt, metas), fixes') <- case (addIvor opts alldefs defs' ctxt ops) of
 >                             OK x fixes' -> return (x, fixes')
 >                             Err x fixes' err -> do putStrLn err 
 >                                                    return (x, fixes')
@@ -156,7 +179,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 > tcomp ist ctxt (top:[]) 
 >           = do let raw = idris_context ist
 >                comp ist ctxt (UN top) top
->                putStrLn $ "Output " ++ top
+>                -- putStrLn $ "Output " ++ top
 >                return Continue
 > tcomp ist ctxt (top:exec:_) 
 >           = do comp ist ctxt (UN top) exec
@@ -199,11 +222,13 @@ Command; minimal abbreviation; function to run it; description; visibility
 >         putStrLn "\nCommands may be given the shortest unambiguous abbreviation (e.g. :q, :l)\n"
 >         return Continue
 
-> repl :: IdrisState -> Context -> Maybe String -> IO ()
+> repl :: IdrisState -> Context -> Args -> IO ()
+> repl ist ctxt (Batch []) = return () 
 > repl ist@(IState raw decls metas opts fixes trans) ctxt inp' 
->          = do inp <- case inp' of 
->                        Nothing -> readline ("Idris> ")
->                        Just s -> return (Just s)
+>          = do (inp, next) <- case inp' of 
+>                        Batch (b:bs) -> return (Just b, Batch bs)
+>                        _ -> do x <- readline ("Idris> ")
+>                                return (x, NoArgs)
 >               res <- case inp of
 >                        Nothing ->
 >                            do putChar '\n'
@@ -215,10 +240,10 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                            do termInput' raw fixes ctxt exprinput
 >                               addHistory exprinput
 >                               return Continue
->               case (res, inp') of
->                      (Continue, Nothing) -> repl ist ctxt Nothing
->                      (NewCtxt ist' ctxt', Nothing) -> repl ist' ctxt' Nothing
->                      _ -> return ()
+>               case res of
+>                      Continue -> repl ist ctxt next
+>                      NewCtxt ist' ctxt' -> repl ist' ctxt' next
+>                      Quit -> return ()
 
 >   where
 >      runCommand (c:args) ((_, abbr, fun, _, _):xs) 

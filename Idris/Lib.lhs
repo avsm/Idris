@@ -26,15 +26,15 @@ Search for a file in the library path given, plus '.'
 
 > readLib :: [FilePath] -> FilePath -> IO String
 > readLib xs x = do
->       putStr $ "Importing " ++ x ++ " ... "
+>       -- putStr $ "Importing " ++ x ++ " ... "
 >       added <- addMod x
 >       if added 
->          then do putStrLn "already loaded"
+>          then do -- putStrLn "already loaded"
 >                  return "" -- Already loaded, don't process
 >          else tryReads (map (\f -> f ++ "/" ++ x) (".":xs))
 >    where tryReads [] = fail $ "Can't find " ++ x
 >          tryReads (x:xs) = catch (do str <- readFile x
->                                      putStrLn x
+>                                      -- putStrLn x
 >                                      return str)
 >                                  (\e -> tryReads xs)
 

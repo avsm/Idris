@@ -15,5 +15,4 @@ Need tests for:
 
 ... and a quicker way of loading include files to speed up the tests
 would be nice!
-... also allow multiple commands to be executed in batch mode from the
-same instance.
+

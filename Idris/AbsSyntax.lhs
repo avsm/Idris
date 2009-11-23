@@ -493,7 +493,7 @@ A transformation is a function converting a ViewTerm to a new form.
 
 > data Transform = Trans String (ViewTerm -> ViewTerm)
 
-> data Opt = NoErasure | ShowRunTime
+> data Opt = NoErasure | ShowRunTime | NoSpec | Verbose
 >    deriving (Show, Eq)
 
 > data IdrisState = IState {
@@ -505,8 +505,8 @@ A transformation is a function converting a ViewTerm to a new form.
 >       idris_transforms :: [Transform] -- optimisations
 >     }
 
-> initState :: IdrisState
-> initState = IState newCtxt [] [] [ShowRunTime] (UO [] [] []) []
+> initState :: [Opt] -> IdrisState
+> initState opts = IState newCtxt [] [] opts (UO [] [] []) []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting

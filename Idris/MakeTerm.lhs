@@ -260,32 +260,37 @@ of things we need to define to complete the program (i.e. metavariables)
 > data TryAdd = OK (Context, [(Name, ViewTerm)]) UserOps
 >             | Err (Context, [(Name, ViewTerm)]) UserOps String -- record how far we got
 
-> addIvor :: Ctxt IvorFun -> -- all definitions, including prelude
+> addIvor :: [Opt] ->
+>            Ctxt IvorFun -> -- all definitions, including prelude
 >            Ctxt IvorFun -> -- just the ones we haven't added to Ivor yet
 >            Context -> UserOps -> TryAdd
-> addIvor all defs ctxt uo = addivs (ctxt, []) uo (ctxtAlist defs)
+> addIvor opts all defs ctxt uo = addivs (ctxt, []) uo (ctxtAlist defs)
 >    where addivs acc fixes [] = OK acc fixes
 >          addivs acc fixes ((n, IvorProblem err):ds) = Err acc fixes err
->          addivs acc fixes (def:ds) = case addIvorDef all fixes acc def of
->                                          Right (ok, fixes) -> addivs ok fixes ds
->                                          Left err -> Err acc fixes (idrisError all err)
+>          addivs acc fixes (def:ds) = 
+>              case addIvorDef opts all fixes acc def of
+>                 Right (ok, fixes) -> addivs ok fixes ds
+>                 Left err -> Err acc fixes (idrisError all err)
 
 Add a definition to Ivor. UserOps have been finalised already, by makeIvorFuns,
 except frozen things, which need to be added as we go, in order.
 
-> addIvorDef :: Ctxt IvorFun -> UserOps -> (Context, [(Name, ViewTerm)]) -> 
+> addIvorDef :: [Opt] ->
+>               Ctxt IvorFun -> UserOps -> (Context, [(Name, ViewTerm)]) -> 
 >                (Id, IvorFun) -> 
 >               TTM ((Context, [(Name, ViewTerm)]), UserOps)
-> addIvorDef raw uo (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _ _) 
+> addIvorDef opt raw uo (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _ _) 
 >                = return ((ctxt, metas), uo)
-> addIvorDef raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _) 
+> addIvorDef opt raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _) 
 >                = return ((ctxt, metas), UO fix trans fr)
-> addIvorDef raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Transform lhs rhs) _ _)
+> addIvorDef opt raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Transform lhs rhs) _ _)
 >                = return ((ctxt, metas), UO fix trans fr)
-> addIvorDef raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Freeze frfn) _ _)
+> addIvorDef opt raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Freeze frfn) _ _)
 >                = return ((ctxt, metas), UO fix trans (frfn:fr))
-> addIvorDef raw uo@(UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def _ flags lazy) 
->     = trace ("Processing "++ show n) $ case def of
+> addIvorDef opt raw uo@(UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def' _ flags lazy) 
+>   = let def = if (Verbose `elem` opt) 
+>                  then trace ("Processing " ++ show n) def' else def' in
+>       case def of
 >         PattDef ps -> -- trace (show ps) $
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ((ctxt, metas), uo)
@@ -332,8 +337,9 @@ except frozen things, which need to be added as we go, in order.
 >          getSpec (CGEval:_) fr 
 >             = Just (map (\x -> (toIvorName x, 0)) fr)
 >          getSpec (CGSpec ns:_) fr
->             = Just $ (map (\ (x, i) -> (toIvorName x, i)) ns) ++
->                      (map (\x -> (toIvorName x, 0)) fr)
+>             | NoSpec `elem` opt = Nothing
+>             | otherwise = Just $ (map (\ (x, i) -> (toIvorName x, i)) ns) ++
+>                              (map (\x -> (toIvorName x, 0)) fr)
 >          getSpec (_:ns) fr = getSpec ns fr
 
 > addMeta :: Ctxt IvorFun -> Context -> 

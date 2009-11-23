@@ -1,5 +1,4 @@
 #!/bin/bash
-idris test002.idr :c test002 2> /dev/null
-idris test002.idr :d sumaS 2> /dev/null
+idris test002.idr --cmd ':d sumaS' -o test002
 ./test002
 rm -f test002

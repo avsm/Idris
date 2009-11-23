@@ -1,21 +1,3 @@
-Importing builtins.idr ... /Users/edwin/lib/idris/builtins.idr
-Importing bool.idr ... /Users/edwin/lib/idris/bool.idr
-Importing prelude.idr ... /Users/edwin/lib/idris/prelude.idr
-Importing vect.idr ... /Users/edwin/lib/idris/vect.idr
-Importing nat.idr ... /Users/edwin/lib/idris/nat.idr
-Importing tactics.idr ... /Users/edwin/lib/idris/tactics.idr
-Importing either.idr ... /Users/edwin/lib/idris/either.idr
-Importing io.idr ... /Users/edwin/lib/idris/io.idr
-Importing list.idr ... /Users/edwin/lib/idris/list.idr
-Importing maybe.idr ... /Users/edwin/lib/idris/maybe.idr
-Importing nat.idr ... already loaded
-Importing test004.idr ... ./test004.idr
-Importing simplefile.idr ... ./simplefile.idr
-Importing handle.idr ... ./handle.idr
-Importing listmem.idr ... ./listmem.idr
-Importing env.idr ... ./env.idr
-Importing vect.idr ... already loaded
-Output test004
 Copying infile-big
 Copying infile-big
 Copying infile-big

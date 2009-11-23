@@ -1,4 +1,4 @@
 #!/bin/bash
-idris test004.idr :c test004 2> /dev/null
+idris test004.idr -o test004 2> /dev/null
 ./test004
 rm -f test004
