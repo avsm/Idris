@@ -1,4 +1,5 @@
 include "vect.idr";
+include "string.idr";
 
 data Ty = TyNat | TyFun Ty Ty | TyBool;
 
@@ -7,39 +8,36 @@ interpTy TyNat = Nat;
 interpTy (TyFun s t) = (interpTy s)->(interpTy t);
 interpTy TyBool = Bool;
 
-data Term : (Vect Ty n) -> Ty -> # where
-   Var : {G:Vect Ty n} -> (i:Fin n) -> (Term G (vlookup i G))
- | Lam : {G:Vect Ty n} ->  
-	 (Term (VCons s G) t) -> (Term G (TyFun s t))
- | App : {G:Vect Ty n} -> (Term G (TyFun s t)) -> (Term G s) -> (Term G t)
- | NatVal : {G:Vect Ty n} -> Nat -> (Term G TyNat)
- | BoolVal : {G:Vect Ty n} -> Bool -> (Term G TyBool)
- | Op : {G:Vect Ty n} -> 
-	(op : (interpTy a) -> (interpTy b) -> (interpTy c)) ->
-	(Term G a) -> (Term G b) -> (Term G c);
+using (G:Vect Ty n) {
+  data Term : (Vect Ty n) -> Ty -> # where
+     Var : (i:Fin n) -> (Term G (vlookup i G))
+   | Lam : (Term (s :: G) t) -> (Term G (TyFun s t))
+   | App : (Term G (TyFun s t)) -> (Term G s) -> (Term G t)
+   | NatVal : Nat -> (Term G TyNat)
+   | BoolVal : Bool -> (Term G TyBool)
+   | Op : (op : (interpTy a) -> (interpTy b) -> (interpTy c)) ->
+ 	  (Term G a) -> (Term G b) -> (Term G c);
 
-data Env : (xs:Vect Ty n) -> # where
-   Empty : Env VNil
- | Extend : {xs:Vect Ty n} -> (interpTy t) -> (Env xs) -> 
-	    (Env (VCons t xs));
+  data Env : (Vect Ty n) -> # where
+     Empty : Env VNil
+   | Extend : interpTy t -> Env G -> Env (t :: G);
 
-envLookup : {xs:Vect Ty n} -> 
-	    (i:Fin n) -> (Env xs) -> (interpTy (vlookup i xs));
-envLookup fO (Extend t env) = t;
-envLookup (fS i) (Extend t env) = envLookup i env;
+  envLookup : (i:Fin n) -> Env G -> interpTy (vlookup i G);
+  envLookup fO (Extend t env) = t;
+  envLookup (fS i) (Extend t env) = envLookup i env;
 
-interp : {G:Vect Ty n} -> 
-         (Env G) -> (Term G t) -> (interpTy t);
-interp env (Var i) = envLookup i env;
-interp env (Lam {s} sc) = \ v:(interpTy s) . (interp (Extend v env) sc);
-interp env (App f a) = (interp env f) (interp env a);
-interp env (NatVal n) = n;
-interp env (BoolVal b) = b;
-interp env (Op f l r) = f (interp env l) (interp env r);
+  interp : Env G -> Term G t -> interpTy t;
+  interp env (Var i) = envLookup i env;
+  interp env (Lam {s} sc) = \ v:(interpTy s) => (interp (Extend v env) sc);
+  interp env (App f a) = (interp env f) (interp env a);
+  interp env (NatVal n) = n;
+  interp env (BoolVal b) = b;
+  interp env (Op f l r) = f (interp env l) (interp env r);
 
-plusOp : {G:Vect Ty n} -> 
-         (Term G TyNat) -> (Term G TyNat) -> (Term G TyNat);
-plusOp = Op {a=TyNat} {b=TyNat} {c=TyNat} plus;
+  plusOp : (Term G TyNat) -> (Term G TyNat) -> (Term G TyNat);
+  plusOp = Op {a=TyNat} {b=TyNat} {c=TyNat} plus;
+
+}
 
 fId : Term VNil (TyFun TyNat TyNat);
 fId = Lam (Var fO);
@@ -63,12 +61,7 @@ fPlusInf = Lam {G=VNil} (Lam (plusOp (Var fO) (Var (fS fO))));
 test : Nat -> Nat -> Nat;
 test x y = interp Empty fPlus x y;
 
-shownat : Nat -> String;
-shownat O = "O";
-shownat (S k) = "s" ++ (shownat k);
-
 main : IO ();
--- main = do { putStrLn (shownat (interp Empty (NatVal (S (S O))))); };
-main = do { putStrLn (shownat (interp Empty 
+main = do { putStrLn (showNat (interp Empty 
 		     (plusOp (NatVal (S O)) (NatVal (S (S O)))))); };
--- main = do { putStrLn (shownat (test (S (S O)) (S (S (S O))))); };
+

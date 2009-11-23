@@ -1,5 +1,5 @@
 include "nat.idr";
-include "strings.idr";
+include "string.idr";
 
 ADDER : Nat -> #;
 ADDER O = Nat;

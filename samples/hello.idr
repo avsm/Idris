@@ -5,7 +5,7 @@ shownat : Nat -> String;
 shownat O = "O";
 shownat (S k) = "s" ++ (shownat k);
 
-loop : String -> (IO ());
+loop : String -> IO ();
 loop name = do { putStr name;
 		 putStr "> ";
 		 inp <- getStr;
