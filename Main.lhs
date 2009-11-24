@@ -25,6 +25,7 @@
 > import Idris.Compiler
 > import Idris.Prover
 > import Idris.ConTrans
+> import Idris.Fontlock
 
 > import Idris.RunIO
 
@@ -143,7 +144,8 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("ivor", "i", ivor, "Drop into the Ivor shell",True),
 >       ("compile", "c", tcomp, "Compile a definition (of type IO ()", True),
 >       ("execute", "e", texec, "Compile and execute 'main'", True),
->       ("latex", "l", latex, "Print definition as LaTeX",False),
+>       ("LATEX", "L", latex, "Render a source file as LaTeX",False),
+>       ("HTML","H", html, "Render a source file as html", False),
 >       ("normalise", "n", norm, "Normalise a term (without executing)", True),
 >       ("definition", "d", showdef, "Show the erased version of a function or type", True),
 >       ("options","o", options, "Set options", True),
@@ -154,7 +156,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 > type Command = IdrisState -> Context -> [String] -> IO REPLRes
 
 > quit, tmtype, prove, metavars, tcomp, texec :: Command 
-> debug, norm, help, options, showdef :: Command
+> debug, norm, help, options, showdef, html :: Command
 
 > quit _ _ _ = do return Quit
 > tmtype (IState raw _ _ _ uo _) ctxt tms = do icheckType raw uo ctxt (unwords tms)
@@ -179,8 +181,22 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                return Continue
 > ivor ist ctxt _ = do ctxt' <- doIvor ctxt
 >                      return (NewCtxt ist ctxt')
-> latex ist ctxt (nm:defs) 
->           = do latexDump (idris_context ist) (latexDefs defs) (UN nm)
+
+ latex ist ctxt (nm:defs) 
+           = do latexDump (idris_context ist) (latexDefs defs) (UN nm)
+                return Continue
+
+> html ist ctxt (nm:onm:_)
+>           = do htmlise (idris_context ist) nm onm
+>                return Continue
+> html ist ctxt _
+>           = do putStrLn "Please give input and output files"
+>                return Continue
+> latex ist ctxt (nm:onm:_)
+>           = do latexise (idris_context ist) nm onm
+>                return Continue
+> latex ist ctxt _
+>           = do putStrLn "Please give input and output files"
 >                return Continue
 > debug ist ctxt []
 >           = do print (idris_fixities ist)
@@ -267,7 +283,8 @@ Command; minimal abbreviation; function to run it; description; visibility
 >      matchesAbbrev [] _ = True
 >      matchesAbbrev (a:xs) (c:cs) | a == c = matchesAbbrev xs cs
 >                                  | otherwise = False
->
+>      matchesAbbrev _ _ = False
+
 >      termInput' r f c inp = handle handler $ termInput True r f c inp
 >         where handler StackOverflow = putStrLn "Stack overflow"
 >               handler UserInterrupt = putStrLn "Interrupted"

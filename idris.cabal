@@ -39,7 +39,7 @@ Library
         Exposed-modules: Idris.Parser, Idris.Lexer, Idris.Lib, 
                          Idris.AbsSyntax, Idris.Context, Idris.Latex
                          Idris.Compiler, Idris.LambdaLift, Idris.PMComp, 
-                         Idris.MakeTerm, Idris.Prover, 
+                         Idris.MakeTerm, Idris.Prover, Idris.Fontlock,
                          Idris.ConTrans, Idris.SCTrans, Idris.RunIO
         Other-modules:   Paths_idris
 
