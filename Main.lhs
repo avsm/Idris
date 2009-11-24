@@ -186,8 +186,11 @@ Command; minimal abbreviation; function to run it; description; visibility
            = do latexDump (idris_context ist) (latexDefs defs) (UN nm)
                 return Continue
 
+> html ist ctxt (nm:onm:style:_)
+>           = do htmlise (idris_context ist) nm onm (Just style)
+>                return Continue
 > html ist ctxt (nm:onm:_)
->           = do htmlise (idris_context ist) nm onm
+>           = do htmlise (idris_context ist) nm onm Nothing
 >                return Continue
 > html ist ctxt _
 >           = do putStrLn "Please give input and output files"

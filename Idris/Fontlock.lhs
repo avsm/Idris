@@ -6,7 +6,7 @@
 > import Idris.Context
 
 > data Markup = DC | TC | FN | CM | VV | KW | ST | LCM | BRK | SEC | SUBSEC 
->             | TITLE | AUTHOR | None
+>             | TITLE | AUTHOR | HTML | LATEX | None
 >   deriving Show
 
 > hclass DC = "datacon"
@@ -42,6 +42,10 @@
 >                = markupSECtoNewline SEC "" ms xs
 > markupText ms ('-':'-':' ':'T':'i':'t':'l':'e':':':' ':xs) 
 >                = markupSECtoNewline TITLE "" ms xs
+> markupText ms ('-':'-':' ':'L':'a':'T':'e':'X':':':' ':xs) 
+>                = markupSECtoNewline LATEX "" ms xs
+> markupText ms ('-':'-':' ':'H':'T':'M':'L':':':' ':xs) 
+>                = markupSECtoNewline HTML "" ms xs
 > markupText ms ('-':'-':' ':'A':'u':'t':'h':'o':'r':':':' ':xs) 
 >                = markupSECtoNewline AUTHOR "" ms xs
 > markupText ms ('-':'-':' ':'S':'u':'b':'s':'e':'c':'t':'i':'o':'n':':':' ':xs) 
@@ -99,11 +103,12 @@
 > markupString ms xs = case getstr xs of
 >                        Just (str, rest, nls) -> (ST, show str):markupText ms rest
 
-> htmlise :: Ctxt IvorFun -> FilePath -> FilePath -> IO ()
-> htmlise ctxt fp outf = do txt <- readFile fp
+> htmlise :: Ctxt IvorFun -> FilePath -> FilePath -> Maybe FilePath -> IO ()
+> htmlise ctxt fp outf style 
+>                      = do txt <- readFile fp
 >                           let ms = mkMarkups ctxt
 >                           let mtxt = markupText ms txt
->                           writeFile outf (renderHTML fp mtxt)
+>                           writeFile outf (renderHTML fp style mtxt)
 
 > latexise :: Ctxt IvorFun -> FilePath -> FilePath -> IO ()
 > latexise ctxt fp outf = do txt <- readFile fp
@@ -119,6 +124,8 @@
 > skipIfBrk xs = si xs xs
 >    where si orig next@((BRK, _):xs) = next
 >          si orig next@((TITLE, _):xs) = next
+>          si orig next@((HTML, _):xs) = next
+>          si orig next@((LATEX, _):xs) = next
 >          si orig next@((AUTHOR, _):xs) = next
 >          si orig next@((SEC, _):xs) = next
 >          si orig next@((SUBSEC, _):xs) = next
@@ -126,23 +133,27 @@
 >          si orig ((None, "\n"):xs) = si orig xs
 >          si orig _ = orig
 
-> renderHTML :: String -> [(Markup, String)] -> String
-> renderHTML title ms = htmlHeader title ++ 
+> renderHTML :: String -> Maybe String -> [(Markup, String)] -> String
+> renderHTML title style ms = htmlHeader title style ++ 
 >                       "<code>\n" ++ html (skipIfBrk ms) ++ "\n</code>\n\n</body></html>"
 >   where 
 >     html [] = ""
 >     html ((None, "\n"):xs) = tHtml "\n" ++ html (skipIfBrk xs)
 >     html ((None, t):xs) = tHtml t ++ html xs
 >     html ((TITLE, t):xs) 
->        = "</code><h2>" ++ t ++ "</h2>\n<code>" ++ html (skipnl xs)
+>        = "</code>\n\n<h2>" ++ t ++ "</h2>\n\n<code>" ++ html (skipnl xs)
+>     html ((HTML, t):xs) 
+>        = "</code>\n\n<p>" ++ t ++ "</p>\n\n<code>" ++ html (skipnl xs)
+>     html ((LATEX, t):xs) 
+>        = html (skipnl xs)
 >     html ((AUTHOR, t):xs) 
->        = "</code><h4>Author: " ++ t ++ "</h4>\n<code>" ++ html (skipnl xs)
+>        = "</code>\n\n<h4>Author: " ++ t ++ "</h4>\n\n<code>" ++ html (skipnl xs)
 >     html ((SEC, t):xs) 
->        = "</code><h3>" ++ t ++ "</h3>\n<code>" ++ html (skipnl xs)
+>        = "</code>\n\n<h3>" ++ t ++ "</h3>\n\n<code>" ++ html (skipnl xs)
 >     html ((SUBSEC, t):xs) 
->        = "</code><h4>" ++ t ++ "</h4><code>" ++ html (skipnl xs)
+>        = "</code>\n\n<h4>" ++ t ++ "</h4>\n\n<code>" ++ html (skipnl xs)
 >     html ((BRK, t):xs) = tHtml t ++ html xs
->     html ((LCM, t):xs) = "</code><p class=\"explanation\">" ++ tpara t ++ "</p><code>" ++ html (skipnl xs)
+>     html ((LCM, t):xs) = "</code>\n\n<p class=\"explanation\">" ++ tpara t ++ "</p>\n\n<code>" ++ html (skipnl xs)
 >     html ((m, t):xs) = "<span class=\"" ++ hclass m ++ "\">" ++ tHtml t ++ 
 >                        "</span>" ++ html xs
 >     tHtml = concat.(map th) 
@@ -157,9 +168,13 @@
 >                                             tpara rest
 >     tpara (x:xs) = x:(tpara xs)
 
-> htmlHeader title = "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\">" ++
->                    "<html><head><title>" ++ title ++ "</title>\n" ++
->                    "<style type=\"text/css\">\n" ++
+> htmlHeader title style
+>                = "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\">" ++
+>                  "<html><head><title>" ++ title ++ "</title>\n" ++
+>                  defaultStyle style ++ "</head>"
+
+> defaultStyle Nothing 
+>                  = "<style type=\"text/css\">\n" ++
 >                    "." ++ hclass DC ++ " {\n  color:red; font-family: Courier;\n}\n" ++ 
 >                    "." ++ hclass TC ++ " {\n  color:blue; font-family: Courier;\n}\n" ++ 
 >                    "." ++ hclass FN ++ " {\n  color:green; font-family: Courier;\n}\n" ++ 
@@ -167,10 +182,11 @@
 >                    "." ++ hclass CM ++ " {\n  color:darkred; font-family: Courier;\n}\n" ++ 
 >                    "." ++ hclass ST ++ " {\n  color:gray; font-family: Courier;\n}\n" ++ 
 >                    "." ++ hclass KW ++ " {\n  color:black;\n  font-family: Courier; font-weight:bold;\n}\n" ++ 
->                    "p.explanation {\n  color:darkblue;\n}\n" ++
+>                    "p.explanation {\n  color:black;\n}\n" ++
 >                    "BODY, SPAN {\n  font-family: Tahoma;\n" ++
 >                    "  color:  #000020;\n  background: #f0f0f0;\n}\n" ++
->                    "</style></head>"
+>                    "</style>"
+> defaultStyle (Just s) = "<link rel=\"stylesheet\" type=\"text/css\" href=\"" ++ s ++ "\">"
 
 > renderLatex :: [(Markup, String)] -> String
 > renderLatex ms = latexHeader ++ latex 0 (skipIfBrk ms) ++ "\n\n\\end{document}"
@@ -180,10 +196,12 @@
 >     latex i ((None, t):xs) = t ++ latex i xs
 >     latex i ((BRK, t):xs) = usev i ++ startv (i+1) ++ latex (i+1) xs
 >     latex i ((TITLE, t):xs) = "\\title{" ++ t ++ "}\n" ++ latex i (skipnl xs)
+>     latex i ((HTML, t):xs) = latex i (skipnl xs)
 >     latex i ((AUTHOR, t):xs) = "\\author{" ++ t ++ "}\n\\maketitle\n\n" ++ startv i ++ latex i (skipnl xs)
 >     latex i ((SEC, t):xs) = usev i ++ "\\section{" ++ t ++ "}\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
 >     latex i ((SUBSEC, t):xs) = usev i ++ "\\subsection{" ++ t ++ "}\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
 >     latex i ((LCM, t):xs) = usev i ++ tpara t ++ "\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
+>     latex i ((LATEX, t):xs) = usev i ++ tpara t ++ "\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
 >     latex i ((m, t):xs) = "^" ++ show m ++ "@" ++ t ++ "!"
 >                               ++ latex i xs
 
