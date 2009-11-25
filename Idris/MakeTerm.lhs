@@ -82,10 +82,11 @@ into an ivor definition, with all the necessary placeholders added.
 >               fn = makeIvorFun using ui uo (appCtxt ctxt acc) decl f flags in
 >               mif opt ctxt (addEntry acc (thisNamespace using) (funId f) fn) using ui uo ds
 > mif opt ctxt acc using' ui uo (decl@(Fwd n ty flags):ds) 
->      = let using = addParamName using' n
+>      = let (file, line) = getFileLine ty
+>            using = addParamName using' n
 >            (rty, imp) = addImplWith using (appCtxt ctxt acc) ty
 >            ity = makeIvorTerm using ui uo n (appCtxt ctxt acc) rty in
->            mif opt ctxt (addEntry acc (thisNamespace using) n (IvorFun (toIvorName n) (Just ity) 
+>            mif opt ctxt (addEntry acc (thisNamespace using) n (IvorFun (toIvorName n) (Just (Annotation (FileLoc file line) ity))
 >                              imp Later decl flags (getLazy ty))) using ui uo ds
 > mif opt ctxt acc using' ui uo (decl@(DataDecl d):ds) 
 >      = let using = addParamName using' (tyId d) in
@@ -273,10 +274,10 @@ of things we need to define to complete the program (i.e. metavariables)
 > addIvor opts all defs ctxt uo = addivs (ctxt, []) uo (ctxtAlist defs)
 >    where addivs acc fixes [] = OK acc fixes
 >          addivs acc fixes ((n, IvorProblem err):ds) = Err acc fixes err
->          addivs acc fixes (def:ds) = 
+>          addivs acc fixes (def@(_,ifn):ds) = 
 >              case addIvorDef opts all fixes acc def of
 >                 Right (ok, fixes) -> addivs ok fixes ds
->                 Left err -> Err acc fixes (idrisError all err)
+>                 Left err -> Err acc fixes (idrisError all (guessContext ifn err))
 
 Add a definition to Ivor. UserOps have been finalised already, by makeIvorFuns,
 except frozen things, which need to be added as we go, in order.

@@ -63,7 +63,7 @@ listToStr = foldr strCons "";
 --      need parens around
 strToVect: String -> (n | Vect Char n);
 strToVect s with strUncons s {
-  | Just (c, cs) with strToVect cs {
+    | Just (c, cs) with strToVect cs {
     | <<cs'>> = <<c :: cs'>>;
   }
   | Nothing      = <<VNil>>;

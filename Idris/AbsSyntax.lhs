@@ -293,6 +293,8 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > getFileLine (RInfix f l _ _ _) = (f, l)
 > getFileLine (RUserInfix f l _ _ _ _) = (f, l)
 > getFileLine (RConst f l _) = (f, l)
+> getFileLine (RBind _ (Pi _ _ ty) _) = getFileLine ty
+> getFileLine (RBind _ (Lam ty) _) = getFileLine ty
 > getFileLine _ = ("(unknown)", 0)
 
 > getFn :: RawTerm -> RawTerm
@@ -544,7 +546,7 @@ Need to do it twice, in case the first pass added names in the indices
 >                         if null using
 >                           then (added, totimp)
 >                           else let (added', totimp') = addImpl' True [] [] namespace ctxt added in
->                                 (added', totimp')
+>                                (added', totimp')
 >                      else (raw, totimp)
 >     where addImplB :: [Id] -> RawTerm -> Bool -> State ([Id], Int) ()
 >           addImplB env (RVar f l i) argpos
@@ -983,6 +985,16 @@ boolean flag (true for showing them)
 > showVT :: Ctxt IvorFun -> ViewTerm -> String
 > showVT ivs t = showImp False (unIvor ivs t)
 
+If we haven't got a line number for an error message, pick where the definition
+starts as a best guess.
+
+> guessContext :: IvorFun -> TTError -> TTError
+> guessContext _ e@(ErrContext _ _) = e
+> guessContext ifn e = case (ivorFType ifn) of
+>                        Just (Annotation (FileLoc f l) _) ->
+>                            ErrContext (f ++ ":" ++ show l ++ ":") e
+>                        _ -> e -- ErrContext (show (ivorFType ifn)) e
+
 > idrisError :: Ctxt IvorFun -> TTError -> String
 > idrisError ivs (CantUnify x y) = "Can't unify " ++ (showVT ivs x) ++ " and " ++ 
 >                                                    (showVT ivs y)
@@ -992,6 +1004,7 @@ boolean flag (true for showing them)
 >                  " : " ++ showVT ivs clty ++
 >                  "  " ++ show names
 > idrisError ivs (NoSuchVar n) = "No such variable as " ++ show n
+> idrisError ivs (CantInfer n tm) = "Can't infer value for " ++ show n ++ " in " ++ (showVT ivs tm)
 > idrisError ivs (ErrContext s e) = s ++ idrisError ivs e
 
 > getOpName (UN ('_':'_':'o':'p':'_':op)) = (True, showOp op) where
