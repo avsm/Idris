@@ -55,6 +55,8 @@ execute commands to do various things, such as:
 * Type checking an expression (":t <expression>")
 * Setting options (":o <options>")
 * Proving theorems (":p <theorem>")
+* Exiting (":q")
+* Help (":?" or ":h")
 -
 
 For example, to get the type of "main" then compile "hello.idr" to an executable:

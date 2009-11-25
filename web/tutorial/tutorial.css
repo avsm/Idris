@@ -1,20 +1,20 @@
 .datacon {
-  color:red; font-family: Courier;
+  color:red; font-family: Courier; font-weight: normal;
 }
 .typecon {
-  color:blue; font-family: Courier;
+  color:blue; font-family: Courier; font-weight: normal;
 }
 .function {
-  color:green; font-family: Courier;
+  color:green; font-family: Courier; font-weight: normal;
 }
 .variable {
-  color:purple; font-family: Courier;
+  color:purple; font-family: Courier; font-weight: normal;
 }
 .comment {
-  color:darkred; font-family: Courier;
+  color:darkred; font-family: Courier; font-weight: normal;
 }
 .string {
-  color:gray; font-family: Courier;
+  color:gray; font-family: Courier; font-weight: normal;
 }
 .keyword {
   color:black;
@@ -23,8 +23,22 @@
 p.explanation {
   color:black;
 }
+code {
+    font-size: 125%;
+    font-weight: bold;
+}
+H1 {
+    font-family: Tahoma, "Myriad Web", Syntax, sans-serif;
+    font-weight: bold; 
+    color: #101020;
+}
+H2, H3 {
+    font-family: Verdana, Tahoma, "Myriad Web", Syntax, sans-serif;
+    color: #000080;	
+//        background: #D0D0F0;
+}
 BODY, SPAN {
-  font-family: Tahoma;
-  color:  #000020;
-  background: #f0f0f0;
+    font-family: Verdana, Tahoma, "Myriad Web", Syntax, sans-serif;
+    color:  #000020;
+    background: #e0e0f0;
 }

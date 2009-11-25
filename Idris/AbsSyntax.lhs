@@ -1000,24 +1000,80 @@ boolean flag (true for showing them)
 >          showOp _ = ""
 > getOpName s = (False, show s)
 
-Correct the precedences in a user defined infix operator term.
-
-[(a opl b) opr c] ==> (a opl b) opr c
-[a opl b opr c] ==> [a] opl ([b] opr [c]) if (prec opr > prec opl)
-[a opl b opr c] ==> ([a] opl [b]) opr [c] if (prec opr < prec opl)
-[a opl b opr c] ==> [a] opl ([b] opr [c]) if (prec opr == prec opl and fixity both = R)
-[a opl b opr c] ==> ([a] opl [b]) opr [c] if (prec opr == prec opl and fixity both = L)
-error in all other cases
+Correct the precedences in a user defined infix operator term using Dijkstra's
+Shunting Yard algorithm.
 
 > fixFix :: Fixities -> RawTerm -> RawTerm
+> fixFix ops top@(RUserInfix f l b op x y) 
+>            = let toks = tok top 
+>                  shunted = shunt ops [] toks in
+>                  rebuild [] shunted
+> fixFix ops x = x
+
+> data OpTok = Op String Int String
+>            | OTm RawTerm
+>            | OpenB
+>            | CloseB
+>   deriving Show
+
+> tok (RUserInfix f l False op x y) 
+>         = tok x ++ ((Op f l op):tok y)
+> tok (RUserInfix f l True op x y) 
+>         = OpenB:(tok x ++ (Op f l op):tok y) ++ [CloseB]
+> tok x = [OTm x]
+
+> shunt :: Fixities -> [OpTok] -> [OpTok] -> [OpTok]
+> shunt ops stk (OTm x:toks) = OTm x:(shunt ops stk toks)
+> shunt ops stk (op@(Op f l _):toks) 
+>           = let (stk', out) = prec [] stk op in
+>                 out ++ shunt ops stk' toks
+>    where prec out (op2@(Op f2 l2 o2):opstk) op1@(Op f1 l1 o1)
+>              = case (lookup o1 ops, lookup o2 ops) of
+>                   (Just (LeftAssoc, prec1), Just (assoc2, prec2))
+>                      -> if (prec1<=prec2) then 
+>                               prec (op2:out) opstk op1
+>                             else 
+>                               (op1:op2:opstk, reverse out)
+>                   (Just (RightAssoc, prec1), Just (assoc2, prec2))
+>                      -> if (prec1<prec2) then 
+>                               prec (op2:out) opstk op1
+>                             else 
+>                               (op1:op2:opstk, reverse out)
+>                   (Nothing, Nothing) -> (opstk, OTm (RError (f1 ++ ":" ++ show l1 ++ ":unknown operators " ++ show o1 ++ " and " ++ show o2)):out)
+>                   (Nothing, _) -> (opstk, OTm (RError (f1 ++ ":" ++ show l1 ++ ":unknown operator " ++ show o1)):out)
+>                   (_, Nothing) -> (opstk, OTm (RError (f2 ++ ":" ++ show l2 ++ ":unknown operator " ++ show o2)):out)
+>          prec out opstk op1 = (op1:opstk, reverse out)
+
+> shunt ops stk (OpenB:toks) = shunt ops (OpenB:stk) toks
+> shunt ops stk (CloseB:toks) = let (stk',out) = popToLeft [] stk in
+>                                   out ++ shunt ops stk' toks
+>    where popToLeft out (OpenB:stk) = (stk, reverse out)
+>          popToLeft out (x:stk) = popToLeft (x:out) stk
+>          popToLeft out [] = error "Can't happen, no left paren"
+> shunt ops (x:stk) [] = x:(shunt ops stk [])
+> shunt ops [] [] = []
+
+> rebuild :: [RawTerm] -> [OpTok] -> RawTerm
+> rebuild stk (OTm x:xs) = rebuild (x:stk) xs
+> rebuild (x:y:stk) (Op f l op:xs) 
+>       = rebuild ((RUserInfix f l True op y x):stk) xs
+> rebuild (x:[]) [] = x
+> rebuild stk xs = error $ "Can't happen: rebuild " ++ show (stk, xs)
+
+Old version:
+
 
 Only need to worry if the left term is not bracketed. Otherwise leave it alone.
 Also need to sort out inner ops first.
 
-> fixFix ops top@(RUserInfix f l b op x y)
->     = let fixed = fixFix' ops top in -- (RUserInfix f l b op x y)
->           if (fixed==top) then fixed else fixFix ops fixed
-> fixFix ops x = x
+ fixFix ops top@(RUserInfix f l b op x y)
+     = let fixed = fixFix' ops top in -- (RUserInfix f l b op x y)
+           if (fixed==top) then fixed else fixFix ops fixed
+ fixFix ops x = x
+
+
+
+
 
 > fixFix' ops top@(RUserInfix file line _ opr 
 >                 (RUserInfix _ _ False opl a b) c) = 
