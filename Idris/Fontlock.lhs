@@ -1,11 +1,13 @@
 > module Idris.Fontlock(htmlise,latexise) where
 
 > import Data.Char
+> import List
+
 > import Idris.AbsSyntax
 > import Idris.Lexer
 > import Idris.Context
 
-> data Markup = DC | TC | FN | CM | VV | KW | ST | LCM
+> data Markup = DC | TC | FN | CM | VV | KW | ST | CH | LCM
 >             | BRK | SEC | SUBSEC 
 >             | TITLE | AUTHOR | HTML | LATEX | None
 >   deriving Show
@@ -17,6 +19,7 @@
 > hclass VV = "variable"
 > hclass KW = "keyword"
 > hclass ST = "string"
+> hclass CH = "string"
 > hclass _ = ""
 
 > mkMarkups :: Ctxt IvorFun -> [(String, Markup)]
@@ -57,6 +60,7 @@
 > markupText ms ('{':'-':'-':xs) = markupLCM "" ms xs
 > markupText ms ('{':'-':xs) = markupCM "" ms xs
 > markupText ms ('"':xs) = markupString ms xs
+> markupText ms ('\'':c:'\'':xs) = (CH, ['\'',c,'\'']):markupText ms xs
 > markupText ms ('%':xs) = markupSpecial ms xs
 > markupText ms ('\t':xs) = (None, "        "):markupText ms xs
 > markupText ms (c:cs)
@@ -69,7 +73,7 @@
 >             "import","export","inline","where","partial","syntax","lazy",
 >             "infix","infixl","infixr","do","refl","if","then","else","let",
 >             "in","return","include"]
-> types = ["Int","Char","Float","Ptr","Lock","Handle"]
+> types = ["String","Int","Char","Float","Ptr","Lock","Handle"]
 
 > markupSpecial ms cs = case span isAllowed cs of
 >      (var,rest) -> (None, '%':var):(markupText ms rest)
@@ -151,9 +155,9 @@
 >        = html (skipnl xs)
 >     html ((AUTHOR, t):xs) 
 >        = -- "</code>\n\n<h4>Author: " ++ t ++ "</h4>\n\n<code>" ++ 
->          html (skipnl xs)
+>          "</code>" ++ sechead xs ++ "\n\n<code>" ++ html (skipnl xs)
 >     html ((SEC, t):xs) 
->        = "</code>\n\n<h3>" ++ t ++ "</h3>\n\n<code>" ++ html (skipnl xs)
+>        = "</code><a name=\"" ++ secname t ++ "\">\n\n<h3>" ++ t ++ "</h3>\n\n<code>" ++ html (skipnl xs)
 >     html ((SUBSEC, t):xs) 
 >        = "</code>\n\n<h4>" ++ t ++ "</h4>\n\n<code>" ++ html (skipnl xs)
 >     html ((BRK, t):xs) = tHtml t ++ html xs
@@ -190,6 +194,16 @@
 >                = "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\">" ++
 >                  "<html><head><title>" ++ title ++ "</title>\n" ++
 >                  defaultStyle style ++ "</head><body>"
+
+> secname t = take 10 (filter isAlpha t)
+
+> getsecs [] = []
+> getsecs ((SEC,t):xs) = ("<a href=\"#" ++ (secname t) ++"\">"++ t ++ "</a>"):(getsecs xs)
+> getsecs (_:xs) = getsecs xs
+
+> sechead ms = let ss = getsecs ms in
+>              if null ss then "" 
+>                         else concat (intersperse " | " (getsecs ms)) ++ "<br>"
 
 > defaultStyle Nothing 
 >                  = "<style type=\"text/css\">\n" ++

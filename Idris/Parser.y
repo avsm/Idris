@@ -66,7 +66,7 @@ import Debug.Trace
       '&'             { TokenTuple }
       '!'             { TokenBang }
       concat          { TokenConcat }
-      eq              { TokenEQ }
+--      eq              { TokenEQ }
       ge              { TokenGE }
       le              { TokenLE }
       or              { TokenOr }
@@ -145,7 +145,7 @@ import Debug.Trace
 %nonassoc '!' '@'
 %left or
 %left and '&'
-%left '=' eq
+%left '=' -- eq
 %left userinfix
 %left '<' le '>' ge
 %left '+' '-'

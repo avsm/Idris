@@ -732,7 +732,6 @@ programmer doesn't have to write them down inside the param block.
 > toIvorConst (Fl f) = Constant f
 > toIvorConst TYPE = Star
 > toIvorConst StringType = Name Unknown (name "String")
-> toIvorConst CharType = Name Unknown (name "Char")
 > toIvorConst IntType = Name Unknown (name "Int")
 > toIvorConst FloatType = Name Unknown (name "Float")
 > toIvorConst CharType = Name Unknown (name "Char")
@@ -1013,9 +1012,15 @@ error in all other cases
 > fixFix :: Fixities -> RawTerm -> RawTerm
 
 Only need to worry if the left term is not bracketed. Otherwise leave it alone.
+Also need to sort out inner ops first.
 
-> fixFix ops top@(RUserInfix file line _ opr 
->                (RUserInfix _ _ False opl a b) c) = 
+> fixFix ops top@(RUserInfix f l b op x y)
+>     = let fixed = fixFix' ops top in -- (RUserInfix f l b op x y)
+>           if (fixed==top) then fixed else fixFix ops fixed
+> fixFix ops x = x
+
+> fixFix' ops top@(RUserInfix file line _ opr 
+>                 (RUserInfix _ _ False opl a b) c) = 
 >     case (lookup opl ops, lookup opr ops) of
 >       (Just (assocl, precl), Just (assocr, precr)) ->
 >         doFix assocl precl assocr precr a opl b opr c
@@ -1024,8 +1029,8 @@ Only need to worry if the left term is not bracketed. Otherwise leave it alone.
 >       (_, Nothing) -> RError $ file ++ ":" ++ show line ++ ":unknown operator " ++ show opr
 >  where
 >    doFix al pl ar pr a opl b opr c 
->          | pr > pl = mkOp True opl (fixFix ops a) (fixFix ops (mkOp False opr b c))
->          | pr < pl = mkOp True opr (fixFix ops (mkOp False opl a b)) (fixFix ops c)
+>          | pr > pl = mkOp False opl (fixFix' ops a) (fixFix' ops (mkOp False opr b c))
+>          | pr < pl = mkOp False opr (fixFix' ops (mkOp False opl a b)) (fixFix' ops c)
 
 In the following cases, change the top level operator, put explicit brackets in, then
 rewrite the whole thing again. Termination guaranteed since the size of the expression
@@ -1042,4 +1047,4 @@ we check (i.e. the non-bracketed part) is smaller.
 
 Everything else, we ony work at the top level.
 
-> fixFix _ x = x
+> fixFix' _ x = x

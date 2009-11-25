@@ -1,6 +1,6 @@
 -- HTML: <a href="tutorial.html">Contents</a> | <a href="datafun.html">Next</a>
 
--- Title: Getting Started
+-- Title: Getting started
 -- Author: Edwin Brady
 
 -- Section: Downloading and Installing
@@ -22,7 +22,7 @@ directory. --}
 
 {-- Before we start writing programs, let us check whether the
 installation has succeeded, and show how to compile and run simple
-programs. We will start the standard 'Hello world'
+programs. We will start with the standard 'Hello world'
 program. Enter the following text into a file called "main.k": --}
 
 main : IO ();

@@ -1,5 +1,5 @@
-EXAMPLES = first.html datafun.html
-SRCS = first.idr datafun.idr
+EXAMPLES = first.html primitives.html datafun.html
+SRCS = first.idr primitives.idr datafun.idr
 
 site: $(EXAMPLES) tutorial.html 
 

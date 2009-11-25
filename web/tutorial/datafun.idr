@@ -1,10 +1,16 @@
 -- HTML: <a href="first.html">Previous</a> | <a href="tutorial.html">Contents</a> | 
--- Title: Data Types and Functions
+-- Title: The basics: data types and functions
 -- Author: Edwin Brady
 
--- Section: Simple types
+-- Section: Data types
 
-{-- Simple data types are declared in a similar way to Haskell data
+-- IGNORE
+
+include "string.idr";
+
+-- START
+
+{-- Data types are declared in a similar way to Haskell data
 types, with a similar syntax. The main difference is that Idris syntax
 is not whitespace sensitive, and declarations must end with a
 semi-colon. Natural numbers and lists can be declared as follows: --}
@@ -15,16 +21,17 @@ data Nat    = O | S Nat;             -- Natural numbers
 data List a = Nil | Cons a (List a); -- Polymorphic lists
 >-}
 
-{-- The above declarations are taken from the standard library. A
-library file "prelude.idr" is automatically imported by every Idris program,
-including facilities for IO, natural number arithmetic, lists, and
-various other common functions. 
+{-- The above declarations are taken from the standard
+library. Unary natural numbers can be either zero ("O"), or the successor of
+another natural number ("S k"). Lists can either be empty ("Nil") or a
+value added to the front of another list ("Cons x xs").
 
 Functions are implemented by pattern matching, again using a similar
-syntax to Haskell. The main difference is that Idris uses a single
-colon ":" for type declarations (rather than Haskell's double colon
-"::"). Some natural number arithmetic functions can be defined as
-follows, again taken from the standard library: --}
+syntax to Haskell. The main difference is that Idris requires type
+declarations for any function with greater than zero arguments, using
+a single colon ":" (rather than Haskell's double colon "::"). Some
+natural number arithmetic functions can be defined as follows, again
+taken from the standard library: --}
 
 {->
 -- Unary addition
@@ -42,12 +49,42 @@ mult (S k) y = plus y (mult k y)l
 function names must begin with a capital letter or not. Function
 names ("plus" and "mult" above), data constructors ("O", "S", "Nil"
 and "Cons") and type constructors ("Nat" and "List") are all part of the
-same namespace. --}
+same namespace. 
 
--- Section: Vectors (Sized Lists)
+We can test these functions at the Idris prompt: --}
+
+{->
+Idris> plus (S (S O)) (S (S O))
+S (S (S (S O))) : Nat
+Idris> mult (S (S (S O))) (plus (S (S O)) (S (S O)))
+S (S (S (S (S (S (S (S (S (S (S (S O))))))))))) : Nat
+>-}
+
+{-- It is rather more readable, of course, if we use conversion
+functions to read and write "Nat"s. We have "intToNat" and "showNat"
+for this purpose: --}
+
+{->
+Idris> showNat (plus (intToNat 2) (intToNat 2))
+"4" : String
+Idris> showNat (mult (intToNat 3) (plus (intToNat 2) (intToNat 2)))
+"12" : String
+>-}
+
+{-- You may wonder, by the way, why we have unary natural numbers when
+our computers have perfectly good integer arithmetic built in. The
+reason is primarily that unary numbers have a very convenient
+structure which is easy to reason about, and easy to relate to other
+data structures as we will see later. Nevertheless, we do not want
+this convenience to be at the expense of efficiency. Fortunately,
+Idris knows about the relationship between "Nat" and numbers, so
+optimises the representation and functions such as "plus" and "mult". --}
+
+-- Section: A dependent type: Vectors (Sized Lists)
 
 {-- Vectors are lists which carry their size in the type. They are
-declared as follows in the standard library: --}
+declared as follows in the standard library, using a style similar to
+GADTs in Haskell: --}
 
 {->
 infixr 5 ::;
@@ -97,7 +134,16 @@ datafun.idr:3:Can't unify Vect z4 z0 and Vect z4 z3
 {-- This error message (which, admittedly, could choose clearer
 names for "Vect"'s parameters) suggests that there is a length
 mismatch between two vectors.
+
 --}
+
+-- Section: Finite Sets
+
+-- Section: Implicit arguments
+
+-- Subsection: "using" notation
+
+-- Section: The "with" rule
 
 -- HTML: <hr><a href="datafun.idr">Source for this chapter</a>
 -- HTML: <a href="first.html">Previous</a> | <a href="tutorial.html">Contents</a> | 
