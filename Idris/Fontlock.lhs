@@ -5,7 +5,8 @@
 > import Idris.Lexer
 > import Idris.Context
 
-> data Markup = DC | TC | FN | CM | VV | KW | ST | LCM | BRK | SEC | SUBSEC 
+> data Markup = DC | TC | FN | CM | VV | KW | ST | LCM
+>             | BRK | SEC | SUBSEC 
 >             | TITLE | AUTHOR | HTML | LATEX | None
 >   deriving Show
 
@@ -51,6 +52,8 @@
 > markupText ms ('-':'-':' ':'S':'u':'b':'s':'e':'c':'t':'i':'o':'n':':':' ':xs) 
 >                = markupSECtoNewline SUBSEC "" ms xs
 > markupText ms ('-':'-':xs) = markupCMtoNewline "" ms xs
+> markupText ms ('{':'-':'>':xs) = markupText ms xs
+> markupText ms ('>':'-':'}':xs) = markupText ms xs
 > markupText ms ('{':'-':'-':xs) = markupLCM "" ms xs
 > markupText ms ('{':'-':xs) = markupCM "" ms xs
 > markupText ms ('"':xs) = markupString ms xs
@@ -147,13 +150,14 @@
 >     html ((LATEX, t):xs) 
 >        = html (skipnl xs)
 >     html ((AUTHOR, t):xs) 
->        = "</code>\n\n<h4>Author: " ++ t ++ "</h4>\n\n<code>" ++ html (skipnl xs)
+>        = -- "</code>\n\n<h4>Author: " ++ t ++ "</h4>\n\n<code>" ++ 
+>          html (skipnl xs)
 >     html ((SEC, t):xs) 
 >        = "</code>\n\n<h3>" ++ t ++ "</h3>\n\n<code>" ++ html (skipnl xs)
 >     html ((SUBSEC, t):xs) 
 >        = "</code>\n\n<h4>" ++ t ++ "</h4>\n\n<code>" ++ html (skipnl xs)
 >     html ((BRK, t):xs) = tHtml t ++ html xs
->     html ((LCM, t):xs) = "</code>\n\n<p class=\"explanation\">" ++ tpara t ++ "</p>\n\n<code>" ++ html (skipnl xs)
+>     html ((LCM, t):xs) = "</code>\n\n<p class=\"explanation\">" ++ tpara 0 t ++ "</p>\n\n<code>" ++ html (skipnl xs)
 >     html ((m, t):xs) = "<span class=\"" ++ hclass m ++ "\">" ++ tHtml t ++ 
 >                        "</span>" ++ html xs
 >     tHtml = concat.(map th) 
@@ -162,16 +166,30 @@
 >     th '\n' = "</code><br>\n<code>"
 >     th x = [x]
 
->     tpara [] = ""
->     tpara ('"':xs) = case getstr xs of
->                        Just (str,rest,_) -> "<code>" ++ str ++ "</code>" ++
->                                             tpara rest
->     tpara (x:xs) = x:(tpara xs)
+>     tpara l [] = ""
+>     tpara l ('"':xs) = case getstr xs of
+>                        Just (str,rest,_) -> "<code>" ++ tpara l str ++ "</code>" ++
+>                                             tpara l rest
+>     tpara l ('U':'R':'L':'[':xs) =
+>         case span (/=']') xs of
+>           (url, ']':rest) -> "<a href=\"" ++ url ++ "\">" ++ url ++ "</a>"
+>                          ++ tpara l rest
+>     tpara l ('/':xs) =
+>         case span (/='/') xs of
+>           (txt, '/':rest) -> "<em>" ++ txt ++ "</em>" ++ tpara l rest
+>     tpara l ('\n':'\n':'*':xs) = "<ul>\n" ++ tpara (l+1) ('*':xs)
+>     tpara l ('\n':'\n':xs) = "\n</p>\n<p>\n" ++ tpara l xs
+>     tpara l ('\n':'-':xs) = if (l>0) then "</ul>" ++ tpara (l-1) xs 
+>                                       else "</p><p>" ++ tpara l xs
+>     tpara l ('*':xs) = case span (=='*') xs of
+>                          (_,rest) -> "<li>" ++ tpara l rest
+>     tpara l ('<':xs) = "&lt;"++ tpara l xs
+>     tpara l (x:xs) = x:(tpara l xs)
 
 > htmlHeader title style
 >                = "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\">" ++
 >                  "<html><head><title>" ++ title ++ "</title>\n" ++
->                  defaultStyle style ++ "</head>"
+>                  defaultStyle style ++ "</head><body>"
 
 > defaultStyle Nothing 
 >                  = "<style type=\"text/css\">\n" ++
@@ -200,23 +218,37 @@
 >     latex i ((AUTHOR, t):xs) = "\\author{" ++ t ++ "}\n\\maketitle\n\n" ++ startv i ++ latex i (skipnl xs)
 >     latex i ((SEC, t):xs) = usev i ++ "\\section{" ++ t ++ "}\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
 >     latex i ((SUBSEC, t):xs) = usev i ++ "\\subsection{" ++ t ++ "}\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
->     latex i ((LCM, t):xs) = usev i ++ tpara t ++ "\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
->     latex i ((LATEX, t):xs) = usev i ++ tpara t ++ "\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
+>     latex i ((LCM, t):xs) = usev i ++ tpara 0 t ++ "\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
+>     latex i ((LATEX, t):xs) = usev i ++ tpara 0 t ++ "\n\n" ++ startv (i+1) ++ latex (i+1) (skipnl xs)
 >     latex i ((m, t):xs) = "^" ++ show m ++ "@" ++ t ++ "!"
 >                               ++ latex i xs
 
->     tpara [] = ""
->     tpara ('"':xs) = case getstr xs of
->                        Just (str,rest,_) -> "\\texttt{" ++ str ++ "}" ++
->                                             tpara rest
->     tpara (x:xs) = x:(tpara xs)
+>     tpara l [] = ""
+>     tpara l ('"':xs) = case getstr xs of
+>                        Just (str,rest,_) -> "\\texttt{" ++ tpara l str ++ "}" ++
+>                                             tpara l rest
+>     tpara l ('U':'R':'L':'[':xs) =
+>         case span (/=']') xs of
+>           (url, ']':rest) -> "\\url{" ++ url ++ "}" ++ tpara l rest
+>     tpara l ('/':xs) =
+>         case span (/='/') xs of
+>           (txt, '/':rest) -> "\\emph{" ++ txt ++ "}" ++ tpara l rest
+>           (txt, rest) -> "\\emph{" ++ txt ++ "}" ++ tpara l rest
+>     tpara l ('~':xs) = "\\~{ }" ++ tpara l xs
+>     tpara l ('#':xs) = "\\#" ++ tpara l xs
+>     tpara l ('\n':'\n':'*':xs) = "\n\\begin{itemize}\n" ++ tpara (l+1) ('*':xs)
+>     tpara l ('\n':'-':xs) = if (l>0) then "\\end{itemize}" ++ tpara (l-1) xs 
+>                                       else "\n\n" ++ tpara l xs
+>     tpara l ('*':xs) = case span (=='*') xs of
+>                          (_,rest) -> "\\item " ++ tpara l rest
+>     tpara l (x:xs) = x:(tpara l xs)
 
 >     usev i = "\n\\end{SaveVerbatim}\n\\BUseVerbatim{vbtm" ++ show i ++ "}\n\n"
 >     startv i = "\\begin{SaveVerbatim}[commandchars=^@!]{vbtm" ++ show i ++ "}\n\n"
 
 
 > latexHeader = "\\documentclass[a4paper]{article}\n" ++
->   "\n\\usepackage{fancyvrb}\n\\usepackage{color}\n\n\\begin{document}\n\n" ++
+>   "\n\\usepackage{fancyvrb}\n\\usepackage{color}\n\\usepackage{url}\n\n\\begin{document}\n\n" ++
 >   "\\newcommand{\\" ++ show DC ++ "}[1]{\\textcolor[rgb]{0.8,0,0}{#1}}\n" ++
 >   "\\newcommand{\\" ++ show TC ++ "}[1]{\\textcolor[rgb]{0,0,0.8}{#1}}\n" ++
 >   "\\newcommand{\\" ++ show FN ++ "}[1]{\\textcolor[rgb]{0,0.5,0}{#1}}\n" ++

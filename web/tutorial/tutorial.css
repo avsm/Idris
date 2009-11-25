@@ -1,0 +1,30 @@
+.datacon {
+  color:red; font-family: Courier;
+}
+.typecon {
+  color:blue; font-family: Courier;
+}
+.function {
+  color:green; font-family: Courier;
+}
+.variable {
+  color:purple; font-family: Courier;
+}
+.comment {
+  color:darkred; font-family: Courier;
+}
+.string {
+  color:gray; font-family: Courier;
+}
+.keyword {
+  color:black;
+  font-family: Courier; font-weight:bold;
+}
+p.explanation {
+  color:black;
+}
+BODY, SPAN {
+  font-family: Tahoma;
+  color:  #000020;
+  background: #f0f0f0;
+}
