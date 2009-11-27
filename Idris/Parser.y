@@ -39,6 +39,7 @@ import Debug.Trace
       ':'             { TokenColon }
       ';'             { TokenSemi }
       '|'             { TokenBar }
+      stars           { TokenStars }
       '\\'            { TokenLambda }
       hashbrack       { TokenHashOB }
       '('             { TokenOB }
@@ -51,6 +52,7 @@ import Debug.Trace
       cid             { TokenCId }
       lpair           { TokenLPair }
       rpair           { TokenRPair }
+      exists          { TokenExists }
       '~'             { TokenTilde }
       '+'             { TokenPlus }
       '-'             { TokenMinus }
@@ -161,7 +163,7 @@ import Debug.Trace
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname lazy
-          oid '[' '~' lpair PAIR return transarrow
+          oid '[' '~' lpair PAIR return transarrow exists
 %left APP
 
 
@@ -483,8 +485,11 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
          | SigmaType { $1 }
 
 SigmaType :: { RawTerm }
-SigmaType : '(' Name MaybeType '|' TypeTerm ')' File Line 
+SigmaType : '(' Name MaybeType stars TypeTerm ')' File Line 
                   { sigDesugar $7 $8 ($2, $3) $5 }
+--          | exists Name MaybeType fatarrow SimpleAppTerm File Line
+--                  { sigDesugar $6 $7 ($2, $3) $5 }
+
 TypeList :: { [RawTerm] }
          : TypeTerm '&' TypeTerm { $1:$3:[] }
          | TypeTerm '&' TypeList { $1:$3 }

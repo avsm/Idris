@@ -1,10 +1,12 @@
-EXAMPLES = first.html primitives.html datafun.html
-SRCS = first.idr primitives.idr datafun.idr
+EXAMPLES = first.html primitives.html datafun.html interp.html iofns.html \
+           stdlib.html
+SRCS = first.idr primitives.idr datafun.idr interp.idr iofns.idr \
+       stdlib.idr
 
 site: $(EXAMPLES) tutorial.html 
 
 install: site
-	scp $(EXAMPLES) $(SRCS) tutorial.html tutorial.css eb@home-staff:public_html/Idris
+	scp $(EXAMPLES) $(SRCS) tutorial.html tutorial.css eb@home-staff.cs.st-and.ac.uk:public_html/Idris
 
 %.html: %.idr
 	idris $< --cmd ':H $< $@ tutorial.css'

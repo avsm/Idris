@@ -174,19 +174,23 @@
 >     tpara l ('"':xs) = case getstr xs of
 >                        Just (str,rest,_) -> "<code>" ++ tpara l str ++ "</code>" ++
 >                                             tpara l rest
+>                        _ -> error xs
 >     tpara l ('U':'R':'L':'[':xs) =
 >         case span (/=']') xs of
 >           (url, ']':rest) -> "<a href=\"" ++ url ++ "\">" ++ url ++ "</a>"
 >                          ++ tpara l rest
+>     tpara l ('\\':'/':xs) = '/':tpara l xs 
+>     tpara l ('\\':'\\':xs) = '\\':tpara l xs 
+>     tpara l ('\\':'*':xs) = '*':tpara l xs 
 >     tpara l ('/':xs) =
 >         case span (/='/') xs of
 >           (txt, '/':rest) -> "<em>" ++ txt ++ "</em>" ++ tpara l rest
+>     tpara l ('*':xs) = case span (=='*') xs of
+>                          (_,rest) -> "<li>" ++ tpara l rest
 >     tpara l ('\n':'\n':'*':xs) = "<ul>\n" ++ tpara (l+1) ('*':xs)
 >     tpara l ('\n':'\n':xs) = "\n</p>\n<p>\n" ++ tpara l xs
 >     tpara l ('\n':'-':xs) = if (l>0) then "</ul>" ++ tpara (l-1) xs 
 >                                       else "</p><p>" ++ tpara l xs
->     tpara l ('*':xs) = case span (=='*') xs of
->                          (_,rest) -> "<li>" ++ tpara l rest
 >     tpara l ('<':xs) = "&lt;"++ tpara l xs
 >     tpara l (x:xs) = x:(tpara l xs)
 
@@ -244,6 +248,7 @@
 >     tpara l ('U':'R':'L':'[':xs) =
 >         case span (/=']') xs of
 >           (url, ']':rest) -> "\\url{" ++ url ++ "}" ++ tpara l rest
+>     tpara l ('/':'/':xs) = '/':tpara l xs
 >     tpara l ('/':xs) =
 >         case span (/='/') xs of
 >           (txt, '/':rest) -> "\\emph{" ++ txt ++ "}" ++ tpara l rest

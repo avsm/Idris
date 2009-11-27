@@ -134,10 +134,6 @@ data [noElim]
  | PUTLINE : (i:Fin n) -> (str:String) -> (p:OpenH i Writing ts) ->
              (Lang ts ts (TyUnit));
 
-maybe : (x:Maybe a) -> |(default:b) -> (a->b) -> b;
-maybe Nothing def f = def;
-maybe (Just a) def f = f a;
-
 cont : (v:a->b) -> (x:a) -> (c:#) -> (k:b->c) -> c;
 cont v a c k = k (v a);
 

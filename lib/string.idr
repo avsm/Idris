@@ -61,7 +61,7 @@ listToStr = foldr strCons "";
 
 -- TODO if the change to the parser breaks things, the sigma pattern will
 --      need parens around
-strToVect: String -> (n | Vect Char n);
+strToVect: String -> (n ** Vect Char n);
 strToVect s with strUncons s {
     | Just (c, cs) with strToVect cs {
     | <<cs'>> = <<c :: cs'>>;

@@ -94,6 +94,7 @@ data Token
       | TokenCSB
       | TokenOId
       | TokenCId
+      | TokenExists
       | TokenConcat
       | TokenTilde
       | TokenPlus
@@ -118,6 +119,7 @@ data Token
       | TokenComma
       | TokenTuple
       | TokenBar
+      | TokenStars
       | TokenDot
       | TokenEllipsis
       | TokenLambda
@@ -281,6 +283,7 @@ lexVar cont cs =
       ("infix",rest) -> cont TokenInfix rest
       ("infixl",rest) -> cont TokenInfixL rest
       ("infixr",rest) -> cont TokenInfixR rest
+      ("exists",rest) -> cont TokenExists rest
 -- Types
       ("Int",rest) -> cont TokenIntType rest
       ("Char",rest) -> cont TokenCharType rest
@@ -321,6 +324,7 @@ lexOp cont cs = case span isOpChar cs of
                    ("&",rest) -> cont TokenTuple rest
 --                   ("||",rest) -> cont TokenOr rest
                    ("...",rest) -> cont TokenEllipsis rest
+                   ("**",rest) -> cont TokenStars rest
                    ("|",rest) -> cont TokenBar rest
                    ("!",rest) -> cont TokenBang rest
                    ("->", rest) -> cont TokenArrow rest

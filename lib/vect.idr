@@ -18,9 +18,9 @@ vmap : (A->B) -> (Vect A n) -> (Vect B n);
 vmap f VNil = VNil;
 vmap f (x :: xs) = f x :: vmap f xs;
 
-append : (Vect A n) -> (Vect A m) -> (Vect A (plus n m));
-append VNil ys = ys;
-append (x :: xs) ys = x :: append xs ys;
+vapp : (Vect A n) -> (Vect A m) -> (Vect A (plus n m));
+vapp VNil ys = ys;
+vapp (x :: xs) ys = x :: vapp xs ys;
 
 -- Membership predicate for vectors, and means to compute one.
 
