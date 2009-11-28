@@ -72,7 +72,7 @@
 > keywords = ["proof","data","using","idiom","params","namespace","module",
 >             "import","export","inline","where","partial","syntax","lazy",
 >             "infix","infixl","infixr","do","refl","if","then","else","let",
->             "in","return","include"]
+>             "in","return","include","exists", "with"]
 > types = ["String","Int","Char","Float","Ptr","Lock","Handle"]
 
 > markupSpecial ms cs = case span isAllowed cs of

@@ -1,4 +1,5 @@
--- HTML: <a href="first.html">Previous</a> | <a href="tutorial.html">Contents</a> | 
+-- HTML: <a href="primitives.html">Previous</a> | <a href="tutorial.html">Contents</a> | <a href="iofns.html">Next</a>
+
 -- Title: The basics: data types and functions
 -- Author: Edwin Brady
 
@@ -36,12 +37,12 @@ taken from the standard library: --}
 {->
 -- Unary addition
 plus : Nat -> Nat -> Nat;
-plus O y = y;
+plus O     y = y;
 plus (S k) y = S (plus k y);
 
 -- Unary multiplication
 mult : Nat -> Nat -> Nat;
-mult O y = O;
+mult O     y = O;
 mult (S k) y = plus y (mult k y)l
 >-}
 
@@ -117,8 +118,8 @@ happens to the lengths of the vectors involved. For example, "vappend"
 appends two "Vect"s: --}
 
 vappend : Vect a n -> Vect a m -> Vect a (plus n m);
-vappend VNil VNil = VNil;
-vappend (x :: xs) ys = x :: vappend xs ys;
+vappend VNil      VNil = VNil;
+vappend (x :: xs) ys   = x :: vappend xs ys;
 
 {-- The type of "vappend" states that the resulting
 vector's length will be the sum of the input lengths. If we get the
@@ -128,8 +129,8 @@ accept the definition. For example:
 
 {->
 vappend : Vect a n -> Vect a m -> Vect a (plus n m);
-vappend VNil VNil = VNil;
-vappend (x :: xs) ys = x :: vappend xs xs; -- BROKEN
+vappend VNil      VNil = VNil;
+vappend (x :: xs) ys   = x :: vappend xs xs; -- BROKEN
 
 $ idris datafun.idr
 datafun.idr:3:Can't unify Vect z4 z0 and Vect z4 z3
@@ -162,9 +163,11 @@ A useful application of the "Fin" family is to represent
 numbers with guaranteed bounds. For example, if we want to look up an
 element in a "Vect", we could implement it as follows: --}
 
-vect_lookup : Fin n -> Vect a n -> a;
-vect_lookup fO (x :: xs) = x;
-vect_lookup (fS n) (x :: xs) = vect_lookup n xs;
+{->
+vlookup : Fin n -> Vect a n -> a;
+vlookup fO     (x :: xs) = x;
+vlookup (fS n) (x :: xs) = vlookup n xs;
+>-}
 
 {-- This function looks up a value at a given location in a
 vector. The location is bounded by the length of the vector ("n" in
@@ -184,39 +187,39 @@ since it would force "n" to be "O".
 {-- In the above definitions, we have used undeclared names in types
 (e.g. "a" and "n" in "Vect a n". The type checker still needs to infer
 types for these names, and add them as arguments. So, the
-type of "vect_lookup"... --}
+type of "vlookup"... --}
 
 {->
-vect_lookup : Fin n -> Vect a n -> a;
+vlookup : Fin n -> Vect a n -> a;
 >-}
 
-{-- ...actually has "a" and "n" as arguments. "vect_lookup" could
+{-- ...actually has "a" and "n" as arguments. "vlookup" could
 alternatively be declared as: --}
 
 {->
-vect_lookup : {a:#} -> {n:Nat} -> Fin n -> Vect a n -> a;
+vlookup : {a:#} -> {n:Nat} -> Fin n -> Vect a n -> a;
 >-}
 
 {-- We call "a" and "n" /implicit arguments/. Any arguments, such as
 "a" or "n" here may appear as part of the type, after they are bound.
-They need not be given in applications of "vect_lookup", as their
+They need not be given in applications of "vlookup", as their
 values can be inferred from the types of the "Fin n" and "Vect a n"
 arguments.  The braces "{}" indicate that the arguments are
 implicit. They can still be given explicitly in applications, using
 "{a=value}" and "{n=value}": --}
 
 {->
-vect_lookup {a=Int} {n=(S (S O))} fO (2 :: 3 :: VNil)
+vlookup {a=Int} {n=(S (S O))} fO (2 :: 3 :: VNil)
 >-}
 
 {-- Usually this serves only to clutter code unnecessarily, but is
 occasionally helpful. --}
 
 {-- In fact, any argument, implicit or explicit, may be given a
-name. We could have declared the type of "vect_lookup" as --}
+name. We could have declared the type of "vlookup" as --}
 
 {->
-vect_lookup : (i:Fin n) -> (xs:Vect a n) -> a;
+vlookup : (i:Fin n) -> (xs:Vect a n) -> a;
 >-}
 
 {-- It is a matter of taste whether you want to do this - sometimes it
@@ -258,10 +261,10 @@ appear within the block:
 {->
 using (x:a, y:a, xs:Vect a n) {
   data Elem : a -> (Vect a n) -> # where
-     here : Elem x (x :: xs)
+     here  : Elem x (x :: xs)
    | there : Elem x xs -> Elem x (y :: xs);
 }
 >-}
 
 -- HTML: <hr><a href="datafun.idr">Source for this chapter</a>
--- HTML: <a href="first.html">Previous</a> | <a href="tutorial.html">Contents</a> | 
+-- HTML: <a href="primitives.html">Previous</a> | <a href="tutorial.html">Contents</a> | <a href="iofns.html">Next</a>
