@@ -72,7 +72,7 @@ of type "interpTy T":
 >-}
 
 {-- A lambda creates a function. In the scope of a function of type
-"A->T", there as a new local variable of type "A": --}
+"A->T", there is a new local variable of type "A": --}
 
 {->
    Lam : Expr (A::G) T -> Expr G (TyFun A T)
@@ -111,12 +111,12 @@ function from "A" to "T" and a value of type "A": --}
 type in the corresponding vector of types: --}
 
   envLookup : (i:Fin n) -> (Env G) -> (interpTy (vlookup i G));
-  envLookup fO (Extend t env) = t;
+  envLookup fO     (Extend t env) = t;
   envLookup (fS i) (Extend t env) = envLookup i env;
 
 {-- "interp" directly translates an Expr into an Idris expression of the
-    appropriate type. It therefore evaluates the expression by using
-    Idris' evaluator. --}
+    appropriate type. It therefore evaluates the expression by
+    building an expression to pass to Idris' evaluator. --}
 
   interp : Env G -> (e:Expr G T) -> interpTy T;
 

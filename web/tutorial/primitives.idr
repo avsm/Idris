@@ -26,6 +26,14 @@ Idris> x == 6*6+6
 True : Bool
 >-}
 
+{-- Boolean expressions can be tested with the "if...then...else"
+construct --}
+
+{->
+Idris> if (x==6*6+6) then "The answer!" else "Not the answer"
+"The answer!" : String
+>-}
+
 {-- The "string.idr" library allows some conversions between
 primitive types and "String"s, as well as some primitive operations on
 "String"s. We can import the library with an "include" declaration
