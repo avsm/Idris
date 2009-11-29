@@ -59,12 +59,13 @@
 > markupText ms ('>':'-':'}':xs) = markupText ms xs
 > markupText ms ('{':'-':'-':xs) = markupLCM "" ms xs
 > markupText ms ('{':'-':xs) = markupCM "" ms xs
-> markupText ms ('"':xs) = markupString ms xs
+> markupText ms ('\\':c:xs) = (None, [c]):markupText ms xs
 > markupText ms ('\'':c:'\'':xs) = (CH, ['\'',c,'\'']):markupText ms xs
+> markupText ms ('"':xs) = markupString ms xs
 > markupText ms ('%':xs) = markupSpecial ms xs
 > markupText ms ('\t':xs) = (None, "        "):markupText ms xs
 > markupText ms (c:cs)
->       | isAlpha c = markupVar ms (c:cs)
+>       | isAlpha c || c=='_' = markupVar ms (c:cs)
 > markupText ms (c:cs) = (None, [c]):markupText ms cs
 
 > markupText ms [] = []
@@ -181,6 +182,7 @@
 >                          ++ tpara l rest
 >     tpara l ('\\':'/':xs) = '/':tpara l xs 
 >     tpara l ('\\':'\\':xs) = '\\':tpara l xs 
+>     tpara l ('\\':'"':xs) = '"':tpara l xs 
 >     tpara l ('\\':'*':xs) = '*':tpara l xs 
 >     tpara l ('/':xs) =
 >         case span (/='/') xs of
