@@ -31,7 +31,7 @@ a variant "putStr" which outputs a string without a newline: --}
 
 {->
 putStrLn : String -> IO ();
-putStr : String -> IO ();
+putStr   : String -> IO ();
 >-}
 
 {-- We can also read strings from user input: --}
@@ -58,7 +58,17 @@ greet = do { putStr "What is your name? ";
     of type "IO a", and puts the result, of type "a" into "x". In this
     case, "getStr" returns an "IO String", so "name" has type
     "String".
+
+    Inside a "do" block, the "return" operation allows us to inject a
+    value directly into an "IO" operation:
 --}
+
+{->
+return : a -> IO a;
+>-}
+
+{-- In fact, "return" is a built in function, for reasons we will come
+back to later. --}
 
 -- Section: I/O functions
 
@@ -75,12 +85,12 @@ greet = do { putStr "What is your name? ";
 {->
 data File;
 
-fopen : (filename:String) -> (mode:String) -> IO File;
+fopen  : (filename:String) -> (mode:String) -> IO File;
 fclose : File -> IO ();
 
-fread : File -> IO String;
+fread  : File -> IO String;
 fwrite : File -> String -> IO ();
-feof : File -> IO ();
+feof   : File -> IO ();
 >-}
 
 -- Subsection: Threads
@@ -92,10 +102,10 @@ feof : File -> IO ();
 {->
 data Lock;
 
-fork: IO () -> IO ();
-newLock: Int -> IO Lock;
-lock: Lock -> IO ();
-unlock: Lock -> IO ();
+fork    : IO () -> IO ();
+newLock : Int -> IO Lock;
+lock    : Lock -> IO ();
+unlock  : Lock -> IO ();
 >-}
 
 -- HTML: <hr><a href="iofns.idr">Source for this chapter</a>

@@ -59,7 +59,7 @@ context. Recall that "vlookup" is a bounds-safe lookup in a vector:
    Var : (i:Fin n) -> Expr G (vlookup i G)
 >-}
 
-{-- So, in an expression "\\\\x. \\\\y. x y", "x" would have a de
+{-- So, in an expression "\\\\x. \\\\y. x y", the variable "x" would have a de
 Bruijn index of 1, and "y" 0. We find these by counting the number of
 lambdas between the definition and the use.
 
@@ -202,7 +202,7 @@ include "string.idr"; -- For String/Int conversion
 main : IO ();
 main = do { putStr "Please enter a number: ";
             x <- getInt; -- Library function to read a string and
-	                 -- convert it to an integer.
+	                 -- convert it to an integer (or 0 on failure).
             let factx = interp Empty (App fact (Val x));
             putStrLn (showInt x ++ "! = " ++ showInt factx);
           };

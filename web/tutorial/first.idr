@@ -23,7 +23,7 @@ directory. --}
 {-- Before we start writing programs, let us check whether the
 installation has succeeded, and show how to compile and run simple
 programs. We will start with the standard 'Hello world'
-program. Enter the following text into a file called "main.k": --}
+program. Enter the following text into a file called "main.idr": --}
 
 main : IO ();
 main = putStrLn "Hello world";

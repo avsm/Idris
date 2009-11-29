@@ -1,4 +1,4 @@
--- HTML: <a href="theorems.html">Previous</a> | <a href="tutorial.html">Contents</a> | <a href="monads.html">Next</a>
+-- HTML: <a href="theorems.html">Previous</a> | <a href="tutorial.html">Contents</a> | <a href="donotation.html">Next</a>
 
 -- Title: Provisional Definitions
 -- Author: Edwin Brady
@@ -56,7 +56,7 @@ they are useful.
   finishing all the details of proofs.
 * When /reading/ a program, it is often much clearer to defer the
   proof details so that they do not distract the reader from the
-  underlying /algorithm/
+  underlying /algorithm/.
 -
 
 They are written in pattern matching form with a "?=" instead of "="
@@ -252,4 +252,4 @@ bO (bI (bO (bI (bO (bI bEnd)))))
 >-}
 
 -- HTML: <hr><a href="provisional.idr">Source for this chapter</a>
--- HTML: <a href="theorems.html">Previous</a> | <a href="tutorial.html">Contents</a> | <a href="monads.html">Next</a>
+-- HTML: <a href="theorems.html">Previous</a> | <a href="tutorial.html">Contents</a> | <a href="donotation.html">Next</a>
