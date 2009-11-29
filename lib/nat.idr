@@ -35,7 +35,7 @@ plus_nSm : ((plus n (S m)) = (S (plus n m)));
 plus_nSm {n=O} {m} = (refl (S m));
 plus_nSm {n=S k} {m} = eq_resp_S plus_nSm;
 
-plus_comm : (x:Nat, y:Nat) -> ((plus x y) = (plus y x));
+plus_comm : (x:Nat, y:Nat) -> (plus x y = plus y x);
 plus_comm proof {
         %intro; %induction x;
 	%rewrite <- plus_nO y;
@@ -47,7 +47,7 @@ plus_comm proof {
 	%qed;
 };
 
-plus_assoc  : (m:Nat, n:Nat, p:Nat) -> ((plus m (plus n p)) = (plus (plus m n) p));
+plus_assoc  : (m:Nat, n:Nat, p:Nat) -> (plus m (plus n p) = plus (plus m n) p);
 plus_assoc proof {
         %intro;
         %induction m;
@@ -100,7 +100,7 @@ mult_comm proof {
 };
 
 mult_distrib : (m:Nat, n:Nat, p:Nat) ->
-	       ((plus (mult m p) (mult n p)) = (mult (plus m n) p));
+	       (plus (mult m p) (mult n p) = mult (plus m n) p);
 mult_distrib proof {
         %intro;
         %induction m;

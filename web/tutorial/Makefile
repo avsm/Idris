@@ -1,7 +1,7 @@
 EXAMPLES = first.html primitives.html datafun.html interp.html iofns.html \
-           stdlib.html views.html
+           stdlib.html views.html theorems.html provisional.html
 SRCS = first.idr primitives.idr datafun.idr interp.idr iofns.idr \
-       stdlib.idr views.idr
+       stdlib.idr views.idr theorems.idr provisional.idr
 
 site: $(EXAMPLES) tutorial.html 
 

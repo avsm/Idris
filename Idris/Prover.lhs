@@ -153,7 +153,8 @@ of the rule's type, and apply rewrite.
 >     | null (getGoals ctxt) = "\nNo more goals\n"
 >     | otherwise = let (g:gs) = getGoals ctxt in
 >                      "\n" ++ showGoalState g ++
->                      "\nOther goals: " ++ show gs ++ "\n\n"
+>                      -- "\nOther goals: " ++ show gs ++ 
+>                      "\n\n"
 >  where
 >    showTm t = showImp False (unIvor raw (view t))
 >    showGoalState :: Goal -> String

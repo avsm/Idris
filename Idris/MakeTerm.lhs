@@ -301,7 +301,7 @@ except frozen things, which need to be added as we go, in order.
 >         PattDef ps -> -- trace (show ps) $
 >                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
 >                          if (null newdefs) then return ((ctxt, metas), uo)
->                            else do r <- addMeta raw ctxt metas newdefs
+>                            else do r <- addMeta (Verbose `elem` opt) raw ctxt metas newdefs
 >                                    return (r, uo)
 >                                                                     
 >         SimpleDef tm -> 
@@ -349,12 +349,14 @@ except frozen things, which need to be added as we go, in order.
 >                              (map (\x -> (toIvorName x, 0)) fr)
 >          getSpec (_:ns) fr = getSpec ns fr
 
-> addMeta :: Ctxt IvorFun -> Context -> 
+> addMeta :: Bool ->
+>            Ctxt IvorFun -> Context -> 
 >           [(Name, ViewTerm)] -> [(Name, ViewTerm)] -> 
 >            TTM (Context, [(Name, ViewTerm)])
-> addMeta raw ctxt metas newdefs
->       = trace ("Metavariables are:\n" ++  concat (map showDef newdefs))
->            $ return (ctxt, metas ++ newdefs)
+> addMeta verbose raw ctxt metas newdefs
+>       = let ans = (ctxt, metas ++ newdefs) in
+>                   if verbose then trace ("Metavariables are:\n" ++  concat (map showDef newdefs)) $ return ans
+>                              else return ans
 >    where
 >          showDef (n,ty) = "  " ++ show n ++ " : " ++ dumpMeta (unIvor raw ty)
 >                           ++ "\n"

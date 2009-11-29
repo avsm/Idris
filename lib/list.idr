@@ -41,3 +41,17 @@ eq_resp_Cons {A} {x} (refl xs) = refl _;
 elem : (a->a->Bool) -> a -> (List a) -> Bool;
 elem q x Nil = False;
 elem q x (Cons y ys) = if_then_else (q x y) True (elem q x ys);
+
+app_assoc : (xs:List a) -> (ys:List a) -> (zs:List a) ->
+	    (app xs (app ys zs) = app (app xs ys) zs);
+
+app_assoc Nil ys zs = refl _;
+app_assoc (Cons x xs) ys zs = let rec = app_assoc xs ys zs in
+	  	      	      ?app_assocCons;
+app_assocCons proof {
+	%intro;
+	%rewrite rec;
+	%refl;
+	%qed;
+};
+ 
