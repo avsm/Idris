@@ -59,7 +59,6 @@
 > markupText ms ('>':'-':'}':xs) = markupText ms xs
 > markupText ms ('{':'-':'-':xs) = markupLCM "" ms xs
 > markupText ms ('{':'-':xs) = markupCM "" ms xs
-> markupText ms ('\\':c:xs) = (None, [c]):markupText ms xs
 > markupText ms ('\'':c:'\'':xs) = (CH, ['\'',c,'\'']):markupText ms xs
 > markupText ms ('"':xs) = markupString ms xs
 > markupText ms ('%':xs) = markupSpecial ms xs

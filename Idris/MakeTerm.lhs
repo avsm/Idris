@@ -70,10 +70,10 @@ into an ivor definition, with all the necessary placeholders added.
 > mif opt ctxt acc using ui@(UI b bi r ri _ _ _ _) uo ((Idiom pure ap decls):ds)
 >         = let (acc', uo') = (mif opt ctxt acc using ui' uo decls) in
 >             mif opt ctxt acc' using ui uo' ds
->    where ui' = let pureImpl = case ctxtLookup acc (thisNamespace using) pure of
+>    where ui' = let pureImpl = case ctxtLookup (appCtxt ctxt acc) (thisNamespace using) pure of
 >                              Right i -> implicitArgs i
 >                              _ -> 0
->                    apImpl = case ctxtLookup acc (thisNamespace using) ap of
+>                    apImpl = case ctxtLookup (appCtxt ctxt acc) (thisNamespace using) ap of
 >                              Right i -> implicitArgs i
 >                              _ -> 0
 >                     in UI b bi r ri pure pureImpl ap apImpl
