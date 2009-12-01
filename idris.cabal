@@ -28,7 +28,7 @@ Description:    Idris is an experimental language with full dependent types.
                 and letting the type checker do the hard work so you don't have to!
                 .
                 The Darcs repository can be found at <http://www-fp.dcs.st-and.ac.uk/~eb/darcs/Idris>.
-Homepage:       http://www.dcs.st-and.ac.uk/~eb/Ivor/
+Homepage:       http://www.dcs.st-and.ac.uk/~eb/Idris/
 
 Cabal-Version:  >= 1.2.3
 Build-type:     Simple

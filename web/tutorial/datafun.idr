@@ -17,7 +17,7 @@ is not whitespace sensitive, and declarations must end with a
 semi-colon. Natural numbers and lists can be declared as follows: --}
 
 {->
-data Nat    = O | S Nat;             -- Natural numbers
+data Nat    = O   | S Nat;           -- Natural numbers
                                      -- (zero and successor)
 data List a = Nil | Cons a (List a); -- Polymorphic lists
 >-}
@@ -237,8 +237,8 @@ which defines a predicate on vectors:
 --}
 
 data Elem : a -> (Vect a n) -> # where
-   here : {x:a} -> {xs:Vect a n} -> (Elem x (x :: xs))
- | there : {x,y:a} -> {xs:Vect a n} -> (Elem x xs) -> (Elem x (y :: xs));
+   here :  {x:a} ->   {xs:Vect a n} -> Elem x (x :: xs)
+ | there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs);
 
 {-- An instance of "Elem x xs" states that "x" is an
 element of "xs". We can construct such a predicate if the required

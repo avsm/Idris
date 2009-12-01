@@ -21,6 +21,8 @@ cabal-package:
 
 test: .PHONY
 	make -C tests
+	make -C web/tutorial clean
+	make -C web/tutorial
 
 clean:
 	runhaskell Setup.lhs clean

@@ -162,12 +162,12 @@ type in the corresponding vector of types: --}
   double : Expr G (TyFun TyInt TyInt);
   double = Lam (App (App add (Var fO)) (Var fO));
 
-{-- We could even write more complex functions such a factorial, if we
+{-- We could even write more complex functions such as factorial, if we
     take some care to apply the recursive call lazily. (Why? Because
     otherwise building the expression would not terminate!) We achieve
     this with "apply": --}
 
-  apply : |(f:Expr G (TyFun a t)) -> (Expr G a) -> (Expr G t);
+  apply : |(f:Expr G (TyFun a t)) -> Expr G a -> Expr G t;
   apply f x = App f x;
 
 {-- The factorial function is "\\\\x. if x==0 then 1 else (x \\* fact
