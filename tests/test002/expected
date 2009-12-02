@@ -1,7 +1,7 @@
-sumaS = \ acc[0] : Int => \ xs[0] : List Int => if_then_else (empty xs[0]) acc[0] (sumaS (head xs[0]+acc[0]) (tail xs[0]))
+sumaS = \ acc : Int => \ xs : List Int => if_then_else (empty xs) acc (sumaS (head xs+acc) (tail xs))
 
 Compiles as:
 
-sumaS = [acc[0]:Int][xs[0]:List Int]if_then_else _ (empty _ xs[0]) acc[0] (sumaS (__addInt (head _ xs[0]) acc[0]) (tail _ xs[0]))
+sumaS = [acc:Int][xs:List Int]if_then_else _ (empty _ xs) acc (sumaS (__addInt (head _ xs) acc) (tail _ xs))
 
 50005000
