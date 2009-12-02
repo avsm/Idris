@@ -47,6 +47,7 @@ data Command : # where
   | WriteRef : {A:#} -> Int -> A -> Command
   | While : (IO Bool) -> (IO ()) -> Command
   | WhileAcc : {A:#} -> (IO Bool) -> A -> (A -> IO A) -> Command
+  | Within : Int -> (IO A) -> (IO A) -> Command
   | IOLift : {A:#} -> (IO A) -> Command 
   | Foreign : (f:ForeignFun) -> 
 	      (args:FArgList (f_args f)) -> Command;
@@ -63,6 +64,7 @@ Response (ReadRef A i) = A;
 Response (WriteRef i val) = ();
 Response (While test body) = ();
 Response (WhileAcc {A} test acc body) = A;
+Response (Within {A} time body failure) = A;
 Response (IOLift {A} f) = A;
 Response (Foreign t args) = i_ftype (f_retType t);
 
@@ -156,6 +158,12 @@ lock l = IODo (DoLock l) (\a => (IOReturn a));
 
 unlock : Lock -> (IO ());
 unlock l = IODo (DoUnlock l) (\a => (IOReturn a));
+
+-- Perform an action within "time" microseconds, execute failure
+-- routine if it doesn't complete
+
+within : Int -> |(action : IO a) -> |(failure : IO a) -> IO a;
+within time act fail = IODo (Within time act fail) (\a => (IOReturn a));
 
 newIORefPrim : IO Int;
 newIORefPrim = IODo (NewRef) (\i => (IOReturn i));

@@ -52,6 +52,9 @@ __epic_doUnlock (l:Int) -> Unit =
 __epic_fork (a:Any, f:Fun) -> Unit =
    lazy foreign Unit "doFork" (f:Fun)
 
+__epic_within (a:Any, i:Int, f:Fun, fail:Fun) -> Unit =
+   lazy foreign Unit "doWithin" (i:Int, f:Fun, fail:Fun)
+
 %inline __epic_bool (x:Int) -> Data =
    if (x==0) then (Con 1 ()) else (Con 0 ())
 
