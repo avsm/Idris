@@ -159,7 +159,7 @@ lock l = IODo (DoLock l) (\a => (IOReturn a));
 unlock : Lock -> (IO ());
 unlock l = IODo (DoUnlock l) (\a => (IOReturn a));
 
--- Perform an action within "time" microseconds, execute failure
+-- Perform an action within "time" milliseconds, execute failure
 -- routine if it doesn't complete
 
 within : Int -> |(action : IO a) -> |(failure : IO a) -> IO a;
@@ -254,3 +254,7 @@ sequence (Cons x xs) = do { a <- x;
 			    return (Cons a as); };
 
 sleep = mkForeign (FFun "sleep" (Cons FInt Nil) FUnit) %eval;
+
+-- Return time in microseconds since some unspecified starting point
+
+utime = mkForeign (FFun "do_utime" Nil FInt) %eval;

@@ -386,12 +386,15 @@ Apply all transforms in order to a term, eta expanding constructors first.
 >     = foldl (flip doTrans) (etaExpand ctxt term) ts
 
 > doTrans :: Transform -> ViewTerm -> ViewTerm
-> doTrans (Trans _ trans) tm = tr tm where
->     tr (App f a) = trans (App (tr f) (tr a))
->     tr (Lambda v ty sc) = trans (Lambda v (tr ty) (tr sc))
->     tr (Forall v ty sc) = trans (Forall v (tr ty) (tr sc))
->     tr (Let v ty val sc) = trans (Let v (tr ty) (tr val) (tr sc))
->     tr t = trans t
+> doTrans (Trans nm trans) tm = tr tm where
+>     tr tm = {- if (nm=="Next_FORCE") then (trace (show tm) (tr' tm)) else -}
+>             tr' tm
+>     tr' (App f a) = trans (App (tr f) (tr a))
+>     tr' (Lambda v ty sc) = trans (Lambda v (tr ty) (tr sc))
+>     tr' (Forall v ty sc) = trans (Forall v (tr ty) (tr sc))
+>     tr' (Let v ty val sc) = trans (Let v (tr ty) (tr val) (tr sc))
+>     tr' (Annotation a t) = Annotation a (tr t)
+>     tr' t = trans t
 
 > etaExpand :: Context -> ViewTerm -> ViewTerm
 > etaExpand ctxt tm = ec tm
