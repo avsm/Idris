@@ -26,7 +26,8 @@ already simple case trees.
 >      = let raw = idris_context ist
 >            erasure = not $ NoErasure `elem` (idris_options ist) 
 >            ctrans = makeConTransforms raw ctxt
->            trans = if erasure then makeArgTransforms raw ctxt ctrans
+>            atrans = makeArgTransforms raw ctxt ctrans
+>            trans = if erasure then makeIDTransforms raw ctxt atrans
 >                       else [] in
 >              ist { idris_transforms = trans }
 

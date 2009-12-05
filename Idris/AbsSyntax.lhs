@@ -63,7 +63,7 @@ Functions may be exported to C, if they have a simple type (no polymorphism, no 
 User defined operators have associativity and precedence
 
 > data Fixity = LeftAssoc | RightAssoc | NonAssoc
->    deriving (Show, Eq)
+>    deriving (Show, Eq, Enum)
 
 > type Fixities = [(String, (Fixity, Int))]
 
@@ -192,7 +192,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >   deriving Show
 
 > data TyOpt = NoElim | Collapsible
->   deriving (Show, Eq)
+>   deriving (Show, Eq, Enum)
 
 > tyHasElim dt = not (elem NoElim (tyOpts dt))
 > collapsible dt = elem Collapsible (tyOpts dt)
@@ -244,10 +244,10 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >    deriving (Show, Eq)
 
 > data Plicit = Im | Ex
->    deriving (Show, Eq)
+>    deriving (Show, Eq, Enum)
 
 > data Laziness = Lazy | Eager
->    deriving (Show, Eq)
+>    deriving (Show, Eq, Enum)
 
 > data Do = DoBinding String Int Id RawTerm RawTerm
 >         | DoLet String Int Id RawTerm RawTerm
@@ -379,7 +379,7 @@ Finally some primitive operations on primitive types.
 
 >         | StringLength | StringGetIndex | StringSubstr
 >         | StringHead | StringTail | StringCons
->    deriving Eq
+>    deriving (Eq, Enum)
 
 > allOps = [Plus,Minus,Times,Divide,Concat,JMEq,OpEq,OpLT,OpLEq,OpGT,OpGEq]
 
@@ -446,11 +446,11 @@ with all the placeholders added. For this we'll need to know how many
 implicit arguments each function has.
 
 > data IvorFun = IvorFun {
->       ivorFName :: Name,
+>       ivorFName :: Maybe Name,
 >       ivorFType :: (Maybe ViewTerm),
 >       implicitArgs :: Int,
 >       -- paramArgs :: Int,
->       ivorDef :: IvorDef,
+>       ivorDef :: Maybe IvorDef,
 >       rawDecl :: Decl, -- handy to keep around for display + extra data
 >       funFlags :: [CGFlag],
 >       lazyArgs :: [Int]
@@ -471,9 +471,9 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Transform _ _)) _ _):ds) = gdefs ds
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Freeze _)) _ _):ds) = gdefs ds
 >     gdefs ((n, ifun):ds)
->        = let iname = ivorFName ifun in
+>        = let Just iname = ivorFName ifun in
 >             case (ivorFType ifun, ivorDef ifun) of
->               (Just ty, PattDef ps) -> 
+>               (Just ty, Just (PattDef ps)) -> 
 >                   (iname, (ty,ps)):(gdefs ds)
 >               _ -> case getPatternDef ctxt iname of
 >                      Right (ty,ps) -> (iname, (ty,ps)):(gdefs ds)
@@ -493,10 +493,11 @@ Name definitions Ivor-side.
 
 A transformation is a function converting a ViewTerm to a new form.
 
-> data Transform = Trans String (ViewTerm -> ViewTerm)
+> data Transform = Trans String 
+>                        (Maybe (ViewTerm -> ViewTerm)) (ViewTerm, ViewTerm)
 
 > data Opt = NoErasure | ShowRunTime | NoSpec | Verbose
->    deriving (Show, Eq)
+>    deriving (Show, Eq, Enum)
 
 > data IdrisState = IState {
 >       idris_context :: Ctxt IvorFun, -- function definitions

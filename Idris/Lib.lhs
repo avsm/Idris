@@ -1,6 +1,6 @@
 > {-# OPTIONS_GHC -fglasgow-exts #-}
 
-> module Idris.Lib(defaultLibPath, readLib, readLibFile) where
+> module Idris.Lib(defaultLibPath, readLib, readLibFile, getLoaded) where
 
 > import Idris.Prefix
 
@@ -12,6 +12,10 @@ Evil hack to save having to pass round a list of loaded modules
 > loaded :: IORef [FilePath]
 > loaded = unsafePerformIO (do mods <- newIORef []
 >                              return mods)
+
+> getLoaded :: IO [FilePath]
+> getLoaded = do mods <- readIORef loaded
+>                return mods
 
 > addMod :: FilePath -> IO Bool
 > addMod mod = do mods <- readIORef loaded

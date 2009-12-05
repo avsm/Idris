@@ -1,5 +1,5 @@
 > module Idris.Context(Ctxt, Id(..), addEntry, ctxtLookup, ctxtLookupName,
->                      ctxtAlist, newCtxt, appCtxt) where
+>                      ctxtAlist, newCtxt, appCtxt, alistCtxt) where
 
 > import Data.List
 > import qualified Data.Map as Map
@@ -73,6 +73,10 @@ Otherwise, first look in current namespace, then in global namespace.
 
 > ctxtAlist :: Ctxt a -> [(Id,a)]
 > ctxtAlist cs = reverse $ concat (Map.elems cs)
+
+> alistCtxt :: [(Id, a)] -> Ctxt a
+> alistCtxt [] = newCtxt
+> alistCtxt ((x,y):xs) = addEntry (alistCtxt xs) Nothing x y
 
 > newCtxt = dictEmpty
 

@@ -2,7 +2,7 @@
 
 Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 
-> module Idris.ConTrans(makeConTransforms, makeArgTransforms,
+> module Idris.ConTrans(makeConTransforms, makeArgTransforms, makeIDTransforms,
 >                       applyTransforms, transform) where
 
 > import Idris.AbsSyntax
@@ -60,11 +60,7 @@ Test transforms: VNil A => VNil
 >      | vcons == name "VCons" = (App (App vconsN x) xs)
 > testTrans' x = x
 
-> testTrans = Trans "Vect" testTrans'
-
-> compTrans :: Transform -> Transform -> Transform
-> compTrans (Trans n1 f) (Trans n2 g)
->           = Trans (n1 ++ " -> " ++ n2) (g.f)
+> testTrans = Trans "Vect" (Just testTrans') undefined
 
 Look at all the definitions in the context, and make the relevant constructor
 transformations for forcing, detagging and collapsing.
@@ -82,7 +78,7 @@ be necessary - better fix Ivor.
 >   where mkT' [] acc p1 = acc
 >         mkT' (x:xs) acc p1 = mkT' xs ((makeTransform ctxt x (p1++acc))++acc) p1
 
-Apply the constructor transforms before making hte function transforms
+Apply the constructor transforms before making the function transforms
 so that we don't needlessly keep arguments dropped by forcing.
 
 > makeArgTransforms :: Ctxt IvorFun -> Context -> [Transform] -> [Transform]
@@ -93,6 +89,16 @@ so that we don't needlessly keep arguments dropped by forcing.
 >   where mkP' [] acc p1 = acc
 >         mkP' (x:xs) acc p1 
 >              = mkP' xs ((makePTransform raw ctxt (ctrans++p1++acc) x)++acc) p1
+
+Look for functions which have become identity functions as a result of previous
+transforms
+
+> makeIDTransforms :: Ctxt IvorFun -> Context -> [Transform] -> [Transform]
+> makeIDTransforms raw ctxt trans
+>    = mkP' (getRawPatternDefs raw ctxt) trans
+>   where mkP' [] acc = acc
+>         mkP' (x:xs) acc 
+>              = mkP' xs ((makeIDTransform raw ctxt (trans++acc) x)++acc)
 
 Make all the transformations for a type
 
@@ -147,7 +153,7 @@ from a collapsible type...
 
 > isCollapsible x t = (show x++"_COLLAPSE") `elem` (transNames t)
 > transNames = map tname
->    where tname (Trans n _) = n
+>    where tname (Trans n _ _) = n
 
 > isNat :: [(Name, [Name], [(Name, ViewTerm)])] ->
 >          [(Name, [Name], [(Name, ViewTerm)])] ->
@@ -172,7 +178,8 @@ transformed to Nat.
 
 > collapseTrans :: Name -> (Name, ViewTerm) -> Transform
 > collapseTrans n (c, ty) = Trans ((show n)++"_COLLAPSE")
->                            (mkCollapse (length (Ivor.TT.getArgTypes ty)))
+>                            (Just (mkCollapse (length (Ivor.TT.getArgTypes ty))))
+>                            undefined
 >    where mkCollapse num tm
 >             | Name nty con <- getApp tm
 >                 = let args = getFnArgs tm in
@@ -185,7 +192,7 @@ transformed to Nat.
 >               (Name, [Name], [(Name, ViewTerm)]) -> Maybe Transform
 > forceTrans Nothing _ (x, [], _) = Nothing
 > forceTrans nat ncons (n, forced, tys)
->      = Just (Trans ((show n)++"_FORCE") (mkForce (length tys)))
+>      = Just (Trans ((show n)++"_FORCE") (Just (mkForce (length tys))) undefined)
 
 If a term is n applied to (length tys) arguments, change it to
 n applied to arguments minus the ones in forceable positions
@@ -359,7 +366,8 @@ True -- Complex term, just drop it.
 >                if (null placeholders) 
 >                 then []
 >                 else [Trans (show n ++ "_dropargs") 
->                             (doDrop placeholders numargs n)]
+>                             (Just (doDrop placeholders numargs n))
+>                             undefined]
 >        _ -> []
 >    where
 >      args (Patterns ((PClause args r):_)) = length args
@@ -378,6 +386,21 @@ True -- Complex term, just drop it.
 >      simplArg pls (a, t) | a `elem` pls = Placeholder
 >                          | otherwise = t
 
+Look for arguments which are invariant across all patterns and calls. 
+If there's only one left, in position i, replace recursive calls with the 
+argument in position i. If the LHS and RHS of all patterns is the same in 
+the result, it's an identity function, so replace it with (id x) where x is
+the argument in position i.
+
+> makeIDTransform :: Ctxt IvorFun -> Context -> [Transform] ->
+>                    (Name, (ViewTerm, Patterns)) -> [Transform]
+> makeIDTransform raw ctxt ctrans (n, (ty, patsin)) 
+>   = let pats = transform ctxt ctrans [] n patsin in
+>          if (n==name "wkn") then trace (show (n, pats)) [] else []
+
+    where
+       invariants 
+
 
 Apply all transforms in order to a term, eta expanding constructors first.
 
@@ -386,7 +409,7 @@ Apply all transforms in order to a term, eta expanding constructors first.
 >     = foldl (flip doTrans) (etaExpand ctxt term) ts
 
 > doTrans :: Transform -> ViewTerm -> ViewTerm
-> doTrans (Trans nm trans) tm = tr tm where
+> doTrans (Trans nm (Just trans) _) tm = tr tm where
 >     tr tm = {- if (nm=="Next_FORCE") then (trace (show tm) (tr' tm)) else -}
 >             tr' tm
 >     tr' (App f a) = trans (App (tr f) (tr a))
@@ -452,7 +475,7 @@ Given a constructor name, the names of arguments it has, and the names
 of arguments to keep, make a transformation rule.
 
 > mkTrans :: Name -> [Name] -> [Name] -> Transform
-> mkTrans con args keep = Trans (show con ++ "_force") trans
+> mkTrans con args keep = Trans (show con ++ "_force") (Just trans) undefined
 >    where trans tm = let (f,fargs) = (getApp tm, getFnArgs tm) in
 >                        (tCon f fargs tm)
 >          tCon fc@(Name _ fcon) fargs tm

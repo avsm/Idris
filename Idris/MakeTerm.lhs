@@ -18,11 +18,12 @@ into an ivor definition, with all the necessary placeholders added.
 > makeIvorFun using ui uo ctxt decl (Function n ty clauses file line) flags
 >     = let (rty, imp) = addImplWith using ctxt ty
 >           ity = makeIvorTerm using ui uo n ctxt rty
->           extCtxt = addEntry ctxt (thisNamespace using) n (IvorFun undefined (Just ity) 
->                                       imp undefined decl flags (getLazy ty))
+>           extCtxt = addEntry ctxt (thisNamespace using) n (IvorFun Nothing (Just ity) 
+>                                       imp Nothing decl flags (getLazy ty))
 >           pclauses = map (mkPat extCtxt imp) clauses in
->       IvorFun (toIvorName n) (Just (Annotation (FileLoc file line) ity)) imp 
->                   (PattDef (Patterns pclauses)) decl flags (getLazy ty)
+>       IvorFun (Just (toIvorName n)) 
+>                   (Just (Annotation (FileLoc file line) ity)) imp 
+>                   (Just (PattDef (Patterns pclauses))) decl flags (getLazy ty)
 >   where mkPat ectx imp (id,(RawClause lhs rhs)) 
 >               = let lhs' = addPlaceholders ectx using uo lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
@@ -86,8 +87,10 @@ into an ivor definition, with all the necessary placeholders added.
 >            using = addParamName using' n
 >            (rty, imp) = addImplWith using (appCtxt ctxt acc) ty
 >            ity = makeIvorTerm using ui uo n (appCtxt ctxt acc) rty in
->            mif opt ctxt (addEntry acc (thisNamespace using) n (IvorFun (toIvorName n) (Just (Annotation (FileLoc file line) ity))
->                              imp Later decl flags (getLazy ty))) using ui uo ds
+>            mif opt ctxt (addEntry acc (thisNamespace using) n 
+>                         (IvorFun (Just (toIvorName n)) 
+>                            (Just (Annotation (FileLoc file line) ity))
+>                              imp (Just Later) decl flags (getLazy ty))) using ui uo ds
 > mif opt ctxt acc using' ui uo (decl@(DataDecl d):ds) 
 >      = let using = addParamName using' (tyId d) in
 >            addDataEntries opt ctxt acc decl d using ui uo ds -- will call mif on ds
@@ -96,8 +99,8 @@ into an ivor definition, with all the necessary placeholders added.
 >         = let (itmraw, imp) = addImplWith using (appCtxt ctxt acc) tm
 >               itm = makeIvorTerm using ui uo n (appCtxt ctxt acc) itmraw in
 >               mif opt ctxt (addEntry acc (thisNamespace using) n 
->                   (IvorFun (toIvorName n) Nothing imp 
->                            (SimpleDef itm) decl flags [])) using ui uo ds
+>                   (IvorFun (Just (toIvorName n)) Nothing imp 
+>                            (Just (SimpleDef itm)) decl flags [])) using ui uo ds
 >     | otherwise = let (f,l) = getFileLine tm in
 >                       mif opt ctxt (addEntry acc (thisNamespace using) n 
 >                                (IvorProblem (f ++ ":" ++ show l ++ ":" ++
@@ -105,10 +108,10 @@ into an ivor definition, with all the necessary placeholders added.
 >                                 using ui uo ds
 > mif opt ctxt acc using ui uo (decl@(LatexDefs ls):ds) 
 >         = mif opt ctxt (addEntry acc (thisNamespace using) (MN "latex" 0) 
->              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui uo ds
+>              (IvorFun Nothing Nothing 0 Nothing decl [] [])) using ui uo ds
 > mif opt ctxt acc using ui (UO fix trans fr) (decl@(Fixity op assoc prec):ds) 
 >         = mif opt ctxt (addEntry acc (thisNamespace using) (MN "fixity" (length ds)) 
->              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui 
+>              (IvorFun Nothing Nothing 0 Nothing decl [] [])) using ui 
 >                   (UO ((op,(assoc,prec)):fix) trans fr) ds
 > mif opt ctxt acc using ui uo@(UO fix trans fr) (decl@(Transform lhs rhs):ds) 
 >         = let lhsraw = addPlaceholders (appCtxt ctxt acc) using uo lhs
@@ -118,7 +121,7 @@ into an ivor definition, with all the necessary placeholders added.
 >               trans' = if (NoSpec `elem` opt) then trans else
 >                            (lhstm,rhstm):trans in
 >           mif opt ctxt (addEntry acc (thisNamespace using) (MN "transform" (length ds)) 
->              (IvorFun undefined Nothing 0 undefined decl [] [])) using ui 
+>              (IvorFun Nothing Nothing 0 Nothing decl [] [])) using ui 
 >                   (UO fix trans' fr) ds
 
 Don't add yet! Or everything will be frozen in advance, rather than being 
@@ -126,18 +129,18 @@ frozen after they are needed.
 
 > mif opt ctxt acc using ui uo@(UO fix trans fr) (decl@(Freeze frfn):ds) 
 >     = mif opt ctxt (addEntry acc (thisNamespace using) (MN "freeze" (length ds))
->                 (IvorFun undefined Nothing 0 undefined decl [] [])) using ui 
+>                 (IvorFun Nothing Nothing 0 Nothing decl [] [])) using ui 
 >                 (UO fix trans fr) ds
 > mif opt ctxt acc using ui uo (decl@(Prf (Proof n _ scr)):ds) 
 >     = case ctxtLookup acc (thisNamespace using) n of
 >          Left _ -> -- add the script and process the type later, should
 >                    -- be a metavariable
 >             mif opt ctxt (addEntry acc (thisNamespace using) n
->               (IvorFun (toIvorName n) Nothing 0 (IProof scr) decl [] [])) 
+>               (IvorFun (Just (toIvorName n)) Nothing 0 (Just (IProof scr)) decl [] [])) 
 >                  using ui uo ds
 >          Right (IvorFun _ (Just ty) imp _ _ _ _) -> 
 >             mif opt ctxt (addEntry acc (thisNamespace using) n
->               (IvorFun (toIvorName n) (Just ty) imp (IProof scr) decl [] []))
+>               (IvorFun (Just (toIvorName n)) (Just ty) imp (Just (IProof scr)) decl [] []))
 >                   using ui uo ds
 
 Just pass these on to epic to do the right thing
@@ -159,18 +162,18 @@ Add an entry for the type id and for each of the constructors.
 >     let (tyraw, imp) = addImplWith using (appCtxt ctxt acc) tty
 >         tytm = Annotation (FileLoc f l) $ makeIvorTerm using ui uo tid (appCtxt ctxt acc) tyraw 
 >         acc' = addEntry acc (thisNamespace using) tid 
->                   (IvorFun (toIvorName tid) (Just tytm) imp LataDef decl [] []) in
+>                   (IvorFun (Just (toIvorName tid)) (Just tytm) imp (Just LataDef) decl [] []) in
 >         mif opt ctxt acc' using ui uo ds
 > addDataEntries opt ctxt acc decl (Datatype tid tty cons u e f l) using ui uo ds = 
 >     let (tyraw, imp) = addImplWith using (appCtxt ctxt acc) tty
 >         tytm = Annotation (FileLoc f l) $ makeIvorTerm using ui uo tid (appCtxt ctxt acc) tyraw
 >         acctmp = addEntry (appCtxt ctxt acc) (thisNamespace using) tid 
->                     (IvorFun (toIvorName tid) (Just tytm) imp undefined decl [] [])
+>                     (IvorFun (Just (toIvorName tid)) (Just tytm) imp Nothing decl [] [])
 >         ddef = makeInductive acctmp tid (getBinders tytm []) cons 
 >                    (addUsing using (Imp u [] [] (thisNamespace using))) ui uo []
 >         acc' = addEntry acc (thisNamespace using) tid 
->                   (IvorFun (toIvorName tid) (Just tytm) imp 
->                              (DataDef ddef (not (elem NoElim e))) decl [] []) in
+>                   (IvorFun (Just (toIvorName tid)) (Just tytm) imp 
+>                              (Just (DataDef ddef (not (elem NoElim e)))) decl [] []) in
 >         addConEntries opt ctxt acc' cons u using ui uo ds f l
 
      Inductive (toIvorName tid) [] 
@@ -258,7 +261,7 @@ n is a parameter
 >           (tyraw, imp) = addImplWith (addUsing (Imp u [] [] (thisNamespace using)) using) (appCtxt ctxt acc) ty
 >           tytm = Annotation (FileLoc f l) $ makeIvorTerm using ui uo cid (appCtxt ctxt acc) tyraw
 >           acc' = addEntry acc (thisNamespace using) cid 
->                      (IvorFun (toIvorName cid) (Just tytm) imp IDataCon Constructor [] (getLazy ty)) in
+>                      (IvorFun (Just (toIvorName cid)) (Just tytm) imp (Just IDataCon) Constructor [] (getLazy ty)) in
 >           addConEntries opt ctxt acc' cs u using ui uo ds f l
 
 Add definitions to the Ivor Context. Return the new context and a list
@@ -294,7 +297,7 @@ except frozen things, which need to be added as we go, in order.
 >                = return ((ctxt, metas), UO fix trans fr)
 > addIvorDef opt raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Freeze frfn) _ _)
 >                = return ((ctxt, metas), UO fix trans (frfn:fr))
-> addIvorDef opt raw uo@(UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def' _ flags lazy) 
+> addIvorDef opt raw uo@(UO fix trans fr) (ctxt, metas) (n,IvorFun (Just name) tyin _ (Just def') _ flags lazy) 
 >   = let def = if (Verbose `elem` opt) 
 >                  then trace ("Processing " ++ show n) def' else def' in
 >       case def of
@@ -303,7 +306,7 @@ except frozen things, which need to be added as we go, in order.
 >                          if (null newdefs) then return ((ctxt, metas), uo)
 >                            else do r <- addMeta (Verbose `elem` opt) raw ctxt metas newdefs
 >                                    return (r, uo)
->                                                                     
+>
 >         SimpleDef tm -> 
 >                         do tm' <- case (getSpec flags fr) of
 >                              Nothing -> return tm

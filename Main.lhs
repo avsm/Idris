@@ -10,6 +10,7 @@
 > import System.IO
 > import System.Console.Readline
 > import Data.Typeable
+> import Data.Binary
 > import Char
 > import Control.Monad
 > import Control.Exception
@@ -26,6 +27,7 @@
 > import Idris.Prover
 > import Idris.ConTrans
 > import Idris.Fontlock
+> import Idris.Serialise
 
 > import Idris.RunIO
 
@@ -150,13 +152,15 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("definition", "d", showdef, "Show the erased version of a function or type", True),
 >       ("options","o", options, "Set options", True),
 >       ("help", "h", help, "Show help text",True),
+>       ("save", "s", ssave, "Save system state",True),
+>       ("load", "s", sload, "Load system state",True),
 >       ("xdebug", "xd", debug, "Show some internal stuff", False),
 >       ("?", "?", help, "Show help text",True)]
 
 > type Command = IdrisState -> Context -> [String] -> IO REPLRes
 
 > quit, tmtype, prove, metavars, tcomp, texec :: Command 
-> debug, norm, help, options, showdef, html :: Command
+> debug, norm, help, options, showdef, html, ssave :: Command
 
 > quit _ _ _ = do return Quit
 > tmtype (IState raw _ _ _ uo _) ctxt tms = do icheckType raw uo ctxt (unwords tms)
@@ -194,6 +198,18 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                return Continue
 > html ist ctxt _
 >           = do putStrLn "Please give input and output files"
+>                return Continue
+> ssave ist ctxt (nm:_)
+>           = do encodeFile nm (idris_context ist, idris_decls ist)
+>                return Continue
+> ssave ist ctxt _
+>           = do putStrLn "Please give an output file name"
+>                return Continue
+> sload ist ctxt (nm:_)
+>           = do (c,d) <- decodeFile nm (idris_context ist, idris_decls ist)
+>                return Continue
+> sload ist ctxt _
+>           = do putStrLn "Please give an input file name"
 >                return Continue
 > latex ist ctxt (nm:onm:_)
 >           = do latexise (idris_context ist) nm onm
