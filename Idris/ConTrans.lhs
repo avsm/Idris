@@ -395,8 +395,8 @@ the argument in position i.
 > makeIDTransform :: Ctxt IvorFun -> Context -> [Transform] ->
 >                    (Name, (ViewTerm, Patterns)) -> [Transform]
 > makeIDTransform raw ctxt ctrans (n, (ty, patsin)) 
->   = let pats = transform ctxt ctrans [] n patsin in
->          if (n==name "wkn") then trace (show (n, pats)) [] else []
+>   = let pats = transform ctxt ctrans [] n patsin in []
+>     --     if (n==name "wkn") then trace (show (n, pats)) [] else []
 
     where
        invariants 

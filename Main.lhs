@@ -206,7 +206,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >           = do putStrLn "Please give an output file name"
 >                return Continue
 > sload ist ctxt (nm:_)
->           = do (c,d) <- decodeFile nm (idris_context ist, idris_decls ist)
+>           = do -- (c,d) <- decodeFile nm (idris_context ist, idris_decls ist)
 >                return Continue
 > sload ist ctxt _
 >           = do putStrLn "Please give an input file name"
