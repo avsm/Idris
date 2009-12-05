@@ -14,9 +14,9 @@ vlookup : (Fin k) -> (Vect A k) -> A;
 vlookup fO (x :: xs) = x;
 vlookup (fS k) (x :: xs) = vlookup k xs;
 
-wkn : Fin n -> Fin (S n);
-wkn fO = fO;
-wkn (fS k) = fS (wkn k);
+weakenFin : Fin n -> Fin (S n);
+weakenFin fO = fO;
+weakenFin (fS k) = fS (weakenFin k);
 
 vmap : (A->B) -> (Vect A n) -> (Vect B n);
 vmap f VNil = VNil;
