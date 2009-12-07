@@ -3,7 +3,7 @@
 Apply Forcing/Detagging/Collapsing optimisations from Edwin Brady's thesis.
 
 > module Idris.ConTrans(makeConTransforms, makeArgTransforms, makeIDTransforms,
->                       applyTransforms, transform) where
+>                       applyTransforms, transform, rebuildTrans) where
 
 > import Idris.AbsSyntax
 > import Ivor.TT hiding (transform)
@@ -36,7 +36,7 @@ Also apply user level transforms (vts) at this stage.
 > transform ctxt ts vts n (Patterns ps) = Patterns $ (map doTrans ps)
 >    where doTrans (PClause args ret) 
 >              = let lhs = apply (Name Unknown n) args
->                    lhs' = applyTransforms ctxt ts lhs
+>                    lhs' = applyTransforms ctxt (filter lhsSafe ts) lhs
 >                    ret' = applyTransforms ctxt ts (allTrans vts ret)
 >                    args' = getFnArgs lhs' in
 >                    PClause args' ret'
@@ -48,19 +48,11 @@ Also apply user level transforms (vts) at this stage.
 >                    args' = getFnArgs lhs' in
 >                    PWithClause prf args' scr' pats'
 
+HACK: better to have a flag when building the transform. FIXME!
+
+>          lhsSafe (Trans nm _ _) = not (isSuffixOf "_ID" nm)
 
 > allTrans ts tm = foldl (\tm (l,r) -> Ivor.ViewTerm.transform l r tm) tm ts
-
-Test transforms: VNil A => VNil
-                 VCons a k x xs => VCons x xs
-
-> testTrans' (App vnilN@(Name t vnil) _) 
->      | vnil == name "VNil" = vnilN
-> testTrans' (App (App (App (App vconsN@(Name _ vcons) _) _) x) xs)
->      | vcons == name "VCons" = (App (App vconsN x) xs)
-> testTrans' x = x
-
-> testTrans = Trans "Vect" (Just testTrans') undefined
 
 Look at all the definitions in the context, and make the relevant constructor
 transformations for forcing, detagging and collapsing.
@@ -178,8 +170,10 @@ transformed to Nat.
 
 > collapseTrans :: Name -> (Name, ViewTerm) -> Transform
 > collapseTrans n (c, ty) = Trans ((show n)++"_COLLAPSE")
->                            (Just (mkCollapse (length (Ivor.TT.getArgTypes ty))))
->                            undefined
+>                            (Just (mkCollapseTrans n c ty (length (Ivor.TT.getArgTypes ty))))
+>                            (Just (Collapse n c ty (length (Ivor.TT.getArgTypes ty))))
+
+> mkCollapseTrans n c ty num = mkCollapse num
 >    where mkCollapse num tm
 >             | Name nty con <- getApp tm
 >                 = let args = getFnArgs tm in
@@ -192,11 +186,12 @@ transformed to Nat.
 >               (Name, [Name], [(Name, ViewTerm)]) -> Maybe Transform
 > forceTrans Nothing _ (x, [], _) = Nothing
 > forceTrans nat ncons (n, forced, tys)
->      = Just (Trans ((show n)++"_FORCE") (Just (mkForce (length tys))) undefined)
+>      = Just (Trans ((show n)++"_FORCE") (Just (mkForceTrans nat ncons n forced tys (length tys))) (Just (Force nat ncons n forced tys (length tys))))
 
 If a term is n applied to (length tys) arguments, change it to
 n applied to arguments minus the ones in forceable positions
 
+> mkForceTrans nat ncons n forced tys num = mkForce num
 >    where mkForce num tm
 >             | Name nty con <- getApp tm
 >                 = let fn = getApp tm
@@ -299,7 +294,7 @@ is either a pattern or unused (modulo recursion), do this to it:
 >            = getPlPos acc ps ps'
 
 >      plArg args args' r' x 
->            = args!!x == Placeholder && recGuard x n r' (namesIn (args'!!x))
+>            = x<length args && args!!x == Placeholder && recGuard x n r' (namesIn (args'!!x))
 >      args ((PClause args r):_) = length args
 >      args ((PWithClause _ args _ (Patterns rest)):_) = length args
 >      args [] = 0
@@ -366,14 +361,15 @@ True -- Complex term, just drop it.
 >                if (null placeholders) 
 >                 then []
 >                 else [Trans (show n ++ "_dropargs") 
->                             (Just (doDrop placeholders numargs n))
->                             undefined]
+>                             (Just (mkDropTrans n ty placeholders numargs))
+>                             (Just (Drop n ty placeholders numargs))]
 >        _ -> []
 >    where
 >      args (Patterns ((PClause args r):_)) = length args
 >      args _ = 0
 
->      doDrop pls num n tm
+> mkDropTrans n ty pls num = doDrop pls num where
+>      doDrop pls num tm
 >         | Name nty fname <- getApp tm
 >             = let fn = getApp tm
 >                   args = getFnArgs tm in
@@ -381,7 +377,7 @@ True -- Complex term, just drop it.
 >                   apply (Name nty fname) 
 >                         (map (simplArg pls) (zip [0..] args))
 >                   else tm
->      doDrop _ _ _ tm = tm
+>      doDrop _ _ tm = tm
 >      -- simplArg pls (a, n@(Name _ _)) = n
 >      simplArg pls (a, t) | a `elem` pls = Placeholder
 >                          | otherwise = t
@@ -394,12 +390,55 @@ the argument in position i.
 
 > makeIDTransform :: Ctxt IvorFun -> Context -> [Transform] ->
 >                    (Name, (ViewTerm, Patterns)) -> [Transform]
-> makeIDTransform raw ctxt ctrans (n, (ty, patsin)) 
->   = let pats = transform ctxt ctrans [] n patsin in []
->     --     if (n==name "wkn") then trace (show (n, pats)) [] else []
+> makeIDTransform raw ctxt ctrans (n, (ty, patsin@(Patterns (_:_))))
+>   = let Patterns pats = transform ctxt ctrans [] n patsin 
+>         argpos = zip [0..] (arguments (pats!!0))
+>         keepArgs = [0..length argpos-1] \\ (invariants argpos (map arguments pats))
+>         trans = Trans (show n ++ "_ID") 
+>                       (Just (mkIDTrans n keepArgs (length argpos)))
+>                       Nothing
+>         stripInvs = map (stripInv trans) pats in
+>          -- trace (show (n,stripInvs)) $
+>          if (all (idClause keepArgs) stripInvs) 
+>             then [trans] else []
 
-    where
-       invariants 
+>    where invariants :: [(Int, ViewTerm)] -> [[ViewTerm]] -> [Int]
+>          invariants invs [] = map fst invs
+>          invariants invs (x:xs) = invariants (checkInv invs (zip [0..] x)) xs
+
+>          checkInv [] args = args
+>          checkInv ((p,a):invs) args 
+>              = checkInv invs (filter (isNotInv p a) args)
+
+If the argument in the given position is not invariant, drop it. Otherwise
+keep it, for now. (We're either looking at a different position, or it
+is indeed invariant)
+
+>          isNotInv p a (x,a') | p==x && a/=a' = False
+>                              | otherwise = True
+
+>          stripInv t (PClause args ret) = PClause args (doTrans t ret)
+>          stripInv t w = w
+>          idClause [k] t@(PClause args ret) | k<length args = args!!k == ret
+>          idClause _ _ = False
+
+> makeIDTransform raw ctxt ctrans _ = []
+
+> mkIDTrans n [keep] arity tm
+>         | Name nty fname <- getApp tm
+>             = let fn = getApp tm
+>                   args = getFnArgs tm in
+>               if fname == n && length args == arity && keep<length args then
+>                   args!!keep
+>                   else tm
+
+> mkIDTrans _ _ _ tm = tm
+
+Dangerous: doesn't take account of argument lengths. Top level function
+is transformed anyway.
+
+ mkIDTrans n [keep] arity tm@(Name nty fname)
+     = if fname == n then App (Name nty (name "id")) Placeholder else tm
 
 
 Apply all transforms in order to a term, eta expanding constructors first.
@@ -488,3 +527,8 @@ of arguments to keep, make a transformation rule.
 >                   | otherwise = dropArgs fs as keep
 >          dropArgs _ _ keep = []
 >          
+
+> rebuildTrans :: TransData -> ViewTerm -> ViewTerm
+> rebuildTrans (Force a b c d e f) = mkForceTrans a b c d e f
+> rebuildTrans (Collapse a b c d) = mkCollapseTrans a b c d
+> rebuildTrans (Drop a b c d) = mkDropTrans a b c d

@@ -6,6 +6,7 @@ typechecked forms to disk.
 > module Idris.Serialise where
 
 > import Idris.AbsSyntax
+> import Idris.ConTrans
 > import Ivor.ViewTerm
 > import Ivor.TT
 
@@ -194,10 +195,28 @@ typechecked forms to disk.
 >                10 -> return PtrType
 >                11 -> liftM Builtin get
 
+> instance Binary TransData where
+>     put (Force a b c d e f) = do put (0 :: Word8)
+>                                  put a; put b; put c; put d; put e; put f
+>     put (Collapse a b c d) = do put (1 :: Word8)
+>                                 put a; put b; put c; put d
+>     put (Drop a b c d) = do put (2 :: Word8)
+>                             put a; put b; put c; put d
+>     get = do tag <- getWord8
+>              case tag of
+>                0 -> do a <- get; b <- get; c <- get; d <- get;
+>                        e <- get; f <- get;
+>                        return (Force a b c d e f)
+>                1 -> liftM4 Collapse get get get get
+>                2 -> liftM4 Drop get get get get
+
 > instance Binary Transform where
->     put (Trans n _ (a, b)) = do put n; put a; put b;
->     get = do n <- get; a <- get; b <- get;
->              return (Trans n Nothing (a,b))
+>     put (Trans n _ a) = do put n; put a
+>     get = do n <- get; a <- get
+>              let trans = case a of
+>                            Nothing -> Nothing
+>                            Just a' -> Just (rebuildTrans a')
+>              return (Trans n trans a)
 
 > instance Binary UserOps where
 >     put (UO ds ts f) = do put ds; put ts; put f

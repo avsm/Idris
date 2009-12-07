@@ -494,7 +494,15 @@ Name definitions Ivor-side.
 A transformation is a function converting a ViewTerm to a new form.
 
 > data Transform = Trans String 
->                        (Maybe (ViewTerm -> ViewTerm)) (ViewTerm, ViewTerm)
+>                        (Maybe (ViewTerm -> ViewTerm)) 
+>                        (Maybe TransData)
+
+Concrete transformation data, used for rebuilding constructor transforms
+
+> data TransData = Force (Maybe (Name, Name)) Int Name [Name] 
+>                        [(Name, ViewTerm)] Int
+>                | Collapse Name Name ViewTerm Int
+>                | Drop Name ViewTerm [Int] Int
 
 > data Opt = NoErasure | ShowRunTime | NoSpec | Verbose
 >    deriving (Show, Eq, Enum)

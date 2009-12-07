@@ -153,7 +153,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >       ("options","o", options, "Set options", True),
 >       ("help", "h", help, "Show help text",True),
 >       ("save", "s", ssave, "Save system state",True),
->       ("load", "s", sload, "Load system state",True),
+>       ("load", "l", sload, "Load system state",True),
 >       ("xdebug", "xd", debug, "Show some internal stuff", False),
 >       ("?", "?", help, "Show help text",True)]
 
@@ -200,14 +200,14 @@ Command; minimal abbreviation; function to run it; description; visibility
 >           = do putStrLn "Please give input and output files"
 >                return Continue
 > ssave ist ctxt (nm:_)
->           = do encodeFile nm (idris_context ist, idris_decls ist)
+>           = do encodeFile nm ist
 >                return Continue
 > ssave ist ctxt _
 >           = do putStrLn "Please give an output file name"
 >                return Continue
 > sload ist ctxt (nm:_)
->           = do -- (c,d) <- decodeFile nm (idris_context ist, idris_decls ist)
->                return Continue
+>           = do ist' <- decodeFile nm
+>                return (NewCtxt ist' ctxt)
 > sload ist ctxt _
 >           = do putStrLn "Please give an input file name"
 >                return Continue

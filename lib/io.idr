@@ -89,7 +89,7 @@ while : |(test:IO Bool) -> |(body: IO ()) -> IO ();
 while test body = IODo (While test body) (\a => (IOReturn II));
 
 while_accTR : Bool -> 
-              |(test:IO Bool) -> acc -> |(body: acc -> IO acc) -> IO acc;
+            |(test:IO Bool) -> acc -> |(body: acc -> IO acc) -> IO acc;
 
 while_acc : |(test:IO Bool) -> acc -> |(body: acc -> IO acc) -> IO acc;
 {-
