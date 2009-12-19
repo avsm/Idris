@@ -143,7 +143,7 @@ T_apply : T (a->b) -> T a -> T b;
 
 -- Subsection: An error-handling interpreter
 
-{-- Idiom notation is most commonly useful when defining
+{-- Idiom notation is commonly useful when defining
 evaluators. McBride and Paterson describe such an evaluator, for a
 language similar to the following: --}
 

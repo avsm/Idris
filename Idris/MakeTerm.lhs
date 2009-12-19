@@ -2,6 +2,7 @@
 
 > import Idris.AbsSyntax
 > import Idris.Prover
+> import Idris.SimpleCase
 
 > import Ivor.TT as TT
 > import Debug.Trace
@@ -30,7 +31,7 @@ into an ivor definition, with all the necessary placeholders added.
 >                          (fid, pats) ->
 >                            let vpats = map (toIvor ui n) pats
 >                                vrhs = makeIvorTerm using ui uo n ectx rhs in
->                                PClause vpats vrhs
+>                                PClause vpats [] vrhs
 >         mkPat ectx imp (id,(RawWithClause lhs prf scr def))
 >               = let lhs' = addPlaceholders ectx using uo lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
@@ -302,7 +303,7 @@ except frozen things, which need to be added as we go, in order.
 >                  then trace ("Processing " ++ show n) def' else def' in
 >       case def of
 >         PattDef ps -> -- trace (show ps) $
->                       do (ctxt, newdefs) <- addPatternDef ctxt name (unjust tyin) ps [Holey,Partial,GenRec] -- just allow general recursion for now
+>                       do (ctxt, newdefs) <- addPatternDefSC ctxt name (unjust tyin) ps
 >                          if (null newdefs) then return ((ctxt, metas), uo)
 >                            else do r <- addMeta (Verbose `elem` opt) raw ctxt metas newdefs
 >                                    return (r, uo)
@@ -352,20 +353,3 @@ except frozen things, which need to be added as we go, in order.
 >                              (map (\x -> (toIvorName x, 0)) fr)
 >          getSpec (_:ns) fr = getSpec ns fr
 
-> addMeta :: Bool ->
->            Ctxt IvorFun -> Context -> 
->           [(Name, ViewTerm)] -> [(Name, ViewTerm)] -> 
->            TTM (Context, [(Name, ViewTerm)])
-> addMeta verbose raw ctxt metas newdefs
->       = let ans = (ctxt, metas ++ newdefs) in
->                   if verbose then trace ("Metavariables are:\n" ++  concat (map showDef newdefs)) $ return ans
->                              else return ans
->    where
->          showDef (n,ty) = "  " ++ show n ++ " : " ++ dumpMeta (unIvor raw ty)
->                           ++ "\n"
->          dumpMeta tm = showImp False (Idris.AbsSyntax.getRetType tm) ++ 
->                        "\n  in environment\n" ++ 
->                        dumpArgs (Idris.AbsSyntax.getArgTypes tm)
->          dumpArgs [] = ""
->          dumpArgs ((n,ty):xs) = "    " ++ show n ++ " : " ++showImp False ty
->                                 ++ "\n" ++ dumpArgs xs

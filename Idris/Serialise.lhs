@@ -315,11 +315,11 @@ typechecked forms to disk.
 >     get = liftM Patterns get
 
 > instance Binary PClause where
->     put (PClause a b) = do put (0 :: Word8); put a; put b
+>     put (PClause a b c) = do put (0 :: Word8); put a; put b; put c
 >     put (PWithClause a b c d) = do put (0 :: Word8); put a; put b; put c; put d
 >     get = do tag <- getWord8
 >              case tag of
->                0 -> liftM2 PClause get get
+>                0 -> liftM3 PClause get get get
 >                1 -> liftM4 PWithClause get get get get
 
 > instance Binary Inductive where

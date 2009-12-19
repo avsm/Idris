@@ -44,7 +44,7 @@ fallthrough when a function is known to be total, and ErrorCAse otherwise.
 >           ([Name], SimpleCase)
 > pmcomp raw ctxt erase n ty (Patterns ps) 
 >       = pm' n (map mkPat (deIOpats erase ps))
->    where mkPat (PClause args rv) 
+>    where mkPat (PClause args _ rv) 
 >            = Clause (map (toPat ctxt) args) rv
 >          pm' n ps = evalState (doCaseComp raw ctxt ps) (CS 0)
 
@@ -327,13 +327,16 @@ intermediate functions for when this isn't the case
 
 > bname i = name (show (MN "bname" i))
 
+We don't care about the bound argument names any more, so don't bother deIOing
+them, just put an empty list in.
+
 > deIOpats :: Bool -> [PClause] -> [PClause]
 > deIOpats erase cs = evalState (dp cs) 0
 >     where dp [] = return []
->           dp ((PClause args rv):ps) = do args' <- mapM (deIO erase) args
->                                          rv' <- deIO erase rv
->                                          ps' <- dp ps
->                                          return ((PClause args' rv'):ps')
+>           dp ((PClause args _ rv):ps) = do args' <- mapM (deIO erase) args
+>                                            rv' <- deIO erase rv
+>                                            ps' <- dp ps
+>                                            return ((PClause args' [] rv'):ps')
 
 > deIO :: Bool -> ViewTerm -> State Int ViewTerm
 > deIO erase t = deIO' t where

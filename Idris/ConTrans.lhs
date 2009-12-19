@@ -31,15 +31,18 @@ then turn it back into a pclause
 
 Also apply user level transforms (vts) at this stage.
 
+Throughout, we don't care about the bound arguments in a PClause any more,
+so just ignore them.
+
 > transform :: Context -> [Transform] -> [(ViewTerm, ViewTerm)] -> 
 >              Name -> Patterns -> Patterns
 > transform ctxt ts vts n (Patterns ps) = Patterns $ (map doTrans ps)
->    where doTrans (PClause args ret) 
+>    where doTrans (PClause args _ ret) 
 >              = let lhs = apply (Name Unknown n) args
 >                    lhs' = applyTransforms ctxt (filter lhsSafe ts) lhs
 >                    ret' = applyTransforms ctxt ts (allTrans vts ret)
 >                    args' = getFnArgs lhs' in
->                    PClause args' ret'
+>                    PClause args' [] ret'
 >          doTrans (PWithClause prf args scr (Patterns pats))
 >              = let pats' = Patterns $ (map doTrans pats)
 >                    lhs = apply (Name Unknown n) args
@@ -286,16 +289,16 @@ is either a pattern or unused (modulo recursion), do this to it:
 >        = getPlPos (noDiscriminate [0..(args ps)-1] ps) ps ivps
 >    where
 >      getPlPos acc [] [] = acc
->      getPlPos acc ((PClause args r):ps) ((PClause args' r'):ps')
+>      getPlPos acc ((PClause args _ r):ps) ((PClause args' _ r'):ps')
 >            = getPlPos (filter (plArg args args' r') acc) ps ps'
->      getPlPos acc ((PWithClause _ args _ _):ps) ((PClause args' r'):ps')
+>      getPlPos acc ((PWithClause _ args _ _):ps) ((PClause args' _ r'):ps')
 >            = getPlPos (filter (plArg args args' r') acc) ps ps'
 >      getPlPos acc (_:ps) (_:ps')
 >            = getPlPos acc ps ps'
 
 >      plArg args args' r' x 
 >            = x<length args && args!!x == Placeholder && recGuard x n r' (namesIn (args'!!x))
->      args ((PClause args r):_) = length args
+>      args ((PClause args _ r):_) = length args
 >      args ((PWithClause _ args _ (Patterns rest)):_) = length args
 >      args [] = 0
 
@@ -305,7 +308,7 @@ after removing them.
 
 >      noDiscriminate :: [Int] -> [PClause] -> [Int]
 >      noDiscriminate phs ps = indiscriminate phs (map pargs ps)
->          where pargs (PClause args _) = args
+>          where pargs (PClause args _ _) = args
 >                pargs (PWithClause _ args _ _) = args
 
 Drop argument x, from all patterns, see if they are still pairwise disjoint.
@@ -365,7 +368,7 @@ True -- Complex term, just drop it.
 >                             (Just (Drop n ty placeholders numargs))]
 >        _ -> []
 >    where
->      args (Patterns ((PClause args r):_)) = length args
+>      args (Patterns ((PClause args _ r):_)) = length args
 >      args _ = 0
 
 > mkDropTrans n ty pls num = doDrop pls num where
@@ -417,9 +420,9 @@ is indeed invariant)
 >          isNotInv p a (x,a') | p==x && a/=a' = False
 >                              | otherwise = True
 
->          stripInv t (PClause args ret) = PClause args (doTrans t ret)
+>          stripInv t (PClause args _ ret) = PClause args [] (doTrans t ret)
 >          stripInv t w = w
->          idClause [k] t@(PClause args ret) | k<length args = args!!k == ret
+>          idClause [k] t@(PClause args _ ret) | k<length args = args!!k == ret
 >          idClause _ _ = False
 
 > makeIDTransform raw ctxt ctrans _ = []

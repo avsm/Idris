@@ -104,8 +104,8 @@ that we avoid pattern matching where the programmer didn't ask us to.
 > mergePats (Patterns ps) (Patterns ps') = Patterns (mp ps ps')
 >   where
 >     mp [] [] = []
->     mp ((PClause a r):ps) ((PClause a' r'):ps') =
->             (PClause a' r):(mp ps ps')
+>     mp ((PClause a _ r):ps) ((PClause a' _ r'):ps') =
+>             (PClause a' [] r):(mp ps ps')
 
 > pmCompDef :: Ctxt IvorFun -> Context -> 
 >              Bool -> -- erasure on

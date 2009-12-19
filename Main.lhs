@@ -378,14 +378,14 @@ the appropriate thing, after applying the relevant transformations.
 
 > showPats :: String -> Ctxt IvorFun -> Patterns -> IO ()
 > showPats n ivs (Patterns ps) = putStrLn $ concat (map (\x -> showp' x ++ "\n") ps)
->   where showp' (PClause args ty) 
+>   where showp' (PClause args _ ty) 
 >                    = n ++ " " ++ concat (map (\x -> showarg (show x)) args) ++ "= " ++ showId ty
 >         showarg x = if (' ' `elem` x) then "(" ++ x ++ ") " else x ++ " "
 >         showId res = show res -- showImp True (unIvor ivs res)
 
 > showPDefs :: String -> Ctxt IvorFun -> Patterns -> IO ()
 > showPDefs n ivs (Patterns ps) = putStrLn $ concat (map (\x -> showp' x ++ "\n") ps)
->   where showp' (PClause args ty) 
+>   where showp' (PClause args _ ty) 
 >                    = n ++ " " ++ concat (map (\x -> showarg (show x)) args) ++ "= " ++ showId ty
 >         showarg x = if (' ' `elem` x) then "(" ++ x ++ ") " else x ++ " "
 >         showId res = showImp False (unIvor ivs res)

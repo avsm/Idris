@@ -40,13 +40,14 @@ Library
                          Idris.AbsSyntax, Idris.Context, Idris.Latex
                          Idris.Compiler, Idris.LambdaLift, Idris.PMComp, 
                          Idris.MakeTerm, Idris.Prover, Idris.Fontlock,
-                         Idris.ConTrans, Idris.SCTrans, Idris.RunIO
+                         Idris.ConTrans, Idris.SCTrans, Idris.RunIO,
+                         Idris.SimpleCase
         Other-modules:   Paths_idris
 
         Build-depends:   base>3, containers, array, parsec, mtl,
                          readline, ivor>=0.1.8, directory, haskell98,
                          old-time, old-locale, binary
-				
+                                
         Extensions:      MagicHash, UndecidableInstances, OverlappingInstances
 
 Executable     idris
@@ -54,5 +55,6 @@ Executable     idris
                Other-modules: Idris.Parser, Idris.Lexer, Idris.Lib, 
                               Idris.AbsSyntax, Idris.Context,
                               Idris.Compiler, Idris.LambdaLift, Idris.PMComp, 
-                              Idris.MakeTerm, Idris.Prover, 
-                              Idris.ConTrans, Idris.SCTrans, Idris.RunIO
+                              Idris.MakeTerm, Idris.Prover, Idris.Fontlock,
+                              Idris.ConTrans, Idris.SCTrans, Idris.RunIO,
+                              Idris.SimpleCase
