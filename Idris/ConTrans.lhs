@@ -273,7 +273,9 @@ Is there an argument position with a different constructor at the head?
 >              | Name _ xn <- getApp x
 >              , Name _ yn <- getApp y
 >                 = case (nameType c xn, nameType c yn) of
->                     (Right DataCon, Right DataCon) -> xn /= yn
+>                     (Right DataCon, Right DataCon) -> 
+>                         if (xn /= yn) then True
+>                            else disjoint (zip (getFnArgs x) (getFnArgs y)) 
 >                     _ -> False
 >         disjointCon _ = False
 
