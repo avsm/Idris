@@ -258,11 +258,11 @@ n is a parameter
 >                  (Ctxt IvorFun, UserOps)
 > addConEntries opt ctxt acc [] u using ui uo ds f l = mif opt ctxt acc using ui uo ds
 > addConEntries opt ctxt acc ((cid, ty):cs) u using' ui uo ds f l
->     = let using = addParamName using' cid
+>     = let using = using' -- No! params are implicit here. addParamName using' cid
 >           (tyraw, imp) = addImplWith (addUsing (Imp u [] [] (thisNamespace using)) using) (appCtxt ctxt acc) ty
 >           tytm = Annotation (FileLoc f l) $ makeIvorTerm using ui uo cid (appCtxt ctxt acc) tyraw
 >           acc' = addEntry acc (thisNamespace using) cid 
->                      (IvorFun (Just (toIvorName cid)) (Just tytm) imp (Just IDataCon) Constructor [] (getLazy ty)) in
+>                      (IvorFun (Just (toIvorName cid)) (Just tytm) (imp+length (params using')) (Just IDataCon) Constructor [] (getLazy ty)) in
 >           addConEntries opt ctxt acc' cs u using ui uo ds f l
 
 Add definitions to the Ivor Context. Return the new context and a list
