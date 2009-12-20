@@ -2,12 +2,14 @@
 
 > module Idris.Lib(defaultLibPath, readLibFile) where
 
-> import Idris.Prefix
+> import Paths_idris
 
-> defaultLibPath = [prefix ++ "/lib/idris"]
+> defaultLibPath = [] -- prefix ++ "/lib/idris"]
 
 > readLibFile :: [FilePath] -> FilePath -> IO String
-> readLibFile xs x = tryReads (map (\f -> f ++ "/" ++ x) (".":xs))
+> readLibFile xs x = 
+>    do dfname <- getDataFileName x
+>       tryReads ((map (\f -> f ++ "/" ++ x) (".":xs))++[dfname])
 >    where tryReads [] = fail $ "Can't find " ++ x
->          tryReads (x:xs) = catch (readFile x)
+>          tryReads (x:xs) = do catch (readFile x)
 >                                  (\e -> tryReads xs)
