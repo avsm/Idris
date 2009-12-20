@@ -7,6 +7,7 @@ import Data.Char
 import Ivor.TT
 import System.IO.Unsafe
 import List
+import Control.Monad
 
 import Idris.AbsSyntax
 import Idris.Lexer
@@ -173,13 +174,17 @@ Program :: { [ParseDecl] }
 Program: { [] }
        | Declaration Program { $1:$2 }
        | Fixity Program { map RealDecl $1 ++ $2 }
-       | include string ';' Program {%
+       | include string ';' Program { RealDecl (PInclude $2) : $4 }
+
+{-
+{%
 	     let rest = $4 in
 	     let pt = unsafePerformIO (readLib defaultLibPath $2) in
 		case (mkparse pt $2 1 []) of
 		   Success x -> returnP (x ++ rest)
 		   Failure err file ln -> failP err
 	  }
+-}
 
 Declaration :: { ParseDecl }
 Declaration: Function { $1 }
@@ -655,6 +660,37 @@ data ConParse = Full Id RawTerm
 parse :: String -> FilePath -> Result [Decl]
 parse s fn = do ds <- mkparse s fn 1 []
                 collectDecls ds
+
+processImports :: [Opt] -> [FilePath] -> Result [Decl] -> 
+                  IO ([Decl], [FilePath])
+processImports opts imped (Success ds) = pi imped [] ds
+  where pi imps decls ((PInclude fp):xs)
+           | fp `elem` imps = pi imps decls xs
+           | otherwise = do
+                 f <- readLibFile defaultLibPath fp
+                 when (Verbose `elem` opts) $ putStrLn ("Reading " ++ fp)
+                 case parse f fp of
+                   Success t -> pi (fp:imps) decls (t++xs)
+                   Failure e f l ->
+                     fail $ f ++ ":" ++ show l ++ ":" ++ e
+        pi imps decls ((Using t ds):xs)
+            = do (ds',imps') <- pi imps [] ds
+                 pi imps' (decls++[Using t ds']) xs
+        pi imps decls ((Params t ds):xs)
+            = do (ds',imps') <- pi imps [] ds
+                 pi imps' (decls++[Params t ds']) xs
+        pi imps decls ((DoUsing b r ds):xs)
+            = do (ds',imps') <- pi imps [] ds
+                 pi imps' (decls++[DoUsing b r ds']) xs
+        pi imps decls ((Idiom b r ds):xs)
+            = do (ds',imps') <- pi imps [] ds
+                 pi imps' (decls++[Idiom b r ds']) xs
+        pi imps decls (x:xs) = pi imps (decls++[x]) xs
+        pi imps decls [] = return (decls, imps)
+
+processImports _ imped (Failure e f l) 
+    = fail $ show f ++ ":" ++ show l ++ ":" ++ show e
+
 
 parseTerm :: String -> Result RawTerm
 parseTerm s = mkparseTerm s "(input)" 0 []

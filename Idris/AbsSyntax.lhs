@@ -37,6 +37,7 @@ A program is a collection of datatype and function definitions.
 We store everything directly as a 'ViewTerm' from Ivor.
 
 > data Decl = DataDecl Datatype | Fwd Id RawTerm [CGFlag]
+>           | PInclude FilePath
 >           | Fun Function [CGFlag] | TermDef Id RawTerm [CGFlag] | Constructor
 >           | Prf Proof
 >           | LatexDefs [(Id,String)]
@@ -513,11 +514,12 @@ Concrete transformation data, used for rebuilding constructor transforms
 >       idris_metavars :: [(Name, ViewTerm)], -- things still to prove
 >       idris_options :: [Opt], -- global options
 >       idris_fixities :: UserOps, -- infix operators and precedences
->       idris_transforms :: [Transform] -- optimisations
+>       idris_transforms :: [Transform], -- optimisations
+>       idris_imports :: [FilePath] -- included files
 >     }
 
 > initState :: [Opt] -> IdrisState
-> initState opts = IState newCtxt [] [] opts (UO [] [] []) []
+> initState opts = IState newCtxt [] [] opts (UO [] [] []) [] []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting

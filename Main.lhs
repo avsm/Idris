@@ -120,18 +120,17 @@ these days instead...
 >     let decls = idris_decls ist
 >     let opts = idris_options ist
 >     let fixes = idris_fixities ist
->     content <- readLib defaultLibPath file
->     let ptree = parse content file
->     case ptree of
->       Success ds -> do let (defs', ops) = makeIvorFuns opts defs ds fixes
->                        let alldefs = appCtxt defs defs'
->                        ((ctxt, metas), fixes') <- case (addIvor opts alldefs defs' ctxt ops) of
->                             OK x fixes' -> return (x, fixes')
->                             Err x fixes' err -> do putStrLn err 
->                                                    return (x, fixes')
->                        let ist = addTransforms (IState alldefs (decls++ds) metas opts ops []) ctxt 
->                        return (ctxt, ist { idris_fixities = fixes' })
->       Failure err f ln -> fail err
+>     content <- readLibFile defaultLibPath file
+>     (ptree, imps) <- processImports opts (idris_imports ist) (parse content file)
+>     let (defs', ops) = makeIvorFuns opts defs ptree fixes
+>     let alldefs = appCtxt defs defs'
+>     ((ctxt, metas), fixes') <- 
+>         case (addIvor opts alldefs defs' ctxt ops) of
+>             OK x fixes' -> return (x, fixes')
+>             Err x fixes' err -> do putStrLn err 
+>                                    return (x, fixes')
+>     let ist = addTransforms (IState alldefs (decls++ptree) metas opts ops [] imps) ctxt 
+>     return (ctxt, ist { idris_fixities = fixes' })
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context
 
@@ -163,8 +162,9 @@ Command; minimal abbreviation; function to run it; description; visibility
 > debug, norm, help, options, showdef, html, ssave :: Command
 
 > quit _ _ _ = do return Quit
-> tmtype (IState raw _ _ _ uo _) ctxt tms = do icheckType raw uo ctxt (unwords tms)
->                                              return Continue
+> tmtype (IState raw _ _ _ uo _ _) ctxt tms 
+>            = do icheckType raw uo ctxt (unwords tms)
+>                 return Continue
 > prove ist ctxt (nm:[]) 
 >           = do let raw = idris_context ist
 >                ctxt' <- doProof raw ctxt (idris_fixities ist) (UN nm)
@@ -271,7 +271,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 
 > repl :: IdrisState -> Context -> Args -> IO ()
 > repl ist ctxt (Batch []) = return () 
-> repl ist@(IState raw decls metas opts fixes trans) ctxt inp' 
+> repl ist@(IState raw decls metas opts fixes trans imps) ctxt inp' 
 >          = do (inp, next) <- case inp' of 
 >                        Batch (b:bs) -> return (Just b, Batch bs)
 >                        _ -> do x <- readline ("Idris> ")

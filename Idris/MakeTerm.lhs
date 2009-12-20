@@ -148,6 +148,7 @@ Just pass these on to epic to do the right thing
 
 > mif opt ctxt acc using ui uo ((CInclude _):ds) = mif opt ctxt acc using ui uo ds
 > mif opt ctxt acc using ui uo ((CLib _):ds) = mif opt ctxt acc using ui uo ds
+> mif opt ctxt acc using ui uo (d:ds) = error $ "Miffed: " ++ show d
 
 error "Not implemented"
 
