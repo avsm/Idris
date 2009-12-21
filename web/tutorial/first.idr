@@ -5,7 +5,9 @@
 
 -- Section: Downloading and Installing
 
-{-- Idris is available from
+{-- Idris is available from on hackage, 
+URL[http://hackage.haskell.org/package/idris], via "cabal install idris".
+Alternatively, you can get the source from
 URL[http://www.cs.st-and.ac.uk/~eb/Idris]. You can download a package
 containing the latest version from URL[http://www-fp.cs.st-and.ac.uk/~eb/idris/idris-current.tgz]. To install, you will require GHC 6.10 or greater, and the
 Boehm garbage collector. This is available from

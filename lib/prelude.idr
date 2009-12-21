@@ -42,6 +42,7 @@ include "io.idr";
 include "either.idr";
 include "tactics.idr";
 include "vect.idr";
+include "string.idr";
 
 -- Function composition
 

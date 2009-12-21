@@ -1,5 +1,3 @@
-include "string.idr";
-
 ADDER : Nat -> #;
 ADDER O = Nat;
 ADDER (S k) = Nat -> (ADDER k);

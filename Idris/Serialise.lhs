@@ -55,19 +55,6 @@ typechecked forms to disk.
 >                10 -> do i <- get
 >                         return (Constant (i :: Int))
 
-> instance Binary Id where
->     put (UN x) = do put (0 :: Word8)
->                     put x
->     put (MN x i) = do put (1 :: Word8)
->                       put x; put i
->     put (NS n i) = do put (2 :: Word8)
->                       put n; put i
-
->     get = do tag <- getWord8
->              case tag of
->                0 -> liftM UN get
->                1 -> liftM2 MN get get
->                2 -> liftM2 NS get get
 
 > instance Binary RBinder where
 >     put (Pi p l r) = do put (0 :: Word8)

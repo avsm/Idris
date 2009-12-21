@@ -156,11 +156,6 @@ environment, mapping "String"s to "Int" values. We can use a list of
 pairs for this, and write a "fetch" function to retrieve the
 value. This may fail, so it returns a "Maybe Int": --}
 
--- IGNORE
-strEq : String -> String -> Bool;
-strEq x y = __strEq x y;
--- START
-
 fetch : String -> List (String & Int) -> Maybe Int;
 fetch x (Cons (v,val) xs) with strEq x v {
     | True = Just val;

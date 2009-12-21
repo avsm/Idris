@@ -94,6 +94,7 @@ import Debug.Trace
       using           { TokenUsing }
       idiom           { TokenIdiom }
       params          { TokenParams }
+      namespace       { TokenNamespace }
       noelim          { TokenNoElim }
       collapsible     { TokenCollapsible }
       where           { TokenWhere }
@@ -195,6 +196,7 @@ Declaration: Function { $1 }
            | DoUsing '{' Program '}' { PDoUsing $1 $3 } 
            | Idiom '{' Program '}' { PIdiom $1 $3 }
            | Params '{' Program '}' { PParams $1 $3 }
+           | Namespace '{' Program '}' { PNamespace $1 $3 }
            | Transform { RealDecl $1 }
            | syntax Name NamesS '=' Term ';' { PSyntax $2 $3 $5 }
            | cinclude string { RealDecl (CInclude $2) }
@@ -589,6 +591,9 @@ Idiom ::{ (Id,Id) }
 Params :: { [(Id, RawTerm)] }
        : params '(' UseList ')' { $3 }
 
+Namespace :: { Id }
+          : namespace Name { $2 }
+
 UseList :: { [(Id, RawTerm)] }
         : Name ':' Type { [($1, $3)] }
         | Name ':' Type ',' UseList { ($1,$3):$5 }
@@ -685,6 +690,9 @@ processImports opts imped (Success ds) = pi imped [] ds
         pi imps decls ((Idiom b r ds):xs)
             = do (ds',imps') <- pi imps [] ds
                  pi imps' (decls++[Idiom b r ds']) xs
+        pi imps decls ((Namespace n ds):xs)
+            = do (ds',imps') <- pi imps [] ds
+                 pi imps' (decls++[Namespace n ds']) xs
         pi imps decls (x:xs) = pi imps (decls++[x]) xs
         pi imps decls [] = return (decls, imps)
 

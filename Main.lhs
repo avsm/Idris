@@ -282,7 +282,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 >                               return Quit
 >                        Just (':':command) -> 
 >                            do addHistory (':':command)
->                               runCommand (words command) commands
+>                               runCommand' (words command) commands
 >                        Just exprinput -> 
 >                            do termInput' raw fixes ctxt exprinput
 >                               addHistory exprinput
@@ -307,7 +307,10 @@ Command; minimal abbreviation; function to run it; description; visibility
 >      termInput' r f c inp = handle handler $ termInput True r f c inp
 >         where handler StackOverflow = putStrLn "Stack overflow"
 >               handler UserInterrupt = putStrLn "Interrupted"
->               handler e             = throwIO e
+>               handler e             = print e -- throwIO e
+>      runCommand' w c = handle handler $ runCommand w c
+>         where handler e = do print (e :: IOError)
+>                              return Continue
 
 > termInput runio raw uo ctxt tm 
 >         = case getTerm tm of

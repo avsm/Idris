@@ -45,6 +45,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | Params [(Id, RawTerm)] [Decl] -- default implicit args
 >           | DoUsing Id Id [Decl] -- bind and return names
 >           | Idiom Id Id [Decl] -- pure and ap names
+>           | Namespace Id [Decl] -- bind and return names
 >           | CLib String | CInclude String
 >           | Fixity String Fixity Int
 >           | Transform RawTerm RawTerm
@@ -89,6 +90,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >                | PParams [(Id, RawTerm)] [ParseDecl]
 >                | PDoUsing (Id, Id) [ParseDecl]
 >                | PIdiom (Id, Id) [ParseDecl]
+>                | PNamespace Id [ParseDecl]
 >                | PSyntax Id [Id] RawTerm 
 >    deriving Show
 
@@ -126,6 +128,11 @@ the system to insert a hole for a proof that turns it into the right type.
 >                case (cds [] [] pds) of
 >                   Success d ->
 >                       cds ((DoUsing ub ur d):rds) fwds ds
+>                   failure -> failure
+>         cds rds fwds ((PNamespace ns pds):ds) = 
+>                case (cds [] [] pds) of
+>                   Success d ->
+>                       cds ((Namespace ns d):rds) fwds ds
 >                   failure -> failure
 >         cds rds fwds ((PIdiom (up,ua) pds):ds) = 
 >                case (cds [] [] pds) of
@@ -530,7 +537,7 @@ but not P. [[We also don't want names which appear in the return type, since
 they'll never be inferrable at the call site. (Not done this. Not convinced.) ]]
 
 > addImpl :: Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
-> addImpl = addImpl' True [] [] Nothing
+> addImpl = addImpl' True [] [] []
 
 > addImplWith :: Implicit -> Ctxt IvorFun -> RawTerm -> (RawTerm, Int) 
 > addImplWith (Imp using params paramnames ns) = addImpl' True using params ns
@@ -547,7 +554,7 @@ These should be added as *explicit* arguments.
 Need to do it twice, in case the first pass added names in the indices
 (from using)
 
-> addImpl' :: Bool -> [(Id, RawTerm)] -> [(Id, RawTerm)] -> Maybe Id -> Ctxt IvorFun -> 
+> addImpl' :: Bool -> [(Id, RawTerm)] -> [(Id, RawTerm)] -> [Id] -> Ctxt IvorFun -> 
 >             RawTerm -> (RawTerm, Int) 
 > addImpl' pi using params namespace ctxt raw' 
 >             = let raw = parambind params raw'
@@ -650,17 +657,23 @@ programmer doesn't have to write them down inside the param block.
 > data Implicit = Imp { impUsing :: [(Id, RawTerm)], -- 'using'
 >                       params :: [(Id, RawTerm)], -- extra params
 >                       paramNames :: [(Id, [Id])], -- functions and params in the current block
->                       thisNamespace :: Maybe Id
+>                       thisNamespace :: [Id]
 >                     }
 
-> noImplicit = Imp [] [] [] Nothing
+> noImplicit = Imp [] [] [] []
 
 > addUsing :: Implicit -> Implicit -> Implicit
-> addUsing (Imp a b pns ns) (Imp a' b' pns' ns') 
->              = Imp (a++a') (b++b') (pns++pns') (mplus ns ns')
+> addUsing (Imp a b pns ns) (Imp a' b' pns' ns') -- ns always == ns'
+>              = Imp (a++a') (b++b') (pns++pns') ns
 
 > addParams :: Implicit -> [(Id, RawTerm)] -> Implicit
 > addParams (Imp a b pns ns) newps = Imp a (b++newps) pns ns
+
+> addNS :: Implicit -> Id -> Implicit
+> addNS (Imp a b pns ns) n = Imp a b pns (n:ns)
+
+> fullName :: Implicit -> Id -> Id
+> fullName imp n = mkName (thisNamespace imp) n
 
 > addParamName :: Implicit -> Id -> Implicit
 > addParamName imp@(Imp u ps pns ns) n
@@ -775,11 +788,17 @@ FIXME: I think this'll fail if names are shadowed.
 >                     mkApp f l (RVar f l fulln)
 >                               ((mkImplicitArgs 
 >                                (map fst (fst (getBinders ty []))) imp ex) ++ pargs)
->                   _ -> RVar f l n -- FIXME: report error if ambiguous name
+>                   Left err@(Ambiguous _ _) -> RError (show err)
+>                   Left err@(WrongNamespace _ _) -> RError (show err)
+>                   Right (_, fulln) -> RVar f l fulln
+>                   _ -> RVar f l n
 >           ap ex (RExpVar f l n)
 >               = case ctxtLookupName ctxt (thisNamespace using) n of
 >                   Right (IvorFun _ (Just ty) imp _ _ _ _, fulln) -> RVar f l fulln
->                   _ -> RVar f l n -- FIXME: report error if ambiguous name
+>                   Left err@(Ambiguous _ _) -> RError (show err)
+>                   Left err@(WrongNamespace _ _) -> RError (show err)
+>                   Right (_, fulln) -> RVar f l fulln
+>                   _ -> RVar f l n
 >           ap ex (RAppImp file line n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
 >           ap ex (RApp file line f a) = (RApp file line (ap ex f) (ap [] a))
 >           ap ex (RBind n (Pi p l ty) sc)
@@ -875,7 +894,7 @@ TODO: Get names out of UndoInfo
 >               mkApp file line (RVar file line pure)
 >                     ((take pureImpl (repeat RPlaceholder)) ++ [x])
 
-> testCtxt = addEntry newCtxt Nothing (UN "Vect") undefined
+> testCtxt = addEntry newCtxt [] (UN "Vect") undefined
 
 > dump :: Ctxt IvorFun -> String
 > dump ctxt = concat $ map dumpFn (ctxtAlist ctxt)
@@ -918,7 +937,7 @@ Now built-in operators
 >     unI (Name _ v) [x,y]
 >         | Just op <- getOp v allOps = RInfix "[val]" 0 op x y
 >     unI (Name _ v) args 
->        = case ctxtLookup ctxt Nothing (mkRName v) of
+>        = case ctxtLookup ctxt [] (mkRName v) of
 >            Right fdata -> mkImpApp "[val]" 0 (implicitArgs fdata) 
 >                                   (argNames (ivorFType fdata)) (RVar "[val]" 0 (mkRName v)) args
 >            _ -> unwind (RVar "[val]" 0 (mkRName v)) args

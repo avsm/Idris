@@ -12,7 +12,7 @@
 >                      _ -> latexDefs ds
 
 > latexDump :: Ctxt IvorFun -> [(Id,String)] -> Id -> IO ()
-> latexDump ctxt defs nm = case ctxtLookup ctxt Nothing nm of
+> latexDump ctxt defs nm = case ctxtLookup ctxt [] nm of
 >                            Right fn -> putStrLn $ latex ctxt defs fn
 >                            Left _ -> do putStrLn "No such name"
 >                                         return ()
@@ -24,13 +24,13 @@
 >     latex ctxt defs n 
 >         = case lookup n (defs++ldefs) of
 >             Just l -> l
->             Nothing -> case ctxtLookup ctxt Nothing n of
+>             Nothing -> case ctxtLookup ctxt [] n of
 >                          Right (IvorFun _ _ _ _ d _ _) -> ty d (show n)
 >                          Left _ -> "\\VV{" ++ show n ++ "}"
 >         where ty (DataDecl _) n = "\\TC{" ++ n ++ "}"          
 >               ty Constructor n = "\\DC{" ++ n ++ "}"
 >               ty _ n = "\\FN{" ++ n ++ "}"
->               ldefs = case ctxtLookup ctxt Nothing (MN "latex" 0) of
+>               ldefs = case ctxtLookup ctxt [] (MN "latex" 0) of
 >                         Right (IvorFun _ _ _ _ (LatexDefs ds) _ _) -> ds
 >                         Left _ -> []
 

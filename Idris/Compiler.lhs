@@ -1,5 +1,3 @@
-> {-# OPTIONS_GHC -fglasgow-exts #-}
-
 > module Idris.Compiler(comp, addTransforms) where
 
 > import Idris.AbsSyntax
@@ -151,6 +149,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 > quotename [] = ""
 > quotename ('[':cs) = "_OB_"++quotename cs
 > quotename (']':cs) = "_CB_"++quotename cs
+> quotename ('.':cs) = "_NS_"++quotename cs
 > quotename (c:cs) = c:(quotename cs)
 
 > writeDef :: Handle -> Bool -> (Name, Bool, SCFun) -> IO ()
@@ -158,7 +157,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >   when (gen || elem SCInline scopts) $ hPutStr h "%inline "
 >   when (elem SCStrict scopts) $ hPutStr h "%strict "
 >   maybe (return ()) (\ c -> hPutStrLn h ("export " ++ show c ++ " ")) (getEName scopts)
->   hPutStrLn h (show n ++ " (" ++ list args ++ ") -> Any = \n" ++
+>   hPutStrLn h (quotename (show n) ++ " (" ++ list args ++ ") -> Any = \n" ++
 >                writeSC n erasure def)
 >    where list [] = ""
 >          list [a] = quotename (show a) ++ " : Any"

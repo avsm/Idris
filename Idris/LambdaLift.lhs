@@ -202,7 +202,7 @@ IO operations and do notation as we go. Pass relevant function flags through
 
 > scFun :: Context -> IdrisState -> Id -> [Name] -> SimpleCase -> SCFun
 > scFun ctxt ist fn args lifted = SCFun mkOpts args (toSC ctxt ist lifted)
->    where mkOpts' = do ifn <- ctxtLookup (idris_context ist) Nothing fn
+>    where mkOpts' = do ifn <- ctxtLookup (idris_context ist) [] fn
 >                       let decl = rawDecl ifn
 >                       let opts = if (null (lazyArgs ifn)) 
 >                                    then [SCStrict] else []
@@ -280,7 +280,7 @@ Infix operators
 
 > scapply ist (SVar n) args
 >         = let raw = idris_context ist in
->           case ctxtLookup raw Nothing (fromIvorName n) of
+>           case ctxtLookup raw [] (fromIvorName n) of
 >             Left _ -> SApp (SVar n) args
 >             Right ifn -> let ia = implicitArgs ifn
 >                              lz = lazyArgs ifn 
@@ -288,7 +288,7 @@ Infix operators
 >                              SApp (SVar n) args'
 > scapply ist (SCon n i) args
 >         = let raw = idris_context ist in
->           case ctxtLookup raw Nothing (fromIvorName n) of
+>           case ctxtLookup raw [] (fromIvorName n) of
 >             Left _ -> SApp (SCon n i) args
 >             Right ifn -> let ia = implicitArgs ifn
 >                              lz = lazyArgs ifn 

@@ -51,6 +51,7 @@ reportError err = getFileName `thenP` \fn ->
 
 data Token
       = TokenName Id
+      | TokenNSep
       | TokenInfixName String
       | TokenBrackName Id
       | TokenString String
@@ -258,7 +259,7 @@ lexChar cont cs =
           failP (fn++":"++show line++":Unterminated character constant")
                        cs fn line ops
 
-isAllowed c = isAlpha c || isDigit c || c `elem` "_\'?#"
+isAllowed c = isAlpha c || isDigit c || c `elem` "_\'?#."
 
 lexVar cont cs =
    case span isAllowed cs of
@@ -390,7 +391,16 @@ lexMeta cont cs =
       (thing,rest) -> cont (TokenMetavar (UN thing)) rest
 
 mkname :: String -> Token
-mkname c = TokenName (UN c)
+mkname c = TokenName (mkNS c)
+
+mkNS c = let xs = mkNS' [] [] c in
+            case xs of
+              [x] -> UN x
+              (x:xs) -> NS (map UN (reverse xs)) (UN x)
+ where
+  mkNS' acc wds [] = reverse acc:wds
+  mkNS' acc wds ('.':cs) = mkNS' [] (reverse acc:wds) cs
+  mkNS' acc wds (c:cs) = mkNS' (c:acc) wds cs
 
 getstr :: String -> Maybe (String,String,Int)
 getstr cs = case getstr' "" cs 0 of
