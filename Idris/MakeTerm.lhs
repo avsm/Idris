@@ -67,20 +67,20 @@ into an ivor definition, with all the necessary placeholders added.
 >              mif opt ctxt acc' using ui uo' ds
 >    where ui' = let bimpl = case ctxtLookup (appCtxt ctxt acc) (thisNamespace using) bind of
 >                              Right i -> implicitArgs i
->                              _ -> error $ "Can't find " ++ show bind -- 0
+>                              Left err -> error (show err)
 >                    rimpl = case ctxtLookup (appCtxt ctxt acc) (thisNamespace using) ret of
 >                              Right i -> implicitArgs i
->                              _ -> error $ "Can't find " ++ show ret -- 0
+>                              Left err -> error (show err)
 >                     in UI bind bimpl ret rimpl p pi r ri
 > mif opt ctxt acc using ui@(UI b bi r ri _ _ _ _) uo ((Idiom pure ap decls):ds)
 >         = let (acc', uo') = (mif opt ctxt acc using ui' uo decls) in
 >             mif opt ctxt acc' using ui uo' ds
 >    where ui' = let pureImpl = case ctxtLookup (appCtxt ctxt acc) (thisNamespace using) pure of
 >                              Right i -> implicitArgs i
->                              _ -> 0
+>                              Left err -> error (show err)
 >                    apImpl = case ctxtLookup (appCtxt ctxt acc) (thisNamespace using) ap of
 >                              Right i -> implicitArgs i
->                              _ -> 0
+>                              Left err -> error (show err)
 >                     in UI b bi r ri pure pureImpl ap apImpl
 > mif opt ctxt acc using' ui uo (decl@(Fun f flags):ds) 
 >         = let using = addParamName using' (funId f)
@@ -304,7 +304,7 @@ except frozen things, which need to be added as we go, in order.
 >                = return ((ctxt, metas), UO fix trans (frfn:fr))
 > addIvorDef opt raw uo@(UO fix trans fr) (ctxt, metas) (n,IvorFun (Just name) tyin _ (Just def') _ flags lazy) 
 >   = let def = if (Verbose `elem` opt) 
->                  then trace ("Processing " ++ show n) def' else def' in
+>                  then trace ("Processing " ++ show (n,def')) def' else def' in
 >       case def of
 >         PattDef ps -> -- trace (show ps) $
 >                       do (ctxt, newdefs) <- addPatternDefSC ctxt name (unjust tyin) ps

@@ -297,6 +297,7 @@ is either a pattern or unused (modulo recursion), do this to it:
 >            = getPlPos (filter (plArg args args' r') acc) ps ps'
 >      getPlPos acc (_:ps) (_:ps')
 >            = getPlPos acc ps ps'
+>      getPlPos acc p p' = error $ "getPlPos : " ++ show (n,acc,p,p')
 
 >      plArg args args' r' x 
 >            = x<length args && args!!x == Placeholder && recGuard x n r' (namesIn (args'!!x))

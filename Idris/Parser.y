@@ -95,6 +95,9 @@ import Debug.Trace
       idiom           { TokenIdiom }
       params          { TokenParams }
       namespace       { TokenNamespace }
+      public          { TokenPublic }
+      private         { TokenPrivate }
+      abstract        { TokenAbstract }
       noelim          { TokenNoElim }
       collapsible     { TokenCollapsible }
       where           { TokenWhere }
@@ -221,6 +224,12 @@ Function : Name ':' Type Flags File Line ';' { FunType $1 $3 (nub $4) $5 $6 }
          | '|' WithTerm WithP Term '{' Functions '}'
               { WithClause RPlaceholder [$2] $3 $4 $6 }
 
+Visibility :: { CGFlag }
+Visibility : public { Vis Public }
+           | private { Vis Private }
+           | abstract { Vis Abstract }
+           | { Vis Public }
+
 WithP :: { Bool }
 WithP : with { False }
       | with proof { True }
@@ -240,8 +249,12 @@ Functions : Function Functions { $1:$2 }
           | Function { [$1] }
 
 Flags :: { [CGFlag] }
-Flags : { [] }
-      | Flag Flags { $1 ++ $2 }
+Flags : FlagList { $1 }
+      | '[' FlagList ']' { $2 }
+
+FlagList :: { [CGFlag] }
+FlagList : { [] }
+      | Flag FlagList { $1 ++ $2 }
 
 Flag :: { [CGFlag] }
 Flag : nocg { [NoCG] }

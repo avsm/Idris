@@ -130,7 +130,7 @@ typechecked forms to disk.
 >     put (RIdiom i) = do put (12 :: Word8); put i
 >     put (RPure i) = do put (13 :: Word8); put i
 >     put RRefl = do put (14 :: Word8)
->     put (RError i) = do put (15 :: Word8); put i
+>     put (RError f l i) = do put (15 :: Word8); put f; put l; put i
 
 >     get = do tag <- getWord8
 >              case tag of
@@ -151,7 +151,7 @@ typechecked forms to disk.
 >                12 -> liftM RIdiom get
 >                13 -> liftM RPure get
 >                14 -> return RRefl
->                15 -> liftM RError get
+>                15 -> liftM3 RError get get get
 
 > instance Binary Constant where
 >     put (Num i) = do put (0 :: Word8); put i

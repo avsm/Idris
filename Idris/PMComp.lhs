@@ -342,8 +342,8 @@ them, just put an empty list in.
 > deIO erase t = deIO' t where
 
 >  deIO' (App (App (App (App (Name _ bind) _) _) v) k)
->      | bind == (name "bind") || 
->        bind == (name "ibind") || bind == (name "ibinda")
+>      | bind == bindNamei || 
+>        bind == ibindNamei
 >           = do i <- get
 >                put (i+1)
 >                v' <- deIO' v
@@ -357,16 +357,16 @@ them, just put an empty list in.
 >                return $ Let (bname i) Star -- type irrelevant
 >                             v (quickSimpl (App k (Name Unknown (bname i))))
 >  deIO' (App (App (Name _ ret) _) a) -- (without forcing)
->      | (not erase) && ret == (name "IOReturn") = deIO' a
+>      | (not erase) && ret == ioretNamei = deIO' a
 >  deIO' (App (Name _ ret) a) -- (with forcing)
->      | erase && ret == (name "IOReturn") = deIO' a
+>      | erase && ret == ioretNamei = deIO' a
 >  deIO' (App (App (Name _ upio) _) a)
 >      | upio == (name "unsafePerformIO") = deIO' a
 >  deIO' (App (App (Name _ iolift) _) io)
->      | iolift == (name "IOLift")  -- Just skip this
+>      | iolift == ioliftNamei  -- Just skip this
 >         = deIO' io
 >  deIO' (App (App (App (Name _ iodo) _) c) k) -- (without forcing)
->      | (not erase) && iodo == (name "IODo") 
+>      | (not erase) && iodo == iodoNamei
 >         = do k' <- deIO' k
 >              c' <- deIO' c
 >              i <- get
@@ -375,7 +375,7 @@ them, just put an empty list in.
 >                         (App (App (Name Unknown (name "__effect")) Placeholder) c')
 >                            (quickSimpl (App k' (Name Unknown (bname i))))
 >  deIO' (App (App (Name _ iodo) c) k) -- (with forcing)
->      | erase && iodo == (name "IODo") 
+>      | erase && iodo == iodoNamei
 >         = do k' <- deIO' k
 >              c' <- deIO' c
 >              i <- get

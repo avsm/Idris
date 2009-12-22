@@ -117,7 +117,12 @@ All operations are passed a [Id], which is the namespace we are currently in.
 > addToD :: Dict Id [(Id,a)] -> Id -> a -> Dict Id [(Id, a)]
 > addToD d n v = case dictLookup (lastName n) d of
 >                  Nothing -> dictInsert (lastName n) [(n,v)] d
->                  Just nvs -> dictInsert (lastName n) ((n,v):nvs) d
+>                  Just nvs -> case lookup n nvs of
+>                     Nothing -> dictInsert (lastName n) ((n,v):nvs) d
+>                     Just _ -> dictInsert (lastName n) ((n,v):(dropN n nvs)) d
+>   where dropN n [] = []
+>         dropN n ((n',v):xs) | n == n' = xs
+>                             | otherwise = (n',v):(dropN n xs)
 
 If the root of the given name n appears multiple times in the dictionary,
 then only return a value if it's an exact match, otherwise issue an 

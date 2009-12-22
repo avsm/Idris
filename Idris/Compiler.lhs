@@ -176,9 +176,9 @@ the relevant IO operation
 >   writeSC' (SVar n) = quotename (show n)
 >   writeSC' (SCon n i) = writeCon n i ++ "()"
 >   writeSC' (SApp (SCon n i) (fn:args:[]))
->     | n == name "Foreign" = writeFCall fn erasure args fname
+>     | n == ionamei "Foreign" = writeFCall fn erasure args fname
 >   writeSC' (SApp (SCon n i) (_:args))
->     | n == name "WhileAcc" = writeCon n i ++ "(" ++ list args ++ ")"
+>     | n == ionamei "WhileAcc" = writeCon n i ++ "(" ++ list args ++ ")"
 >   writeSC' (SApp (SCon n i) args) = writeCon n i ++ "(" ++ list args ++ ")"
 
 Fork is a special case, because its argument needs to be evaluated lazily
@@ -259,18 +259,18 @@ HACK for string equality
 
 > writeCon :: Name -> Int -> String
 > writeCon n i
->   | n == name "PutStr" = "__epic_putStr"
->   | n == name "GetStr" = "__epic_readStr"
->   | n == name "NewRef" = "__epic_newRef"
->   | n == name "ReadRef" = "__epic_readRef"
->   | n == name "WriteRef" = "__epic_writeRef"
->   | n == name "NewLock" = "__epic_newLock"
->   | n == name "DoLock" = "__epic_doLock"
->   | n == name "DoUnlock" = "__epic_doUnlock"
->   | n == name "Fork" = "__epic_fork"
->   | n == name "Within" = "__epic_within"
->   | n == name "While" = "%while"
->   | n == name "WhileAcc" = "%while"
+>   | n == ionamei "PutStr" = "__epic_putStr"
+>   | n == ionamei "GetStr" = "__epic_readStr"
+>   | n == ionamei "NewRef" = "__epic_newRef"
+>   | n == ionamei "ReadRef" = "__epic_readRef"
+>   | n == ionamei "WriteRef" = "__epic_writeRef"
+>   | n == ionamei "NewLock" = "__epic_newLock"
+>   | n == ionamei "DoLock" = "__epic_doLock"
+>   | n == ionamei "DoUnlock" = "__epic_doUnlock"
+>   | n == ionamei "Fork" = "__epic_fork"
+>   | n == ionamei "Within" = "__epic_within"
+>   | n == ionamei "While" = "%while"
+>   | n == ionamei "WhileAcc" = "%while"
 >   | otherwise = "Con " ++ show i
 
 > writeOp Concat l r = "__epic_append(" ++ l ++", " ++ r ++")"

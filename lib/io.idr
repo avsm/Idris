@@ -33,53 +33,59 @@ fapp : {xs,ys:List FType} ->
 fapp fNil fxs = fxs;
 fapp (fCons fx fxs) fys = fCons fx (fapp fxs fys);
 
-data IO : # -> #;
+namespace IO {
 
-data Command : # where
-    PutStr : String -> Command
-  | GetStr : Command
-  | Fork : {A:#} -> A -> Command
-  | NewLock : Int -> Command
-  | DoLock : Lock -> Command
-  | DoUnlock : Lock -> Command
-  | NewRef : Command
-  | ReadRef : # -> Int -> Command
-  | WriteRef : {A:#} -> Int -> A -> Command
-  | While : (IO Bool) -> (IO ()) -> Command
-  | WhileAcc : {A:#} -> (IO Bool) -> A -> (A -> IO A) -> Command
-  | Within : Int -> (IO A) -> (IO A) -> Command
-  | IOLift : {A:#} -> (IO A) -> Command 
-  | Foreign : (f:ForeignFun) -> 
-	      (args:FArgList (f_args f)) -> Command;
+  data IO : # -> #;
 
-Response : Command -> #;
-Response (PutStr s) = ();
-Response GetStr = String;
-Response (Fork proc) = ();
-Response (NewLock i) = Lock;
-Response (DoLock l) = ();
-Response (DoUnlock l) = ();
-Response NewRef = Int;
-Response (ReadRef A i) = A;
-Response (WriteRef i val) = ();
-Response (While test body) = ();
-Response (WhileAcc {A} test acc body) = A;
-Response (Within {A} time body failure) = A;
-Response (IOLift {A} f) = A;
-Response (Foreign t args) = i_ftype (f_retType t);
+  data Command : # where
+      PutStr : String -> Command
+    | GetStr : Command
+    | Fork : {A:#} -> A -> Command
+    | NewLock : Int -> Command
+    | DoLock : Lock -> Command
+    | DoUnlock : Lock -> Command
+    | NewRef : Command
+    | ReadRef : # -> Int -> Command
+    | WriteRef : {A:#} -> Int -> A -> Command
+    | While : (IO Bool) -> (IO ()) -> Command
+    | WhileAcc : {A:#} -> (IO Bool) -> A -> (A -> IO A) -> Command
+    | Within : Int -> (IO A) -> (IO A) -> Command
+    | IOLift : {A:#} -> (IO A) -> Command 
+    | Foreign : (f:ForeignFun) -> 
+  	        (args:FArgList (f_args f)) -> Command;
 
-data IO : # -> # where
-   IOReturn : A -> (IO A)
- | IODo : (c:Command) -> ((Response c) -> (IO A)) -> (IO A);
---  | IOError : String -> (IO A);
+  Response : Command -> #;
+  Response (PutStr s) = ();
+  Response GetStr = String;
+  Response (Fork proc) = ();
+  Response (NewLock i) = Lock;
+  Response (DoLock l) = ();
+  Response (DoUnlock l) = ();
+  Response NewRef = Int;
+  Response (ReadRef A i) = A;
+  Response (WriteRef i val) = ();
+  Response (While test body) = ();
+  Response (WhileAcc {A} test acc body) = A;
+  Response (Within {A} time body failure) = A;
+  Response (IOLift {A} f) = A;
+  Response (Foreign t args) = i_ftype (f_retType t);
 
-data IORef A = MkIORef Int;
 
-bind : (IO a) -> (a -> (IO b)) -> (IO b);
-bind (IOReturn a) k = k a;
--- bind (IODo (IOLift {A} c) p) k = bind (bind c p) k;
-bind (IODo c p) k = IODo c (\x => (bind (p x) k));
--- bind (IOError str) k = IOError str;
+  data IO : # -> # where
+     IOReturn : A -> (IO A)
+   | IODo : (c:Command) -> ((Response c) -> (IO A)) -> (IO A);
+
+  data IORef A = MkIORef Int;
+
+  bind : (IO a) -> (a -> (IO b)) -> (IO b);
+  bind (IOReturn a) k = k a;
+  -- bind (IODo (IOLift {A} c) p) k = bind (bind c p) k;
+  bind (IODo c p) k = IODo c (\x => (bind (p x) k));
+  -- bind (IOError str) k = IOError str;
+
+  ret : a -> IO a;
+  ret x = IOReturn x;
+}
 
 kbind : (IO a) -> (a -> b) -> (IO b);
 kbind (IOReturn a) k = IOReturn (k a);
@@ -108,10 +114,10 @@ ioReturn : a -> (IO a);
 ioReturn x = IOReturn x;
 -}
 
-ioApp : IO (a -> b) -> IO a -> IO b;
-ioApp {a} {b} fn arg = do { f : (a->b) <- fn; -- grr
+apply : IO (a -> b) -> IO a -> IO b;
+apply {a} {b} fn arg = do { f : (a->b) <- fn; -- grr
                             x <- arg;
-		            return (f x); };
+              		    return (f x); };
 
 data IOException = IOExcept String; 
 
@@ -188,23 +194,23 @@ writeIORef (MkIORef i) val = writeIORefPrim i val;
 
 mkFType' : (List FType) -> FType -> #   %nocg;
 
-mkFType' Nil ret = IO (i_ftype ret);
-mkFType' (Cons t ts) ret = #((i_ftype t) -> (mkFType' ts ret));
+mkFType' Nil rt = IO (i_ftype rt);
+mkFType' (Cons t ts) rt = #((i_ftype t) -> (mkFType' ts rt));
 
 mkFType : ForeignFun -> #    %nocg;
-mkFType (FFun fn args ret) = mkFType' args ret;
+mkFType (FFun fn args rt) = mkFType' args rt;
 
 mkFDef : String -> (ts:List FType) -> (xs:List FType) -> (FArgList xs) ->
-	 (ret:FType) -> (mkFType' ts ret)   %nocg;
-mkFDef nm Nil accA fs ret 
-   = IODo (Foreign (FFun nm accA ret) fs)
+	 (rt:FType) -> (mkFType' ts rt)   %nocg;
+mkFDef nm Nil accA fs rt 
+   = IODo (Foreign (FFun nm accA rt) fs)
 				 (\a => (IOReturn a));
-mkFDef nm (Cons t ts) accA fs ret 
+mkFDef nm (Cons t ts) accA fs rt 
    = \x:i_ftype t => mkFDef nm ts (app accA (Cons t Nil)) 
-				   (fapp fs (fCons x fNil)) ret;
+				   (fapp fs (fCons x fNil)) rt;
 
 mkForeign : (f:ForeignFun) -> (mkFType f)   %nocg;
-mkForeign (FFun fn args ret) = mkFDef fn args Nil fNil ret;
+mkForeign (FFun fn args rt) = mkFDef fn args Nil fNil rt;
 
 _isNull = mkForeign (FFun "isNull" (Cons FPtr Nil) FInt) %eval;
 

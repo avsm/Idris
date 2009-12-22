@@ -91,15 +91,15 @@ using (G:Vect Ty n) {
   double : Expr G (TyFun TyInt TyInt);
   double = Lam (App (App test (Var fO)) (Var fO));
 
-  apply : |(f:Expr G (TyFun a t)) -> (Expr G a) -> (Expr G t);
-  apply f x = App f x;
+  ap : |(f:Expr G (TyFun a t)) -> (Expr G a) -> (Expr G t);
+  ap f x = App f x;
 
   fact' : Expr G (TyFun TyInt TyInt);
 
   fact : Expr G (TyFun TyInt TyInt);
   fact = Lam (If (Op (==) (Val 0) (Var fO))
                 (Val 1)
-	        (Op (*) (Var fO) (apply fact (Op (-) (Var fO) (Val 1)))));
+	        (Op (*) (Var fO) (ap fact (Op (-) (Var fO) (Val 1)))));
 
   fact' {G} = fact {G};  
   %freeze fact';
@@ -110,11 +110,11 @@ using (G:Vect Ty n) {
   factaux : Expr G (TyFun TyInt (TyFun TyInt TyInt));
   factaux = Lam (Lam (If (Op (==) (Val 0) (Var fO))
   	       	    	(Var (fS fO))
-		(apply (apply factaux (Op (*) (Var (fS fO)) (Var fO)))
+		(ap (ap factaux (Op (*) (Var (fS fO)) (Var fO)))
 		       	      	      (Op (-) (Var fO) (Val 1)))));
 
   facttr : Expr G (TyFun TyInt TyInt);
-  facttr = Lam (apply (apply factaux (Val 1)) (Var fO));
+  facttr = Lam (ap (ap factaux (Val 1)) (Var fO));
 
 -- Sum a list
 
@@ -125,7 +125,7 @@ using (G:Vect Ty n) {
   suma : Expr G (TyFun TyInt (TyFun TyList TyInt));
   suma = Lam (Lam (If (NULL (Var fO)) 
        	     	      (Var (fS fO))
-         (App (apply suma (Op (+) (Car (Var fO)) (Var (fS fO))))
+         (App (ap suma (Op (+) (Car (Var fO)) (Var (fS fO))))
 	      (Cdr (Var fO)))));
 
   sum : Expr G (TyFun TyList TyInt);

@@ -60,6 +60,15 @@ Also, some functions should be evaluated completely before code generation
 Functions may be exported to C, if they have a simple type (no polymorphism, no dependencies).
 
 > data CGFlag = NoCG | CGEval | CExport String | Inline | CGSpec [(Id, Int)]
+>             | Vis Visibility
+>    deriving (Show, Eq)
+
+Public: Name, type and definition visible globally
+Abstract: Only name and type visible (i.e. no constructors, or definition)
+  outside the namespace.
+Private: Nothing visible outside the namespace.
+
+> data Visibility = Public | Private | Abstract
 >    deriving (Show, Eq)
 
 User defined operators have associativity and precedence
@@ -243,7 +252,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RIdiom RawTerm
 >              | RPure RawTerm -- a term to apply normally inside idiom brackets
 >              | RRefl
->              | RError String -- Hackety. Found an error in processing, report when you can.
+>              | RError String Int String -- Hackety. Found an error in processing, report when you can.
 >    deriving (Show, Eq)
 
 > data RBinder = Pi Plicit Laziness RawTerm
@@ -681,10 +690,26 @@ programmer doesn't have to write them down inside the param block.
 >          Just _ -> imp
 >          Nothing -> Imp u ps ((n, (map fst ps)):pns) ns
 
-> defDo = UI (UN "bind") 2
->            (UN "IOReturn") 1 -- IO monad
->            (UN "IOReturn") 1 -- IO applicative
->            (UN "ioApp") 2 
+> bindName = ioname "bind"
+> ibindName = ioname "ibind"
+> retName = ioname "ret"
+> ioretName = ioname "IOReturn"
+> iodoName = ioname "IODo"
+> ioliftName = ioname "IOLift"
+> applyName = ioname "apply"
+
+> bindNamei = toIvorName bindName
+> ibindNamei = toIvorName ibindName
+> retNamei = toIvorName retName
+> ioretNamei = toIvorName ioretName
+> iodoNamei = toIvorName iodoName
+> ioliftNamei = toIvorName ioliftName
+> applyNamei = toIvorName applyName
+
+> ioname n = NS [UN "IO"] (UN n)
+> ionamei n = toIvorName (ioname n)
+
+> defDo = UI bindName 2 retName 1 retName 1 applyName 2
 
 > toIvor :: UndoInfo -> Id -> RawTerm -> ViewTerm
 > toIvor ui fname tm = evalState (toIvorS tm) (0,1)
@@ -746,7 +771,7 @@ programmer doesn't have to write them down inside the param block.
 >                              toIvorS tm'
 >     toIvorS (RPure t) = toIvorS t
 >     toIvorS RRefl = return $ apply (Name Unknown (name "refl")) [Placeholder]
->     toIvorS (RError x) = error x
+>     toIvorS (RError f l x) = error (f ++ ":" ++ show l ++ ":" ++ x)
 >     mkName (UN n) i = UN (n++"_"++show i)
 >     mkName (MN n j) i = MN (n++"_"++show i) j
 
@@ -788,15 +813,15 @@ FIXME: I think this'll fail if names are shadowed.
 >                     mkApp f l (RVar f l fulln)
 >                               ((mkImplicitArgs 
 >                                (map fst (fst (getBinders ty []))) imp ex) ++ pargs)
->                   Left err@(Ambiguous _ _) -> RError (show err)
->                   Left err@(WrongNamespace _ _) -> RError (show err)
+>                   Left err@(Ambiguous _ _) -> RError f l (show err)
+>                   Left err@(WrongNamespace _ _) -> RError f l (show err)
 >                   Right (_, fulln) -> RVar f l fulln
 >                   _ -> RVar f l n
 >           ap ex (RExpVar f l n)
 >               = case ctxtLookupName ctxt (thisNamespace using) n of
 >                   Right (IvorFun _ (Just ty) imp _ _ _ _, fulln) -> RVar f l fulln
->                   Left err@(Ambiguous _ _) -> RError (show err)
->                   Left err@(WrongNamespace _ _) -> RError (show err)
+>                   Left err@(Ambiguous _ _) -> RError f l (show err)
+>                   Left err@(WrongNamespace _ _) -> RError f l (show err)
 >                   Right (_, fulln) -> RVar f l fulln
 >                   _ -> RVar f l n
 >           ap ex (RAppImp file line n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
@@ -813,7 +838,7 @@ FIXME: I think this'll fail if names are shadowed.
 >                   (RUserInfix file line _ op l r) ->
 >                       ap ex (RApp file line 
 >                              (RApp file line (RVar file line (useropFn op)) l) r)
->                   (RError x) -> RError x
+>                   (RError f l x) -> RError f l x
 >           ap ex (RDo ds) = RDo (map apdo ds)
 >           ap ex (RIdiom tm) = RIdiom (ap [] tm)
 >           ap ex (RPure tm) = RPure (ap [] tm)
@@ -1082,9 +1107,9 @@ Shunting Yard algorithm.
 >                               prec (op2:out) opstk op1
 >                             else 
 >                               (op1:op2:opstk, reverse out)
->                   (Nothing, Nothing) -> (opstk, OTm (RError (f1 ++ ":" ++ show l1 ++ ":unknown operators " ++ show o1 ++ " and " ++ show o2)):out)
->                   (Nothing, _) -> (opstk, OTm (RError (f1 ++ ":" ++ show l1 ++ ":unknown operator " ++ show o1)):out)
->                   (_, Nothing) -> (opstk, OTm (RError (f2 ++ ":" ++ show l2 ++ ":unknown operator " ++ show o2)):out)
+>                   (Nothing, Nothing) -> (opstk, OTm (RError f1 l1 (":unknown operators " ++ show o1 ++ " and " ++ show o2)):out)
+>                   (Nothing, _) -> (opstk, OTm (RError f1 l1 (":unknown operator " ++ show o1)):out)
+>                   (_, Nothing) -> (opstk, OTm (RError f2 l2 (":unknown operator " ++ show o2)):out)
 >          prec out opstk op1 = (op1:opstk, reverse out)
 
 > shunt ops stk (OpenB:toks) = shunt ops (OpenB:stk) toks
@@ -1123,9 +1148,9 @@ Also need to sort out inner ops first.
 >     case (lookup opl ops, lookup opr ops) of
 >       (Just (assocl, precl), Just (assocr, precr)) ->
 >         doFix assocl precl assocr precr a opl b opr c
->       (Nothing, Nothing) -> RError $ file ++ ":" ++ show line ++ ":unknown operators " ++ show opl ++ " and " ++ show opr
->       (Nothing, _) -> RError $ file ++ ":" ++ show line ++ ":unknown operator " ++ show opl
->       (_, Nothing) -> RError $ file ++ ":" ++ show line ++ ":unknown operator " ++ show opr
+>       (Nothing, Nothing) -> RError file line $ ":unknown operators " ++ show opl ++ " and " ++ show opr
+>       (Nothing, _) -> RError file line (":unknown operator " ++ show opl)
+>       (_, Nothing) -> RError file line (":unknown operator " ++ show opr)
 >  where
 >    doFix al pl ar pr a opl b opr c 
 >          | pr > pl = mkOp False opl (fixFix' ops a) (fixFix' ops (mkOp False opr b c))
@@ -1139,7 +1164,7 @@ we check (i.e. the non-bracketed part) is smaller.
 >                    = fixFix ops $ mkOp False opr (mkOp True opl a b) c
 >          | pr == pl && al == RightAssoc && ar == RightAssoc
 >                    = fixFix ops $ mkOp False opl a (mkOp True opr b c)
->          | otherwise = RError $ file ++ ":" ++ show line ++ ":ambiguous operators, please add brackets"
+>          | otherwise = RError file line $ ":ambiguous operators, please add brackets"
 
 >    mkOp t op l r = RUserInfix file line t op l r
 

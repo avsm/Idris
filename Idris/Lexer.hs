@@ -127,6 +127,9 @@ data Token
       | TokenInclude
       | TokenModule
       | TokenNamespace
+      | TokenPublic
+      | TokenPrivate
+      | TokenAbstract
       | TokenImport
       | TokenExport
       | TokenInline
@@ -270,6 +273,9 @@ lexVar cont cs =
       ("idiom",rest) -> cont TokenIdiom rest
       ("params",rest) -> cont TokenParams rest
       ("namespace",rest) -> cont TokenNamespace rest
+      ("public",rest) -> cont TokenPublic rest
+      ("private",rest) -> cont TokenPrivate rest
+      ("abstract",rest) -> cont TokenAbstract rest
       ("module",rest) -> cont TokenModule rest
       ("import",rest) -> cont TokenImport rest
       ("export",rest) -> cont TokenExport rest
