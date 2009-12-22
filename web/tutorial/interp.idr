@@ -165,10 +165,10 @@ type in the corresponding vector of types: --}
 {-- We could even write more complex functions such as factorial, if we
     take some care to apply the recursive call lazily. (Why? Because
     otherwise building the expression would not terminate!) We achieve
-    this with "apply": --}
+    this with "ap": --}
 
-  apply : |(f:Expr G (TyFun a t)) -> Expr G a -> Expr G t;
-  apply f x = App f x;
+  ap : |(f:Expr G (TyFun a t)) -> Expr G a -> Expr G t;
+  ap f x = App f x;
 
 {-- The factorial function is "\\\\x. if x==0 then 1 else (x \\* fact
 (x-1))", represented as follows:
@@ -177,7 +177,7 @@ type in the corresponding vector of types: --}
   fact : Expr G (TyFun TyInt TyInt);
   fact = Lam (If (Op (==) (Val 0) (Var fO))
                 (Val 1)
-	        (Op (*) (Var fO) (apply fact (Op (-) (Var fO) (Val 1)))));
+	        (Op (*) (Var fO) (ap fact (Op (-) (Var fO) (Val 1)))));
 
 {-- And now we won't need "G" implicitly any more, so we close the
 "using" block above: --}
