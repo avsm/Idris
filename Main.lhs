@@ -15,6 +15,7 @@
 > import Control.Monad
 > import Control.Exception
 > import List
+> import Maybe
 > import Debug.Trace
 > import Prelude hiding (catch)
 
@@ -129,8 +130,14 @@ these days instead...
 >             OK x fixes' -> return (x, fixes')
 >             Err x fixes' err -> do putStrLn err 
 >                                    return (x, fixes')
->     let ist = addTransforms (IState alldefs (decls++ptree) metas opts ops [] imps) ctxt 
+>     let ist = addTransforms (IState alldefs (decls++ptree) metas opts ops [] imps (mkNameMap alldefs)) ctxt 
 >     return (ctxt, ist { idris_fixities = fixes' })
+
+> mkNameMap :: Ctxt IvorFun -> [(Name, Id)]
+> mkNameMap ctxt = mapMaybe mknm (ctxtAlist ctxt)
+>   where mknm (n, IvorProblem _) = Nothing
+>         mknm (n, i) = do iname <- ivorFName i
+>                          return (iname, n)
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context
 
@@ -162,7 +169,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 > debug, norm, help, options, showdef, html, ssave :: Command
 
 > quit _ _ _ = do return Quit
-> tmtype (IState raw _ _ _ uo _ _) ctxt tms 
+> tmtype (IState raw _ _ _ uo _ _ _) ctxt tms 
 >            = do icheckType raw uo ctxt (unwords tms)
 >                 return Continue
 > prove ist ctxt (nm:[]) 
@@ -271,7 +278,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 
 > repl :: IdrisState -> Context -> Args -> IO ()
 > repl ist ctxt (Batch []) = return () 
-> repl ist@(IState raw decls metas opts fixes trans imps) ctxt inp' 
+> repl ist@(IState raw decls metas opts fixes trans imps nms) ctxt inp' 
 >          = do (inp, next) <- case inp' of 
 >                        Batch (b:bs) -> return (Just b, Batch bs)
 >                        _ -> do x <- readline ("Idris> ")

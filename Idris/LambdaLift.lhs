@@ -280,7 +280,7 @@ Infix operators
 
 > scapply ist (SVar n) args
 >         = let raw = idris_context ist in
->           case ctxtLookup raw [] (fromIvorName n) of
+>           case ctxtLookup raw [] (fromIvorName ist n) of
 >             Left _ -> SApp (SVar n) args
 >             Right ifn -> let ia = implicitArgs ifn
 >                              lz = lazyArgs ifn 
@@ -288,7 +288,7 @@ Infix operators
 >                              SApp (SVar n) args'
 > scapply ist (SCon n i) args
 >         = let raw = idris_context ist in
->           case ctxtLookup raw [] (fromIvorName n) of
+>           case ctxtLookup raw [] (fromIvorName ist n) of
 >             Left _ -> SApp (SCon n i) args
 >             Right ifn -> let ia = implicitArgs ifn
 >                              lz = lazyArgs ifn 

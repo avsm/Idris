@@ -531,11 +531,12 @@ Concrete transformation data, used for rebuilding constructor transforms
 >       idris_options :: [Opt], -- global options
 >       idris_fixities :: UserOps, -- infix operators and precedences
 >       idris_transforms :: [Transform], -- optimisations
->       idris_imports :: [FilePath] -- included files
+>       idris_imports :: [FilePath], -- included files
+>       idris_names :: [(Name, Id)] -- map ivor names back to idris names
 >     }
 
 > initState :: [Opt] -> IdrisState
-> initState opts = IState newCtxt [] [] opts (UO [] [] []) [] []
+> initState opts = IState newCtxt [] [] opts (UO [] [] []) [] [] []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting
@@ -646,8 +647,20 @@ ready for typechecking
 > toIvorName :: Id -> Name
 > toIvorName i = name (show i)
 
-> fromIvorName :: Name -> Id
-> fromIvorName i = UN (show i)
+Lookup the original Idris name of a name from Ivor. Makes up a name if
+the name doesn't exist.
+
+> fromIvorName :: IdrisState -> Name -> Id
+> fromIvorName ist i = case lookup i (idris_names ist) of
+>                        Just n -> n
+>                        _ -> UN (show i)
+
+Make up a plausible Idris name from a name from Ivor (only really useful
+for display purposes, or if it really doesn't matter whether the name exists 
+or not)
+
+> fromIvorName_ :: Name -> Id
+> fromIvorName_ i = UN (show i)
 
 For desugaring do blocks and idiom brackets
 

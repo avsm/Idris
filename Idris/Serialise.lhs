@@ -374,9 +374,9 @@ typechecked forms to disk.
 >                7 -> return LataDef
 
 > instance Binary IdrisState where
->     put (IState a b c d e f g) 
->        = do put a; put b; put c; put d; put e; put f; put g
+>     put (IState a b c d e f g h) 
+>        = do put a; put b; put c; put d; put e; put f; put g; put h
 >     get = do a <- get; b <- get; c <- get;
->              d <- get; e <- get; f <- get; g <- get
->              return (IState a b c d e f g)
+>              d <- get; e <- get; f <- get; g <- get; h <- get
+>              return (IState a b c d e f g h)
 

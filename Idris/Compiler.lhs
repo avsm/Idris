@@ -52,7 +52,7 @@ already simple case trees.
 >                       = -- trace (show (x,def)) $
 >                         let lifted = lambdaLift ctxt ist x args def
 >                             scfuns = map (\ (n,args,sc) -> 
->                                          (n, scFun ctxt ist (fromIvorName n) args sc)) lifted
+>                                          (n, scFun ctxt ist (fromIvorName ist n) args sc)) lifted
 >                             xs' = allSCs xs in
 >                             mkGen gen scfuns ++ xs'
 >          mkGen gen ((n, d):ds) = (n,gen,d):(mkGen True ds)
