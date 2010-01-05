@@ -135,7 +135,7 @@ into an ivor definition, with all the necessary placeholders added.
 Don't add yet! Or everything will be frozen in advance, rather than being 
 frozen after they are needed.
 
-> mif opt ctxt acc using ui uo@(UO fix trans fr) (decl@(Freeze frfn):ds) 
+> mif opt ctxt acc using ui uo@(UO fix trans fr) (decl@(Freeze _ _ _ _):ds) 
 >     = mif opt ctxt (addEntry acc (thisNamespace using) (MN "freeze" (length ds))
 >                 (IvorFun Nothing Nothing 0 Nothing decl [] [])) using ui 
 >                 (UO fix trans fr) ds
@@ -304,8 +304,10 @@ except frozen things, which need to be added as we go, in order.
 >                = return ((ctxt, metas), UO fix trans fr)
 > addIvorDef opt raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Transform lhs rhs) _ _)
 >                = return ((ctxt, metas), UO fix trans fr)
-> addIvorDef opt raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Freeze frfn) _ _)
->                = return ((ctxt, metas), UO fix trans (frfn:fr))
+> addIvorDef opt raw (UO fix trans fr) (ctxt, metas) (n,IvorFun name tyin _ def f@(Freeze file line ns frfn) _ _)
+>        = case ctxtLookupName raw ns frfn of
+>            Right (_,fn') -> return ((ctxt, metas), UO fix trans (fn':fr))
+>            Left err -> Left (ErrContext (file ++ ":" ++ show line ++ ":") (Message (show err)))
 > addIvorDef opt raw uo@(UO fix trans fr) (ctxt, metas) (n,IvorFun (Just name) tyin _ (Just def') _ flags lazy) 
 >   = let def = if (Verbose `elem` opt) 
 >                  then trace ("Processing " ++ show n) def' else def' in

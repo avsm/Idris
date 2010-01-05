@@ -247,7 +247,7 @@ typechecked forms to disk.
 >     put (CInclude d) = do put (12 :: Word8); put d
 >     put (Fixity a b c) = do put (13 :: Word8); put a; put b; put c
 >     put (Transform a b) = do put (14 :: Word8); put a; put b
->     put (Freeze a) = do put (15 :: Word8); put a
+>     put (Freeze a b c d) = do put (15 :: Word8); put a; put b; put c; put d
 
 >     get = do tag <- getWord8
 >              case tag of
@@ -266,7 +266,7 @@ typechecked forms to disk.
 >                12 -> liftM CInclude get
 >                13 -> liftM3 Fixity get get get
 >                14 -> liftM2 Transform get get
->                15 -> liftM Freeze get
+>                15 -> liftM4 Freeze get get get get
 
 > instance Binary Datatype where
 >     put (Datatype a b c d e f g) = do put (0 :: Word8)

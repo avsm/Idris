@@ -49,7 +49,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | CLib String | CInclude String
 >           | Fixity String Fixity Int
 >           | Transform RawTerm RawTerm
->           | Freeze Id
+>           | Freeze String Int [Id] Id
 >    deriving Show
 
 Flags for controlling compilation. In particular, some functions exist only
@@ -486,7 +486,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(LatexDefs _)) _ _):ds) = gdefs ds
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Fixity _ _ _)) _ _):ds) = gdefs ds
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Transform _ _)) _ _):ds) = gdefs ds
->     gdefs ((n, IvorFun _ _ _ _ (decl@(Freeze _)) _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(Freeze _ _ _ _)) _ _):ds) = gdefs ds
 >     gdefs ((n, ifun):ds)
 >        = let Just iname = ivorFName ifun in
 >             case (ivorFType ifun, ivorDef ifun) of
