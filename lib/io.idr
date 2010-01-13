@@ -3,9 +3,9 @@ include "list.idr";
 -- FAny is to allow C functions to build up Idris data
 -- types. Obviously this needs care...
 
-data FType = FUnit | FInt | FStr | FPtr | FAny #;
+data FType = FUnit | FInt | FStr | FPtr | FAny Set;
 
-i_ftype : FType -> #;
+i_ftype : FType -> Set;
 i_ftype FInt = Int;
 i_ftype FStr = String;
 i_ftype FPtr = Ptr;
@@ -23,7 +23,7 @@ f_args (FFun nm args ret) = args;
 f_name : ForeignFun -> String;
 f_name (FFun nm args ret) = nm;
 
-data FArgList : (List FType) -> # where
+data FArgList : (List FType) -> Set where
     fNil : FArgList Nil
   | fCons : {x:FType} -> (fx:i_ftype x) -> (fxs:FArgList xs) ->
 			 (FArgList (Cons x xs));
@@ -35,26 +35,26 @@ fapp (fCons fx fxs) fys = fCons fx (fapp fxs fys);
 
 namespace IO {
 
-  data IO : # -> #;
+  data IO : Set -> Set;
 
-  data Command : # where
+  data Command : Set where
       PutStr : String -> Command
     | GetStr : Command
-    | Fork : {A:#} -> A -> Command
+    | Fork : {A:Set} -> A -> Command
     | NewLock : Int -> Command
     | DoLock : Lock -> Command
     | DoUnlock : Lock -> Command
     | NewRef : Command
-    | ReadRef : # -> Int -> Command
-    | WriteRef : {A:#} -> Int -> A -> Command
+    | ReadRef : Set -> Int -> Command
+    | WriteRef : {A:Set} -> Int -> A -> Command
     | While : (IO Bool) -> (IO ()) -> Command
-    | WhileAcc : {A:#} -> (IO Bool) -> A -> (A -> IO A) -> Command
+    | WhileAcc : {A:Set} -> (IO Bool) -> A -> (A -> IO A) -> Command
     | Within : Int -> (IO A) -> (IO A) -> Command
-    | IOLift : {A:#} -> (IO A) -> Command 
+    | IOLift : {A:Set} -> (IO A) -> Command 
     | Foreign : (f:ForeignFun) -> 
   	        (args:FArgList (f_args f)) -> Command;
 
-  Response : Command -> #;
+  Response : Command -> Set;
   Response (PutStr s) = ();
   Response GetStr = String;
   Response (Fork proc) = ();
@@ -71,7 +71,7 @@ namespace IO {
   Response (Foreign t args) = i_ftype (f_retType t);
 
 
-  data IO : # -> # where
+  data IO : Set -> Set where
      IOReturn : A -> (IO A)
    | IODo : (c:Command) -> ((Response c) -> (IO A)) -> (IO A);
 
@@ -121,7 +121,7 @@ apply {a} {b} fn arg = do { f : (a->b) <- fn; -- grr
 
 data IOException = IOExcept String; 
 
-data IOe : # -> # where
+data IOe : Set -> Set where
    IOK : (IO A) -> (IOe A)
  | IOError : String -> (IOe A);
 
@@ -192,12 +192,12 @@ readIORef (MkIORef i) = readIORefPrim i;
 writeIORef : (IORef A) -> A -> (IO ());
 writeIORef (MkIORef i) val = writeIORefPrim i val;
 
-mkFType' : (List FType) -> FType -> #   %nocg;
+mkFType' : (List FType) -> FType -> Set   %nocg;
 
 mkFType' Nil rt = IO (i_ftype rt);
-mkFType' (Cons t ts) rt = #((i_ftype t) -> (mkFType' ts rt));
+mkFType' (Cons t ts) rt = (i_ftype t) -> (mkFType' ts rt);
 
-mkFType : ForeignFun -> #    %nocg;
+mkFType : ForeignFun -> Set    %nocg;
 mkFType (FFun fn args rt) = mkFType' args rt;
 
 mkFDef : String -> (ts:List FType) -> (xs:List FType) -> (FArgList xs) ->

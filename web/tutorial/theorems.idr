@@ -10,7 +10,7 @@ theorems about programs to be stated and proved. Equality is built in,
 but conceptually has the following definition: --}
 
 {->
-data (=) : a -> b -> # where
+data (=) : a -> b -> Set where
    refl x : x = x;
 >-}
 

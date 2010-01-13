@@ -292,6 +292,7 @@ lexVar cont cs =
       ("infixr",rest) -> cont TokenInfixR rest
       ("exists",rest) -> cont TokenExists rest
 -- Types
+      ("Set",rest) -> cont TokenType rest
       ("Int",rest) -> cont TokenIntType rest
       ("Char",rest) -> cont TokenCharType rest
       ("Float",rest) -> cont TokenFloatType rest

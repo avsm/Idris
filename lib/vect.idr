@@ -2,11 +2,11 @@ include "nat.idr";
 
 infixr 5 ::;
 
-data Vect : # -> Nat -> # where
+data Vect : Set -> Nat -> Set where
    VNil : Vect A O
  | (::) : A -> (Vect A k) -> (Vect A (S k));
 
-data Fin : Nat -> # where
+data Fin : Nat -> Set where
    fO : Fin (S k)
  | fS : (Fin k) -> (Fin (S k));
 
@@ -28,9 +28,9 @@ vapp (x :: xs) ys = x :: vapp xs ys;
 
 -- Membership predicate for vectors, and means to compute one.
 
-using (A:#, n:Nat, i:Fin n, x:A, y:A, xs:Vect A n) {
+using (A:Set, n:Nat, i:Fin n, x:A, y:A, xs:Vect A n) {
 
-  data ElemIs : (Fin n) -> A -> (Vect A n) -> # where
+  data ElemIs : (Fin n) -> A -> (Vect A n) -> Set where
      first : (ElemIs fO x (x :: xs))
    | later : (ElemIs i x xs) -> (ElemIs (fS i) x (y :: xs));
 }

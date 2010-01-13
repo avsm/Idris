@@ -18,7 +18,7 @@ data Ty = TyInt | TyBool | TyFun Ty Ty;
 {-- We can write a function to translate these representations to an
     actual Idris type: --}
 
-interpTy : Ty -> #;
+interpTy : Ty -> Set;
 interpTy TyInt = Int;
 interpTy TyBool = Bool;
 interpTy (TyFun A T) = interpTy A -> interpTy T;
@@ -34,7 +34,7 @@ using (G:Vect Ty n) {
 
 {-- The representation of expressions is the following: --}
 
-  data Expr : (Vect Ty n) -> Ty -> # where
+  data Expr : (Vect Ty n) -> Ty -> Set where
      Var : (i:Fin n) -> Expr G (vlookup i G)
    | Val : (x:interpTy T) -> Expr G T
    | Lam : Expr (A::G) T -> Expr G (TyFun A T)
@@ -102,7 +102,7 @@ function from "A" to "T" and a value of type "A": --}
     well as their types. "Env" is an environment, indexed over the
     types in scope. --}
 
-  data Env : (Vect Ty n) -> # where
+  data Env : (Vect Ty n) -> Set where
      Empty : (Env VNil)
    | Extend : (res:interpTy T) -> (Env G) -> 
 	      (Env (T :: G));

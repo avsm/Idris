@@ -73,7 +73,7 @@
 >             "import","export","inline","where","partial","syntax","lazy",
 >             "infix","infixl","infixr","do","refl","if","then","else","let",
 >             "in","return","include","exists", "with"]
-> types = ["String","Int","Char","Float","Ptr","Lock","Handle"]
+> types = ["String","Int","Char","Float","Ptr","Lock","Handle","Set"]
 
 > markupSpecial ms cs = case span isAllowed cs of
 >      (var,rest) -> (None, '%':var):(markupText ms rest)

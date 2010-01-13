@@ -13,7 +13,7 @@ nevertheless /provably/ equal. For example, recall the "parity"
 function:
 --}
 
-data Parity : Nat -> # where
+data Parity : Nat -> Set where
    even : Parity (plus n n)
  | odd  : Parity (S (plus n n));
 
@@ -203,7 +203,7 @@ is a common pattern, linking a /representation/ (in this case
 "Binary") with a /meaning/ (in this case "Nat"):
 --}
 
-data Binary : Nat -> # where
+data Binary : Nat -> Set where
    bEnd : Binary O
  | bO : Binary n -> Binary (plus n n)
  | bI : Binary n -> Binary (S (plus n n));

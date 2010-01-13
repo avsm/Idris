@@ -1,5 +1,5 @@
-data Tactic : # where
-    TFill : {a:#} -> a -> Tactic
+data Tactic : Set where
+    TFill : {a:Set} -> a -> Tactic
   | TRefine : String -> Tactic
   | TTrivial : Tactic
   | TTry : Tactic -> Tactic -> Tactic

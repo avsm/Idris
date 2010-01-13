@@ -10,7 +10,7 @@ if_then_else : Bool -> |(t:A) -> |(e:A) -> A;
 if_then_else True t f = t;
 if_then_else False t f = f;
 
-data so : Bool -> # where oh : so True;
+data so : Bool -> Set where oh : so True;
 
 infixl 4 &&,||;
 

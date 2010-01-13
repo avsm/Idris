@@ -43,7 +43,7 @@ plus (S k) y = S (plus k y);
 -- Unary multiplication
 mult : Nat -> Nat -> Nat;
 mult O     y = O;
-mult (S k) y = plus y (mult k y)l
+mult (S k) y = plus y (mult k y);
 >-}
 
 {-- Unlike Haskell, there is no restriction on whether types and
@@ -89,7 +89,7 @@ GADTs in Haskell: --}
 
 {->
 infixr 5 ::;
-data Vect : # -> Nat -> # where
+data Vect : Set -> Nat -> Set where
    VNil : Vect a O
  | (::) : a -> Vect a k -> Vect a (S k);
 >-}
@@ -98,7 +98,7 @@ data Vect : # -> Nat -> # where
 declaration is rather different from the simple 
 type declarations above. We explicitly state the type of the type
 constructor "Vect" - it takes a type and a "Nat" as an argument, where
-"#" stands for the type of types. We say that "Vect" is
+"Set" stands for the type of types. We say that "Vect" is
 /parameterised/ by a type, and /indexed/ over "Nat". 
 Each constructor targets a different part of the family of
 types. "VNil" can only be used to construct
@@ -148,7 +148,7 @@ of elements. They are declared as follows (again, in the standard
 library): --}
 
 {->
-data Fin : Nat -> # where
+data Fin : Nat -> Set where
    fO : Fin (S k)
  | fS : Fin k -> Fin (S k);
 >-}
@@ -197,7 +197,7 @@ vlookup : Fin n -> Vect a n -> a;
 alternatively be declared as: --}
 
 {->
-vlookup : {a:#} -> {n:Nat} -> Fin n -> Vect a n -> a;
+vlookup : {a:Set} -> {n:Nat} -> Fin n -> Vect a n -> a;
 >-}
 
 {-- We call "a" and "n" /implicit arguments/. Any arguments, such as
@@ -236,7 +236,7 @@ state the types of the implicit arguments in the following definition,
 which defines a predicate on vectors:
 --}
 
-data Elem : a -> (Vect a n) -> # where
+data Elem : a -> (Vect a n) -> Set where
    here :  {x:a} ->   {xs:Vect a n} -> Elem x (x :: xs)
  | there : {x,y:a} -> {xs:Vect a n} -> Elem x xs -> Elem x (y :: xs);
 
@@ -260,7 +260,7 @@ appear within the block:
 
 {->
 using (x:a, y:a, xs:Vect a n) {
-  data Elem : a -> (Vect a n) -> # where
+  data Elem : a -> (Vect a n) -> Set where
      here  : Elem x (x :: xs)
    | there : Elem x xs -> Elem x (y :: xs);
 }

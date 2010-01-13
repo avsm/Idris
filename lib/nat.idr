@@ -115,7 +115,7 @@ mult_distrib proof {
 
 ---- Comparing Nats
 
-data Compare : Nat -> Nat -> # where
+data Compare : Nat -> Nat -> Set where
    cmpLT : (y:Nat) -> (Compare x (plus x (S y)))
  | cmpEQ : Compare x x
  | cmpGT : (x:Nat) -> (Compare (plus y (S x)) y);

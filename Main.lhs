@@ -17,6 +17,7 @@
 > import List
 > import Maybe
 > import Debug.Trace
+> import Distribution.Version
 > import Prelude hiding (catch)
 
 > import Idris.AbsSyntax
@@ -29,8 +30,9 @@
 > import Idris.ConTrans
 > import Idris.Fontlock
 > import Idris.Serialise
-
 > import Idris.RunIO
+
+> import Paths_idris
 
 Load things in this order:
 
@@ -40,7 +42,11 @@ Load things in this order:
 * Load prelude
 * Load users program
 
-> idris_version = "0.1.2"
+> idris_version = showV (versionBranch version)
+>   where
+>     showV [] = ""
+>     showV [a] = show a
+>     showV (x:xs) = show x ++ "." ++ showV xs
 
 > data Args = Batch [String]
 >           | NoArgs
