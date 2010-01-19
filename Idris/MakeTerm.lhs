@@ -20,12 +20,14 @@ into an ivor definition, with all the necessary placeholders added.
 >     = let (rty, imp) = addImplWith using ctxt ty
 >           ity = makeIvorTerm using ui uo n ctxt rty
 >           extCtxt = addEntry ctxt (thisNamespace using) n (IvorFun Nothing (Just ity) 
->                                       imp Nothing decl flags (getLazy ty))
+>                                       imp Nothing decl flags (map (+p) (getLazy ty)))
 >           pclauses = map (mkPat extCtxt imp) clauses in
 >       IvorFun (Just (toIvorName (fullName using n))) 
 >                   (Just (Annotation (FileLoc file line) ity)) imp 
->                   (Just (PattDef (Patterns pclauses))) decl flags (getLazy ty)
->   where mkPat ectx imp (id,(RawClause lhs rhs)) 
+>                   (Just (PattDef (Patterns pclauses))) decl flags 
+>                   (map (+p) (getLazy ty))
+>   where p = length (params using)
+>         mkPat ectx imp (id,(RawClause lhs rhs)) 
 >               = let lhs' = addPlaceholders ectx using uo lhs in
 >                     case (getFn lhs', getRawArgs lhs') of
 >                          (fid, pats) ->
