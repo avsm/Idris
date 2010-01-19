@@ -55,7 +55,7 @@ HACK: better to have a flag when building the transform. FIXME!
 
 >          lhsSafe (Trans nm _ _) = not (isSuffixOf "_ID" nm)
 
-> allTrans ts tm = foldl (\tm (l,r) -> Ivor.ViewTerm.transform l r tm) tm ts
+> allTrans ts tm = foldl (\tm (l,r) -> Ivor.ViewTerm.transform l r tm) tm (ts++ts)
 
 Look at all the definitions in the context, and make the relevant constructor
 transformations for forcing, detagging and collapsing.

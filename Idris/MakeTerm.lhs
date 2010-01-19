@@ -312,8 +312,8 @@ except frozen things, which need to be added as we go, in order.
 >   = let def = if (Verbose `elem` opt) 
 >                  then trace ("Processing " ++ show n) def' else def' in
 >       case def of
->         PattDef ps -> -- trace (show ps) $
->                       do (ctxt, newdefs) <- addPatternDefSC ctxt name (unjust tyin) ps
+>         PattDef ps -> -- trace (show (ps, getSpec flags fr)) $
+>                       do (ctxt, newdefs) <- addPatternDefSC ctxt name (unjust tyin) ps (getSpec flags fr)
 >                          if (null newdefs) then return ((ctxt, metas), uo)
 >                            else do r <- addMeta (Verbose `elem` opt) raw ctxt metas newdefs
 >                                    return (r, uo)

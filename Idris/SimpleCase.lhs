@@ -85,11 +85,15 @@
 > deAnnot (App f a) = App (deAnnot f) (deAnnot a)
 > deAnnot x = x
 
-> addPatternDefSC :: Context -> Name -> ViewTerm -> Patterns ->
+> addPatternDefSC :: Context -> Name -> ViewTerm -> Patterns -> 
+>                    Maybe [(Name, Int)] ->
 >                    TTM (Context, [(Name, ViewTerm)])
-> addPatternDefSC ctxt nm ty ps = do
+> addPatternDefSC ctxt nm ty ps spec = do
 >     -- just allow general recursion for now
->     (ctxt', newdefs) <- addPatternDef ctxt nm ty ps [Holey,Partial,GenRec]
+>     let opts = case spec of
+>                  Nothing -> [Holey, Partial, GenRec]
+>                  Just fns -> [Holey, Partial, GenRec, Specialise fns]
+>     (ctxt', newdefs) <- addPatternDef ctxt nm ty ps opts
 >     (_, patts) <- getPatternDef ctxt' nm
 >     let (ps', ds) = liftCases nm patts
 >     if (null ds) then return (ctxt', newdefs)
@@ -99,7 +103,7 @@
 >          return (ctxt', newdefs++newdefs')
 >  where addAll ctxt [] nds = return (ctxt, nds)
 >        addAll ctxt ((n,ty,ps):rs) nds = do
->          (ctxt', newdefs') <- addPatternDefSC ctxt n ty ps
+>          (ctxt', newdefs') <- addPatternDefSC ctxt n ty ps spec
 >          addAll ctxt' rs (newdefs'++nds) 
 
 > addMeta :: Bool ->
