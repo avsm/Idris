@@ -1,0 +1,12 @@
+New in 0.1.5
+------------
+
+* Changed '#' to Set for the type of types
+  - old syntax works, but is deprecated and will be removed soon.
+* 'syntax' definitions
+* %spec works in pattern clauses as well as CAFs
+
+New in 0.1.4
+------------
+
+* Namespaces
