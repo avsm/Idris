@@ -49,6 +49,7 @@ We store everything directly as a 'ViewTerm' from Ivor.
 >           | CLib String | CInclude String
 >           | Fixity String Fixity Int
 >           | Transform RawTerm RawTerm
+>           | SynDef Id [Id] RawTerm 
 >           | Freeze String Int [Id] Id
 >    deriving Show
 
@@ -80,7 +81,8 @@ User defined operators have associativity and precedence
 
 > data UserOps = UO { fixityDecls :: Fixities,
 >                     transforms :: [(ViewTerm, ViewTerm)],
->                     frozen :: [Id] }
+>                     frozen :: [Id],
+>                     syndefs :: [Syntax] }
 >              deriving Show
 
 Function types and clauses are given separately, so we'll parse them
@@ -100,7 +102,6 @@ the system to insert a hole for a proof that turns it into the right type.
 >                | PDoUsing (Id, Id) [ParseDecl]
 >                | PIdiom (Id, Id) [ParseDecl]
 >                | PNamespace Id [ParseDecl]
->                | PSyntax Id [Id] RawTerm 
 >    deriving Show
 
 > collectDecls :: [ParseDecl] -> Result [Decl]
@@ -148,7 +149,6 @@ the system to insert a hole for a proof that turns it into the right type.
 >                   Success d ->
 >                       cds ((Idiom up ua d):rds) fwds ds
 >                   failure -> failure
->         cds rds fwds ((PSyntax name args to):ds) = cds rds fwds ds -- TODO
 >         cds rds fwds (d:ds) = fail $ "Invalid declaration: " ++ show d
 >         cds rds fwds [] = return (reverse rds)
 
@@ -486,6 +486,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(LatexDefs _)) _ _):ds) = gdefs ds
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Fixity _ _ _)) _ _):ds) = gdefs ds
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Transform _ _)) _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(SynDef _ _ _)) _ _):ds) = gdefs ds
 >     gdefs ((n, IvorFun _ _ _ _ (decl@(Freeze _ _ _ _)) _ _):ds) = gdefs ds
 >     gdefs ((n, ifun):ds)
 >        = let Just iname = ivorFName ifun in
@@ -514,6 +515,12 @@ A transformation is a function converting a ViewTerm to a new form.
 >                        (Maybe (ViewTerm -> ViewTerm)) 
 >                        (Maybe TransData)
 
+A syntax definition is a syntax level transformation from one term to another
+(macros, essentially).
+
+> data Syntax = Syntax Id [Id] RawTerm
+>   deriving Show
+
 Concrete transformation data, used for rebuilding constructor transforms
 
 > data TransData = Force (Maybe (Name, Name)) Int Name [Name] 
@@ -531,12 +538,13 @@ Concrete transformation data, used for rebuilding constructor transforms
 >       idris_options :: [Opt], -- global options
 >       idris_fixities :: UserOps, -- infix operators and precedences
 >       idris_transforms :: [Transform], -- optimisations
+>       idris_syntax :: [Syntax], -- syntax macros
 >       idris_imports :: [FilePath], -- included files
 >       idris_names :: [(Name, Id)] -- map ivor names back to idris names
 >     }
 
 > initState :: [Opt] -> IdrisState
-> initState opts = IState newCtxt [] [] opts (UO [] [] []) [] [] []
+> initState opts = IState newCtxt [] [] opts (UO [] [] [] []) [] [] [] []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting
@@ -587,7 +595,7 @@ Only do it in argument position
 >                             if (i `elem` nms) then return ()
 >                                 else put (i:nms, tot+1)
 >               | otherwise = return ()
->           addImplB env (RApp _ _ f a) argpos
+>           addImplB env ap@(RApp _ _ f a) argpos
 >                    = do addImplB env f False
 >                         addImplB env a True
 >           addImplB env (RAppImp _ _ _ f a) argpos 
@@ -662,7 +670,7 @@ or not)
 > fromIvorName_ :: Name -> Id
 > fromIvorName_ i = UN (show i)
 
-For desugaring do blocks and idiom brackets
+For desugaring -- do blocks, idiom brackets and syntax definitions
 
 > data UndoInfo = UI Id Int -- bind, bind implicit
 >                    Id Int -- return, return implicit
@@ -724,14 +732,15 @@ programmer doesn't have to write them down inside the param block.
 
 > defDo = UI bindName 2 retName 1 retName 1 applyName 2
 
-> toIvor :: UndoInfo -> Id -> RawTerm -> ViewTerm
-> toIvor ui fname tm = evalState (toIvorS tm) (0,1)
+> toIvor :: UserOps -> UndoInfo -> Id -> RawTerm -> ViewTerm
+> toIvor uo ui fname tm = evalState (toIvorS tm) (0,1)
 >   where
 >     toIvorS :: RawTerm -> State (Int, Int) ViewTerm
 >     toIvorS (RVar f l n) = return $ Annotation (FileLoc f l) (Name Unknown (toIvorName n))
->     toIvorS (RApp file line f a) = do f' <- toIvorS f
->                                       a' <- toIvorS a
->                                       return (Annotation (FileLoc file line) (App f' a'))
+>     toIvorS ap@(RApp file line f a)
+>            = do f' <- toIvorS f
+>                 a' <- toIvorS a
+>                 return (Annotation (FileLoc file line) (App f' a'))
 >     toIvorS (RBind (MN "X" 0) (Pi _ _ ty) sc) 
 >            = do ty' <- toIvorS ty
 >                 sc' <- toIvorS sc
@@ -807,13 +816,13 @@ Convert a raw term to an ivor term, adding placeholders
 > makeIvorTerm :: Implicit -> UndoInfo -> UserOps -> Id -> Ctxt IvorFun -> RawTerm -> ViewTerm
 > makeIvorTerm using ui uo n ctxt tm 
 >                  = let expraw = addPlaceholders ctxt using uo tm in
->                                 toIvor ui n expraw
+>                                 toIvor uo ui n expraw
 
 Add placeholders so that implicit arguments can be filled in. Also desugar user infix apps.
 FIXME: I think this'll fail if names are shadowed.
 
 > addPlaceholders :: Ctxt IvorFun -> Implicit -> UserOps -> RawTerm -> RawTerm
-> addPlaceholders ctxt using (UO uo _ _) tm = ap [] tm
+> addPlaceholders ctxt using (UO uo _ _ syns) tm = ap [] tm
 >     -- Count the number of args we've made explicit in an application
 >     -- and don't add placeholders for them. Reset the counter if we get
 >     -- out of an application
@@ -838,7 +847,10 @@ FIXME: I think this'll fail if names are shadowed.
 >                   Right (_, fulln) -> RVar f l fulln
 >                   _ -> RVar f l n
 >           ap ex (RAppImp file line n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
->           ap ex (RApp file line f a) = (RApp file line (ap ex f) (ap [] a))
+>           ap ex app@(RApp file line f a) = 
+>               case doSyn app syns f [a] of
+>                   RApp _ _ f a -> RApp file line (ap ex f) (ap [] a)
+>                   t -> ap ex t
 >           ap ex (RBind n (Pi p l ty) sc)
 >               = RBind n (Pi p l (ap [] ty)) (ap [] sc)
 >           ap ex (RBind n (Lam ty) sc)
@@ -862,6 +874,30 @@ FIXME: I think this'll fail if names are shadowed.
 >           apdo (DoLet file line x t r) = DoLet file line x (ap [] t) (ap [] r)
 
 >           pnames = paramNames using
+
+>           doSyn o syns (RApp _ _ f a) args = doSyn o syns f (a:args)
+>           doSyn o syns v args 
+>                = case ap [] v of
+>                      RVar f l n -> 
+>                        case findSyn n syns of
+>                          Just (a, rhs) -> replSyn f l rhs (zip a args)
+>                          Nothing -> o
+>                      _ -> o
+
+>           findSyn n [] = Nothing
+>           findSyn n ((Syntax f as rhs):xs) | n == f = Just (as, rhs)
+>                                            | otherwise = findSyn n xs
+
+>           replSyn f l t@(RVar _ _ n) as = case lookup n as of
+>                                             Just v -> v
+>                                             Nothing -> RVar f l n
+>           replSyn f l (RApp _ _ fn a) as 
+>                 = RApp f l (replSyn f l fn as) (replSyn f l a as)
+>           replSyn f l (RInfix _ _ op x y) as 
+>                 = RInfix f l op (replSyn f l x as) (replSyn f l y as)
+>           replSyn f l (RAppImp _ _ x fn a) as
+>                 = RAppImp f l x (replSyn f l fn as) (replSyn f l a as)
+>           replSyn _ _ x _ = x
 
 Go through the arguments; if an implicit argument has the same name as one
 in our list of explicit names to add, add it.

@@ -205,10 +205,14 @@ typechecked forms to disk.
 >                            Just a' -> Just (rebuildTrans a')
 >              return (Trans n trans a)
 
+> instance Binary Syntax where
+>     put (Syntax f n t) = do put f; put n; put t
+>     get = liftM3 Syntax get get get
+
 > instance Binary UserOps where
->     put (UO ds ts f) = do put ds; put ts; put f
->     get = do ds <- get; ts <- get; f <- get;
->              return (UO ds ts f)
+>     put (UO ds ts f s) = do put ds; put ts; put f; put s
+>     get = do ds <- get; ts <- get; f <- get; s <- get;
+>              return (UO ds ts f s)
 
 > instance Binary IvorFun where
 >     put (IvorFun a b c d e f g) = 
@@ -374,9 +378,9 @@ typechecked forms to disk.
 >                7 -> return LataDef
 
 > instance Binary IdrisState where
->     put (IState a b c d e f g h) 
->        = do put a; put b; put c; put d; put e; put f; put g; put h
+>     put (IState a b c d e f g h i) 
+>        = do put a; put b; put c; put d; put e; put f; put g; put h; put i
 >     get = do a <- get; b <- get; c <- get;
->              d <- get; e <- get; f <- get; g <- get; h <- get
->              return (IState a b c d e f g h)
+>              d <- get; e <- get; f <- get; g <- get; h <- get; i <- get
+>              return (IState a b c d e f g h i)
 

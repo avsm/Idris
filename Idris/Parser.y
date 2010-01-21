@@ -201,7 +201,7 @@ Declaration: Function { $1 }
            | Params '{' Program '}' { PParams $1 $3 }
            | Namespace '{' Program '}' { PNamespace $1 $3 }
            | Transform { RealDecl $1 }
-           | syntax Name NamesS '=' Term ';' { PSyntax $2 $3 $5 }
+           | syntax Name NamesS '=' Term ';' { RealDecl (SynDef $2 $3 $5) }
            | cinclude string { RealDecl (CInclude $2) }
            | clib string { RealDecl (CLib $2) }
 
