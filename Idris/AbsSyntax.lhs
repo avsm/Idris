@@ -238,6 +238,7 @@ the system to insert a hole for a proof that turns it into the right type.
 Raw terms, as written by the programmer with no implicit arguments added.
 
 > data RawTerm = RVar String Int Id
+>              | RVars String Int [Id]
 >              | RExpVar String Int Id -- variable with all explicit args
 >              | RApp String Int RawTerm RawTerm
 >              | RAppImp String Int Id RawTerm RawTerm -- Name the argument we make explicit
@@ -737,6 +738,7 @@ programmer doesn't have to write them down inside the param block.
 >   where
 >     toIvorS :: RawTerm -> State (Int, Int) ViewTerm
 >     toIvorS (RVar f l n) = return $ Annotation (FileLoc f l) (Name Unknown (toIvorName n))
+>     toIvorS (RVars f l ns) = return $ Annotation (FileLoc f l) (Overloaded (map toIvorName ns))
 >     toIvorS ap@(RApp file line f a)
 >            = do f' <- toIvorS f
 >                 a' <- toIvorS a
@@ -835,7 +837,7 @@ FIXME: I think this'll fail if names are shadowed.
 >                     mkApp f l (RVar f l fulln)
 >                               ((mkImplicitArgs 
 >                                (map fst (fst (getBinders ty []))) imp ex) ++ pargs)
->                   Left err@(Ambiguous _ _) -> RError f l (show err)
+>                   Left err@(Ambiguous _ ns) -> RError f l (show err) -- RVars f l ns
 >                   Left err@(WrongNamespace _ _) -> RError f l (show err)
 >                   Right (_, fulln) -> RVar f l fulln
 >                   _ -> RVar f l n

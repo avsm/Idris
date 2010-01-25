@@ -54,4 +54,15 @@ app_assocCons proof {
 	%refl;
 	%qed;
 };
- 
+
+app_Nil : (xs:List a) -> (app xs Nil = xs);
+app_Nil Nil = refl _;
+app_Nil (Cons x xs) = ?appNil_Cons;
+appNil_Cons proof {
+	%intro a;
+	%intro;
+	%rewrite <- app_Nil xs;
+	%refl;
+	%qed;
+};
+

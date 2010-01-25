@@ -3,7 +3,9 @@ include "vect.idr";
 -- Yes, it's a DSL! One which gives a sequence of operations for converting a
 -- list into its permutation.
 
-using (x:A, xs:List A, xs':List A, xs'':List A, ys:List A, ys':List A)
+using (x:A, xs:List A, xs':List A, xs'':List A, 
+       ys:List A, ys':List A,
+       zs:List A)
 {
   data Perm : (List A) -> (List A) -> Set where
      pnil : {A:Set} -> (Perm {A} Nil Nil)
@@ -15,7 +17,7 @@ using (x:A, xs:List A, xs':List A, xs'':List A, ys:List A, ys':List A)
   perm_id {xs=Nil} = pnil;
   perm_id {xs=Cons x xs} = pskip perm_id;
 
-  perm_sym : (Perm xs xs') -> (Perm xs' xs);
+  perm_sym : Perm xs xs' -> Perm xs' xs;
   perm_sym pnil = pnil;
   perm_sym (pskip p) = pskip (perm_sym p);
   perm_sym pswap = pswap;
@@ -25,7 +27,8 @@ using (x:A, xs:List A, xs':List A, xs'':List A, ys:List A, ys':List A)
   perm_refl {xs=Nil} = pnil;
   perm_refl {xs=Cons x xs} = pskip perm_refl;
 
-  perm_app_head : (xs:List A) -> (Perm xs' ys') -> (Perm (app xs xs') (app xs ys'));
+  perm_app_head : (xs:List A) -> 
+                  Perm xs' ys' -> Perm (app xs xs') (app xs ys');
   perm_app_head Nil p = p;
   perm_app_head (Cons x xs) p = pskip (perm_app_head xs p);
 
@@ -33,8 +36,8 @@ using (x:A, xs:List A, xs':List A, xs'':List A, ys:List A, ys':List A)
   perm_add_cons (pskip p) = p;
   perm_add_cons pswap = pskip perm_id;
 
-  perm_app : (Perm xs ys) -> (Perm xs' ys') ->
-             (Perm (app xs xs') (app ys ys'));
+  perm_app : Perm xs ys -> Perm xs' ys' ->
+             Perm (app xs xs') (app ys ys');
   perm_app {xs=Nil} {ys=Nil} p p' = p';
   perm_app {xs=Cons x xs} {ys=Cons y ys} {xs'} {ys'} (ptrans p1 p2) p' = 
      let r1 = perm_app p1 p' in
@@ -63,12 +66,26 @@ using (x:A, xs:List A, xs':List A, xs'':List A, ys:List A, ys':List A)
                Perm (Cons y (Cons x ys)) xs;
   perm_swapl {xs=Cons a (Cons b xs)} p = ptrans pswap p;
 
+  perm_move_cons : Perm xs (app ys (Cons x zs)) ->
+                   Perm xs (Cons x (app ys zs));
+  perm_move_cons {ys=Nil} p = p;
+  perm_move_cons {ys=Cons y ys} p 
+        = perm_swapr (perm_sym 
+             (perm_rewrite_cons (perm_sym p) (perm_move_cons perm_id)));
 
-  -- This is by induction on the *list*, not the permutation, despite
+  perm_cons_move : Perm xs (Cons x (app ys zs)) ->
+                   Perm xs (app ys (Cons x zs));
+                  
+  perm_cons_move {ys=Nil} p = p;
+  perm_cons_move {ys=Cons y ys} p 
+        = perm_sym (perm_rewrite_cons
+             (perm_swapl (perm_sym p)) (perm_cons_move perm_id));
+
+  -- This is by induction on the *list* xs, not the permutation, despite
   -- initial appearances.
 
-  perm_app_cons : (Perm xs (app xs' ys')) ->
-  		  (Perm (Cons x xs) (app xs' (Cons x ys')));
+  perm_app_cons : Perm xs (app xs' ys') ->
+  		  Perm (Cons x xs) (app xs' (Cons x ys'));
   perm_app_cons {xs'=Nil} {ys'=Nil} p = pskip p;
   perm_app_cons {x} {xs=Cons x' xs} {xs'=Cons x' xs'}
                 (pskip p) = let prec = perm_app_cons {x=x} p in
@@ -79,6 +96,24 @@ using (x:A, xs:List A, xs':List A, xs'':List A, ys:List A, ys':List A)
   perm_app_cons {xs=Cons x' xs} {xs'=Cons x' xs'}
                 (ptrans p1 p2) = perm_swapl (pskip (perm_app_cons
   		  (perm_add_cons (ptrans p1 p2)))); -- list is smaller!
+
+  -- Again by induction on the list xs. Maybe there are shorter proofs,
+  -- but it doesn't really matter, we're not going to run them...
+
+  perm_app_swap : Perm (app xs ys) zs -> Perm (app ys xs) zs;
+  perm_app_swap {xs=Nil} p ?= p;   [papp_swap_nil]
+  perm_app_swap {xs=Cons x xs} {zs=Cons x zs} 
+                (pskip p) = perm_sym
+                     (perm_app_cons (perm_sym (perm_app_swap p)));
+  perm_app_swap {xs=Cons x (Cons y _)}
+                pswap = perm_swapr (perm_sym 
+		        (perm_app_cons 
+			 (perm_rewrite_cons 
+			  (perm_app_cons perm_id) (perm_app_swap perm_id))));
+  perm_app_swap {xs=Cons x xs} {zs=Cons z zs}
+                (ptrans p1 p2) = perm_sym (perm_cons_move 
+                                  (perm_sym (perm_rewrite_cons 
+                                    (ptrans p1 p2) (perm_app_swap perm_id))));
 
 }
 
@@ -94,4 +129,11 @@ papp_cons proof {
 	%fill perm_app_head X (perm_sym p');
 	%fill r2;
 	%qed;
- };
+};
+
+papp_swap_nil proof {
+	%intro;
+	%use value;
+	%fill app_Nil X1;
+	%qed;
+};

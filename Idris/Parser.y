@@ -167,10 +167,10 @@ import Debug.Trace
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
-          empty unit '_' if then else ptrtype handletype locktype metavar NONE brackname lazy
+          empty unit '_' ptrtype handletype locktype metavar NONE brackname lazy
           oid '[' '~' lpair PAIR return transarrow exists
 %left APP
-
+%nonassoc if then else
 
 %%
 
