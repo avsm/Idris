@@ -126,7 +126,7 @@ which are themselves collapsible.
 >          forceable = nub (map (\ (x,y) -> (x, force ctxt y acc, Ivor.TT.getArgTypes y)) cons)
 >          detaggable = pdisjoint ctxt detagin
 >          recursive = nub (map (\ (x,y) -> (x, recArgs n y acc, Ivor.TT.getArgTypes y)) cons)
->          collapsible = detaggable && all droppedAll (combine forceable recursive)
+>          collapsible = (detaggable && all droppedAll (combine forceable recursive)) || (n == name "Proof")
 >          nattable = isNat forceable recursive
 >               in
 >          -- trace (show n ++ " " ++ show (nattable) ++ " " ++ show (forceable, recursive)) $ -- FORCING \n\t" ++ show forceable) 

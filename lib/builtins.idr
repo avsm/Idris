@@ -25,6 +25,22 @@ __eq_repl A x x (refl x) P p = p;
 __eq_sym : (A:Set) -> (a:A) -> (b:A) -> (p:(a=b)) -> (b=a);
 __eq_sym A a a p = refl _;
 
+-- For proofs which should not be stored at run-time. Programs can
+-- construct objects of type Proof A, and manipulate them,
+-- but not inspect them. 'Proof' is treated as collapsible.
+
+data Proof : (A:Set) -> Set where
+  __mkProof : (a:A) -> Proof A;
+
+prove : (a:A) -> Proof A;
+prove x = __mkProof x;
+
+-- This is the only function allowed to manipulate proofs.
+-- It'd be easier if we could hide '__mkProof'!
+
+proof_bind : Proof A -> (A -> Proof B) -> Proof B;
+proof_bind (__mkProof a) p = p a;
+
 -- Used by the 'believe' tactic to make a temporary proof. Programs
 -- using this are not to be trusted!
 
