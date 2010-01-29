@@ -36,6 +36,8 @@ Build-type:     Simple
 Data-files:     Prelude.e *.idr
 Data-dir:       lib
 
+Extra-source-files: CHANGELOG
+
 Library
         Exposed-modules: Idris.Parser, Idris.Lexer, Idris.Lib, 
                          Idris.AbsSyntax, Idris.Context, Idris.Latex

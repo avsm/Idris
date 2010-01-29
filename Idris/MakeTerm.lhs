@@ -343,7 +343,8 @@ except frozen things, which need to be added as we go, in order.
 >         LataDef -> case tyin of
 >                       Just ty -> do ctxt <- declareData ctxt name ty
 >                                     return ((ctxt, metas), uo)
->         DataDef ind e -> do c <- addDataNoElim ctxt ind
+>         DataDef ind e -> -- trace (show ind) $
+>                          do c <- addDataNoElim ctxt ind
 >                           -- add once to fill in placeholders
 >                             ctxt <- if e then do
 >                                     d <- getInductive c name 

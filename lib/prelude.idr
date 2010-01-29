@@ -1,7 +1,7 @@
 flip : (a -> b -> c) -> b -> a -> c;
 flip f x y = f y x;
 
-infixl 5 ==;
+infixl 5 ==, /=;
 infixl 6 <, <=, >, >=;
 infixl 7 +,-,++;
 infixl 8 *,/;
@@ -35,6 +35,9 @@ infixl 8 *,/;
 
 (==) : Int -> Int -> Bool inline;
 (==) x y = __eq x y;
+
+(/=) : Int -> Int -> Bool inline;
+(/=) x y = not (__eq x y);
  
 include "nat.idr";
 include "maybe.idr";

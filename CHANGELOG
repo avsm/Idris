@@ -5,6 +5,8 @@ New in 0.1.5
   - old syntax works, but is deprecated and will be removed soon.
 * 'syntax' definitions
 * %spec works in pattern clauses as well as CAFs
+* Added 'Proof' type for marking computationally irrelevant terms.
+* Added List permutation proofs to the library (perm.idr)
 
 New in 0.1.4
 ------------

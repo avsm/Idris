@@ -388,7 +388,7 @@ BrackNames : brackname { [$1] }
       | brackname ',' Names { $1:$3 }
 
 NamesS :: { [Id] }
-NamesS : Name { [$1] }
+NamesS : { [] }
        | Name NamesS { $1:$2 }
 
 LetBinds :: { [(Id, RawTerm, RawTerm)] }

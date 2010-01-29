@@ -373,7 +373,7 @@ value.
 >     show (Bo b) = show b
 >     show (Ch c) = show c
 >     show (Fl d) = show d
->     show TYPE = "#"
+>     show TYPE = "Set"
 >     show IntType = "Int"
 >     show FloatType = "Float"
 >     show CharType = "Char"
@@ -828,8 +828,10 @@ FIXME: I think this'll fail if names are shadowed.
 >     -- Count the number of args we've made explicit in an application
 >     -- and don't add placeholders for them. Reset the counter if we get
 >     -- out of an application
->     where ap ex (RVar f l n)
->               = case ctxtLookupName ctxt (thisNamespace using) n of
+>     where ap ex v@(RVar f l n)
+>            = case doSynN f l n syns of
+>               RVar _ _ n ->
+>                 case ctxtLookupName ctxt (thisNamespace using) n of
 >                   Right (IvorFun _ (Just ty) imp _ _ _ _, fulln) -> 
 >                     let pargs = case lookup n pnames of
 >                                   Nothing -> []
@@ -841,6 +843,7 @@ FIXME: I think this'll fail if names are shadowed.
 >                   Left err@(WrongNamespace _ _) -> RError f l (show err)
 >                   Right (_, fulln) -> RVar f l fulln
 >                   _ -> RVar f l n
+>               t -> ap ex t
 >           ap ex (RExpVar f l n)
 >               = case ctxtLookupName ctxt (thisNamespace using) n of
 >                   Right (IvorFun _ (Just ty) imp _ _ _ _, fulln) -> RVar f l fulln
@@ -885,6 +888,10 @@ FIXME: I think this'll fail if names are shadowed.
 >                          Just (a, rhs) -> replSyn f l rhs (zip a args)
 >                          Nothing -> o
 >                      _ -> o
+
+>           doSynN f l n syns = case findSyn n syns of
+>                             Just ([], rhs) -> replSyn f l rhs []
+>                             _ -> RVar f l n
 
 >           findSyn n [] = Nothing
 >           findSyn n ((Syntax f as rhs):xs) | n == f = Just (as, rhs)
