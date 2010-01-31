@@ -61,6 +61,9 @@ Load things in this order:
 >           (ctxt, defs) <- processInput ctxt defs infile
 >           repl defs ctxt batch
 
+> usage opts@(('-':_):_) = do o <- mkArgs opts
+>                             putStrLn "No input file"
+>                             umessage
 > usage [fname] = return (fname, (NoArgs, []))
 > usage (fname:opts) = do o <- mkArgs opts
 >                         return (fname, o)
@@ -77,6 +80,7 @@ Load things in this order:
 >      putStrLn $ "\t\t --nospec          Turn off specialisation and transformation rules"
 >      putStrLn $ "\t\t --noerasure       Turn off erasure optimisations"
 >      putStrLn $ "\t\t --cmd <command>   Run a command in batch mode"
+>      putStrLn $ "\t\t --dir             Show support file location"
 >      putStrLn $ "\t\t --verbose         Debugging output"
 >      putStrLn $ "\n"
 >      exitWith (ExitFailure 1)
@@ -98,6 +102,10 @@ Load things in this order:
 >           = mkA' args (NoErasure:opts) xs
 >     mkA' args opts ("--cmd":b:xs)
 >           = mkA' (b:args) opts xs
+>     mkA' args opts ("--dir":xs)
+>           = do d <- getDataDir
+>                putStrLn d
+>                exitWith ExitSuccess
 >     mkA' args opts (x:xs) = do putStrLn $ "Unrecognised option " ++ x ++ "\n"
 >                                umessage
 
