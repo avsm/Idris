@@ -1034,6 +1034,7 @@ Now built-in operators
 >     unI (Constant c) [] = let try f = fmap (RConst "[val]" 0 . f) $ cast c
 >                           in  fromJust $ msum [try Num, try Str, try Ch, try Fl]
 >     unI (Annotation _ x) args = unI x args
+>     unI (Metavar n) args = RMetavar (mkRName n)
 
 >     unwind = mkImpApp "[val]" 0 0 []
 
