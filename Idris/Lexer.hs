@@ -165,6 +165,7 @@ data Token
       | TokenUse
       | TokenDecide
       | TokenAbandon
+      | TokenProofTerm
       | TokenQED
 -- Directives
       | TokenLaTeX
@@ -382,6 +383,7 @@ lexSpecial cont cs =
       ("use", rest) -> cont TokenUse rest
       ("decide", rest) -> cont TokenDecide rest
       ("abandon", rest) -> cont TokenAbandon rest
+      ("prf", rest) -> cont TokenProofTerm rest
       ("qed", rest) -> cont TokenQED rest
       (thing,rest) -> lexError '%' rest
 

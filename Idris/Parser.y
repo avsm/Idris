@@ -136,6 +136,7 @@ import Debug.Trace
       use             { TokenUse }
       decide          { TokenDecide }
       abandon         { TokenAbandon }
+      proofterm       { TokenProofTerm }
       qed             { TokenQED }
       latex           { TokenLaTeX }
       nocg            { TokenNoCG }
@@ -539,9 +540,9 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
 
 SigmaTerm :: { RawTerm }
 SigmaTerm : lpair Term ',' Term rpair File Line %prec PAIR
-                { RApp $6 $7 (RAppImp $6 $7 (UN "a") (RVar $6 $7 (UN "Exists")) $2) $4 }
+                { RApp $6 $7 (RApp $6 $7 (RVar $6 $7 (UN "Exists")) $2) $4 }
           | lpair Term rpair File Line %prec PAIR
-                { RApp $4 $5 (RVar $4 $5 (UN "Exists")) $2 }
+                { RApp $4 $5 (RApp $4 $5 (RVar $4 $5 (UN "Exists")) RPlaceholder) $2 }
 
 TermList :: { [RawTerm] }
          : Term ',' Term { $1:$3:[] }
@@ -653,6 +654,7 @@ Tactic : intro Names { Intro $2 }
        | use Term { Use $2 }
        | decide Term { Decide $2 }
        | abandon { Abandon }
+       | proofterm { ProofTerm }
        | qed { Qed }
 
 ProofScript :: { [ITactic] }

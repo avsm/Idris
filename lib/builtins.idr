@@ -4,13 +4,13 @@ data __Unit = II;
 data __Empty = ;
 
 data Sigma : (A:Set)->(P:A->Set)->Set where
-   Exists : {P:A->Set} -> {a:A} -> P a -> Sigma A P;
+   Exists : {P:A->Set} -> (a:A) -> P a -> Sigma A P;
 
 getSigIdx : {P:a->Set} ->  (s:Sigma a P) -> a;
-getSigIdx (Exists {a} v) = a;
+getSigIdx (Exists a v) = a;
 
 getSigVal : {P:a->Set} -> (s:Sigma a P) -> P (getSigIdx s);
-getSigVal (Exists v) = v;
+getSigVal (Exists a v) = v;
 
 data Pair a b = mkPair a b;
 

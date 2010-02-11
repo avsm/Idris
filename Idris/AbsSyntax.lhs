@@ -290,6 +290,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Decide RawTerm
 >              | Undo
 >              | Abandon
+>              | ProofTerm
 >              | RunTactic RawTerm -- tactic computed from lib/tactics.idr
 >              | Qed
 >     deriving (Show, Eq)

@@ -117,6 +117,8 @@ undone bits, after a Qed
 >     at ctxt Compute = compute defaultGoal ctxt
 >     at ctxt (Unfold n) = unfold (toIvorName n) defaultGoal ctxt
 >     at ctxt (RunTactic tm) = runtac (ivor tm) defaultGoal ctxt
+>     at ctxt ProofTerm = do tm <- proofterm ctxt
+>                            fail (showVT raw (view tm))
 >     at ctxt Qed = qed ctxt
 
 >     ivor t = makeIvorTerm noImplicit defDo uo (UN "__prf") raw t
