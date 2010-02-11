@@ -95,7 +95,7 @@ data Token
       | TokenCSB
       | TokenOId
       | TokenCId
-      | TokenExists
+--      | TokenExists
       | TokenConcat
       | TokenTilde
       | TokenPlus
@@ -149,6 +149,7 @@ data Token
       | TokenProof
       | TokenIntro
       | TokenRefine
+      | TokenExists
       | TokenGeneralise
       | TokenReflP
       | TokenRewrite
@@ -365,6 +366,7 @@ lexSpecial cont cs =
 -- don't need the ugly syntax...
       ("intro",rest) -> cont TokenIntro rest
       ("refine",rest) -> cont TokenRefine rest
+      ("exists",rest) -> cont TokenExists rest
       ("generalise",rest) -> cont TokenGeneralise rest
       ("refl",rest) -> cont TokenReflP rest
       ("rewrite",rest) -> cont TokenRewrite rest

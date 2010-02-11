@@ -102,6 +102,9 @@ undone bits, after a Qed
 >     at ctxt (Intro ns) = introsNames (map toIvorName ns) defaultGoal ctxt
 >     at ctxt (Refine n) = refine (Name Unknown (toIvorName n)) defaultGoal ctxt
 >     at ctxt (Generalise t) = generalise (ivor t) defaultGoal ctxt
+>     at ctxt (Exists t) = refine (App (App (App (Name Unknown (name "Exists"))
+>                                           Placeholder) Placeholder)
+>                                           (ivor t)) defaultGoal ctxt
 >     at ctxt ReflP = refine reflN defaultGoal ctxt
 >     at ctxt (Fill t) = fill (ivor t) defaultGoal ctxt
 >     at ctxt Trivial = (trivial >|> refine reflN) defaultGoal ctxt

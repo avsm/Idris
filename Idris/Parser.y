@@ -635,6 +635,7 @@ Tactic :: { ITactic }
 Tactic : intro Names { Intro $2 }
        | intro { Intro [] }
        | refine Name { Refine $2 }
+       | exists Term { Exists $2 }
        | generalise Term { Generalise $2 }
        | reflp { ReflP }
        | rewrite Term { Rewrite False False $2 }

@@ -274,6 +274,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 
 > data ITactic = Intro [Id]
 >              | Refine Id
+>              | Exists RawTerm
 >              | Generalise RawTerm
 >              | ReflP
 >              | Induction RawTerm
