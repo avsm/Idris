@@ -119,7 +119,7 @@ numWeaken n ?= bit _O_ n;   [nwLemma]
 
 nwLemma proof {
         %intro x,y,n; %rewrite <- mult_nO (power (S (S O)) x);
-        %compute; %intro; %fill value; %qed;
+        %compute; %intro value; %fill value; %qed;
 };
 
 numPad : (Number n l) -> (Number (plus k n) l);
