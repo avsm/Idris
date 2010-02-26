@@ -11,6 +11,10 @@ mult (S k) y = plus y (mult k y);
 eq_resp_S : (m=n) -> ((S m) = (S n));
 eq_resp_S (refl n) = refl (S n);
 
+power : Nat -> Nat -> Nat;
+power n O = S O;
+power n (S k) = mult n (power n k);
+
 ------- Int/String conversions -------
 
 intToNat : Int -> Nat;

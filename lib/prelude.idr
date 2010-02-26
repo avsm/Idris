@@ -3,8 +3,9 @@ flip f x y = f y x;
 
 infixl 5 ==, /=;
 infixl 6 <, <=, >, >=;
-infixl 7 +,-,++;
-infixl 8 *,/;
+infixl 7 <=<, >=>;
+infixl 8 +,-,++;
+infixl 9 *,/;
 
 (+) : Int -> Int -> Int inline;
 (+) x y = __addInt x y;
@@ -38,6 +39,12 @@ infixl 8 *,/;
 
 (/=) : Int -> Int -> Bool inline;
 (/=) x y = not (__eq x y);
+
+(<=<) : Int -> Int -> Int inline;
+(<=<) x y = __shl x y;
+
+(>=>) : Int -> Int -> Int inline;
+(>=>) x y = __shr x y;
  
 include "nat.idr";
 include "maybe.idr";

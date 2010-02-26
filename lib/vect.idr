@@ -10,6 +10,14 @@ data Fin : Nat -> Set where
    fO : Fin (S k)
  | fS : (Fin k) -> (Fin (S k));
 
+finToNat : Fin k -> Nat;
+finToNat fO = O;
+finToNat (fS k) = S (finToNat k);
+
+natToFin : (x:Nat) -> Fin (S x);
+natToFin O = fO;
+natToFin (S k) = fS (natToFin k);
+
 vlookup : (Fin k) -> (Vect A k) -> A;
 vlookup fO (x :: xs) = x;
 vlookup (fS k) (x :: xs) = vlookup k xs;

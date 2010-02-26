@@ -387,8 +387,9 @@ Operators, more precisely, are built-in functions on primitive types which both 
 typechecker and compiler need to know how to run. First we have the usual set of infix 
 operators (plus John Major equality):
 
-> data Op = Plus | Minus | Times | Divide | Concat | JMEq
->         | OpEq | OpLT | OpLEq | OpGT | OpGEq | OpOr | OpAnd
+> data Op = Plus  | Minus | Times | Divide | Concat | JMEq
+>         | OpEq  | OpLT  | OpLEq | OpGT   | OpGEq  | OpOr 
+>         | OpAnd | ShL   | ShR
 
 Then built-in functions for coercing between types
 
@@ -401,7 +402,8 @@ Finally some primitive operations on primitive types.
 >         | StringHead | StringTail | StringCons
 >    deriving (Eq, Enum)
 
-> allOps = [Plus,Minus,Times,Divide,Concat,JMEq,OpEq,OpLT,OpLEq,OpGT,OpGEq]
+> allOps = [Plus,Minus,Times,Divide,Concat,ShL,ShR,
+>           JMEq,OpEq,OpLT,OpLEq,OpGT,OpGEq]
 
 > instance Show Op where
 >     show Plus = "+"
@@ -417,6 +419,8 @@ Finally some primitive operations on primitive types.
 >     show OpGEq = ">="
 >     show OpOr = "||"
 >     show OpAnd = "&&"
+>     show ShL = "<<"
+>     show ShR = ">>"
 
 > opFn Plus = (name "__addInt")
 > opFn Minus = (name "__subInt")
@@ -431,6 +435,8 @@ Finally some primitive operations on primitive types.
 > opFn OpGEq = (name "__intgeq")
 > opFn OpOr = (name "__or")
 > opFn OpAnd = (name "__and")
+> opFn ShL = (name "__shl")
+> opFn ShR = (name "__shr")
 
 > opFn ToInt = (name "__toInt")
 > opFn ToString = (name "__toString")

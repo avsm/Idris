@@ -1,6 +1,3 @@
-power : Nat -> Nat -> Nat;
-power n O = S O;
-power n (S k) = mult n (power n k);
 
 -- Bit, like all of our binary representations, is
 -- indexed over its meaning as a Nat.

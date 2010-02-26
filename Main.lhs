@@ -446,6 +446,8 @@ the appropriate thing, after applying the relevant transformations.
 >                                "String->String->String"
 >              c <- addBinOp c (opFn StringGetIndex) ((!!)::String->Int->Char)
 >                                "String->Int->Char"
+>              c <- addBinOp c (opFn ShL) (shl::Int->Int->Int) "Int->Int->Int"
+>              c <- addBinOp c (opFn ShR) (shr::Int->Int->Int) "Int->Int->Int"
 >              c <- addExternalFn c (opFn OpEq) 2 constEq "Int->Int->Bool"
 >              c <- addExternalFn c (name "__strEq") 2 constEq "String->String->Bool"
 >              c <- addExternalFn c (name "__strLT") 2 constLT "String->String->Bool"
@@ -464,6 +466,14 @@ the appropriate thing, after applying the relevant transformations.
 >              c <- addExternalFn c (name "__lazy") 1 runLazy "(A:*)A->A"
 >              c <- addExternalFn c (name "__effect") 1 runEffect "(A:*)A->A"
 >              return c
+
+> shl :: Int -> Int -> Int
+> shl x 0 = x
+> shl x n = shl (x*2) (n-1)
+
+> shr :: Int -> Int -> Int
+> shr x 0 = x
+> shr x n = shr (x `div` 2) (n-1)
 
 > constEq :: [ViewTerm] -> Maybe ViewTerm
 > constEq [Constant x, Constant y]
