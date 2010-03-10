@@ -25,17 +25,17 @@
 >         = case lookup n (defs++ldefs) of
 >             Just l -> l
 >             Nothing -> case ctxtLookup ctxt [] n of
->                          Right (IvorFun _ _ _ _ d _ _) -> ty d (show n)
+>                          Right (IvorFun _ _ _ _ d _ _ _) -> ty d (show n)
 >                          Left _ -> "\\VV{" ++ show n ++ "}"
 >         where ty (DataDecl _) n = "\\TC{" ++ n ++ "}"          
 >               ty Constructor n = "\\DC{" ++ n ++ "}"
 >               ty _ n = "\\FN{" ++ n ++ "}"
 >               ldefs = case ctxtLookup ctxt [] (MN "latex" 0) of
->                         Right (IvorFun _ _ _ _ (LatexDefs ds) _ _) -> ds
+>                         Right (IvorFun _ _ _ _ (LatexDefs ds) _ _ _) -> ds
 >                         Left _ -> []
 
 > instance LaTeX IvorFun where
->     latex ctxt defs (IvorFun nm ty _ _ decl _ _) = latex ctxt defs decl
+>     latex ctxt defs (IvorFun nm ty _ _ decl _ _ _) = latex ctxt defs decl
 
 > instance LaTeX Decl where
 >     latex ctxt defs (DataDecl (Datatype id ty cons _ _ _ _))

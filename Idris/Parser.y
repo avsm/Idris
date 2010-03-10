@@ -105,6 +105,7 @@ import Debug.Trace
       partial         { TokenPartial }
       syntax          { TokenSyntax }
       lazy            { TokenLazy }
+      static          { TokenStatic }
       refl            { TokenRefl }
       empty           { TokenEmptyType }
       unit            { TokenUnitType }
@@ -162,14 +163,14 @@ import Debug.Trace
 %left concat
 %left '\\'
 %right arrow
-%left '(' '{' lazybracket
+%left '(' '{' lazybracket '['
 %nonassoc '.'
 %right IMP
 %nonassoc CONST
 -- All the things I don't want to cause a reduction inside a lam...
 %nonassoc name inttype chartype floattype stringtype int char string float bool refl do type
           empty unit '_' ptrtype handletype locktype metavar NONE brackname lazy
-          oid '[' '~' lpair PAIR return transarrow exists
+          oid '~' lpair PAIR return transarrow exists
 %left APP
 %nonassoc if then else
 
@@ -415,7 +416,7 @@ InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst $3 $4 (Num
 --          | Term le Term File Line { RInfix $4 $5  OpLEq $1 $3 }
           | Term '>' Term File Line { RUserInfix $4 $5 False ">" $1 $3 }
 --          | Term ge Term File Line { RInfix $4 $5  OpGEq $1 $3 }
-          | Term arrow Term File Line { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
+          | Term arrow Term File Line { RBind (MN "X" 0) (Pi Ex [] $1) $3 }
           | UserInfixTerm { $1 }
           | NoAppTerm '=' NoAppTerm File Line { RInfix $4 $5 JMEq $1 $3 }
 
@@ -443,14 +444,14 @@ Section : '(' userinfix Term File Line ')'
 
         | '(' Term arrow File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder) 
-                       (RBind (MN "X" 1) (Pi Ex Eager $2) (RVar $4 $5 (MN "X" 0))) }
+                       (RBind (MN "X" 1) (Pi Ex [] $2) (RVar $4 $5 (MN "X" 0))) }
         | '(' arrow Term File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder) 
-                       (RBind (MN "X" 1) (Pi Ex Eager (RVar $4 $5 (MN "X" 0))) $3) }       
+                       (RBind (MN "X" 1) (Pi Ex [] (RVar $4 $5 (MN "X" 0))) $3) }       
         | '(' arrow File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder)
                        (RBind (MN "X" 1) (Lam RPlaceholder)
-                    (RBind (MN "X" 2) (Pi Ex Eager (RVar $3 $4 (MN "X" 0)))
+                    (RBind (MN "X" 2) (Pi Ex [] (RVar $3 $4 (MN "X" 0)))
                        (RVar $3 $4 (MN "X" 1)))) }
 
  -- Special cases for pairing
@@ -488,15 +489,15 @@ MaybeAType : { RPlaceholder}
 
 Type :: { RawTerm }
 Type : BrackNames MaybeAType '}' arrow Type
-               { doBind (Pi Im Eager) (map (\x -> (x, $2)) $1) $5 }
+               { doBind (Pi Im []) (map (\x -> (x, $2)) $1) $5 }
      | TypeTerm { $1 }
 
 TypeTerm :: { RawTerm }
-TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
-         | '(' TypedBinds ')' arrow TypeTerm
-                { doBind (Pi Ex Eager) $2 $5 }
+TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex [] $1) $3 }
+         | '(' TypedBinds ')' ArgOpts arrow TypeTerm
+                { doBind (Pi Ex $4) $2 $6 }
          | lazybracket TypedBinds ')' arrow TypeTerm
-                { doBind (Pi Ex Lazy) $2 $5 }
+                { doBind (Pi Ex [Lazy]) $2 $5 }
          | '(' TypeTerm ')' { bracket $2 }
          | '(' TypeTerm '=' TypeTerm File Line ')' { RInfix $5 $6 JMEq $2 $4 }
          | SimpleAppTerm { $1 }
@@ -504,6 +505,18 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex Eager $1) $3 }
          | TypeTerm userinfix TypeTerm File Line { RUserInfix $4 $5 False $2 $1 $3 }
          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
          | SigmaType { $1 }
+
+ArgOpt :: { ArgOpt }
+ArgOpt : lazy { Lazy }
+       | static { Static }
+
+ArgOpts :: { [ArgOpt] }
+ArgOpts : '[' ArgOptList ']' { $2 }
+        | { [] }
+
+ArgOptList :: { [ArgOpt] }
+ArgOptList : ArgOpt ',' ArgOptList { $1:$3 }
+           | ArgOpt { [$1] }
 
 SigmaType :: { RawTerm }
 SigmaType : '(' Name MaybeType stars TypeTerm ')' File Line 
@@ -726,7 +739,7 @@ mkCon :: RawTerm -> ConParse -> (Id,RawTerm)
 mkCon _ (Full n t) = (n,t)
 mkCon ty (Simple n args) = (n, mkConTy args ty)
    where mkConTy [] ty = ty
-         mkConTy (a:as) ty = RBind (MN "X" 0) (Pi Ex Eager a) (mkConTy as ty)
+         mkConTy (a:as) ty = RBind (MN "X" 0) (Pi Ex [] a) (mkConTy as ty)
 
 mkDef file line (n, tms) = mkImpApp (RVar file line n) tms
    where mkImpApp f [] = f
@@ -748,7 +761,7 @@ mkTyApp file line n ty = mkApp file line (RVar file line n) (getTyArgs ty)
 
 mkTyParams :: String -> Int -> [Id] -> RawTerm
 mkTyParams f l [] = RConst f l TYPE
-mkTyParams f l (x:xs) = RBind x (Pi Ex Eager (RConst f l TYPE)) (mkTyParams f l xs)
+mkTyParams f l (x:xs) = RBind x (Pi Ex [] (RConst f l TYPE)) (mkTyParams f l xs)
 
 mkDatatype :: String -> Int ->
               Id -> Either RawTerm ((RawTerm, [(Id, RawTerm)]), [ConParse]) -> 

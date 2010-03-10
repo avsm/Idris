@@ -256,7 +256,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | RError String Int String -- Hackety. Found an error in processing, report when you can.
 >    deriving (Show, Eq)
 
-> data RBinder = Pi Plicit Laziness RawTerm
+> data RBinder = Pi Plicit [ArgOpt] RawTerm
 >              | Lam RawTerm
 >              | RLet RawTerm RawTerm
 >    deriving (Show, Eq)
@@ -264,7 +264,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > data Plicit = Im | Ex
 >    deriving (Show, Eq, Enum)
 
-> data Laziness = Lazy | Eager
+> data ArgOpt = Lazy | Static
 >    deriving (Show, Eq, Enum)
 
 > data Do = DoBinding String Int Id RawTerm RawTerm
@@ -295,12 +295,16 @@ Raw terms, as written by the programmer with no implicit arguments added.
 >              | Qed
 >     deriving (Show, Eq)
 
-> getLazy :: RawTerm -> [Int]
-> getLazy tm = gl' 0 tm
->   where gl' i (RBind n (Pi _ Lazy _) sc) = i:(gl' (i+1) sc)
->         gl' i (RBind n (Pi Ex Eager _) sc) = gl' (i+1) sc
->         gl' i (RBind n (Pi Im Eager _) sc) = gl' i sc
+> getArgOpt :: ArgOpt -> RawTerm -> [Int]
+> getArgOpt ao tm = gl' 0 tm
+>   where gl' i (RBind n (Pi _ opts _) sc) 
+>               | ao `elem` opts = i:(gl' (i+1) sc)
+>         gl' i (RBind n (Pi Ex _ _) sc) = gl' (i+1) sc
+>         gl' i (RBind n (Pi Im _ _) sc) = gl' i sc
 >         gl' i x = []
+
+> getLazy = getArgOpt Lazy
+> getStatic = getArgOpt Static
 
 > mkLazy :: ViewTerm -> ViewTerm
 > mkLazy t = App (App (Name Unknown (name "__lazy")) Placeholder) t
@@ -479,7 +483,8 @@ implicit arguments each function has.
 >       ivorDef :: Maybe IvorDef,
 >       rawDecl :: Decl, -- handy to keep around for display + extra data
 >       funFlags :: [CGFlag],
->       lazyArgs :: [Int]
+>       lazyArgs :: [Int],
+>       staticArgs :: [Int]
 >     }
 >              | IvorProblem String
 >    deriving Show
@@ -492,11 +497,11 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >                      [(Name, (ViewTerm, Patterns))]
 > getRawPatternDefs raw ctxt = gdefs (ctxtAlist raw) where
 >     gdefs [] = []
->     gdefs ((n, IvorFun _ _ _ _ (decl@(LatexDefs _)) _ _):ds) = gdefs ds
->     gdefs ((n, IvorFun _ _ _ _ (decl@(Fixity _ _ _)) _ _):ds) = gdefs ds
->     gdefs ((n, IvorFun _ _ _ _ (decl@(Transform _ _)) _ _):ds) = gdefs ds
->     gdefs ((n, IvorFun _ _ _ _ (decl@(SynDef _ _ _)) _ _):ds) = gdefs ds
->     gdefs ((n, IvorFun _ _ _ _ (decl@(Freeze _ _ _ _)) _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(LatexDefs _)) _ _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(Fixity _ _ _)) _ _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(Transform _ _)) _ _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(SynDef _ _ _)) _ _ _):ds) = gdefs ds
+>     gdefs ((n, IvorFun _ _ _ _ (decl@(Freeze _ _ _ _)) _ _ _):ds) = gdefs ds
 >     gdefs ((n, ifun):ds)
 >        = let Just iname = ivorFName ifun in
 >             case (ivorFType ifun, ivorDef ifun) of
@@ -644,7 +649,7 @@ Only do it in argument position
 >           pibind :: Plicit -> [(Id, RawTerm)] -> RawTerm -> RawTerm
 >           pibind plicit [] raw = raw
 >           pibind plicit ((n, ty):ns) raw
->                      = RBind n (Pi plicit Eager ty) (pibind plicit ns raw)
+>                      = RBind n (Pi plicit [] ty) (pibind plicit ns raw)
 
 >           parambind :: [(Id, RawTerm)] -> RawTerm -> RawTerm
 >           parambind xs (RBind n b@(Pi Im strict ty) sc) = RBind n b (parambind xs sc)
@@ -840,7 +845,7 @@ FIXME: I think this'll fail if names are shadowed.
 >            = case doSynN f l n syns of
 >               RVar _ _ n ->
 >                 case ctxtLookupName ctxt (thisNamespace using) n of
->                   Right (IvorFun _ (Just ty) imp _ _ _ _, fulln) -> 
+>                   Right (IvorFun _ (Just ty) imp _ _ _ _ _, fulln) -> 
 >                     let pargs = case lookup n pnames of
 >                                   Nothing -> []
 >                                   Just ids -> map (RVar f l) ids in
@@ -854,7 +859,7 @@ FIXME: I think this'll fail if names are shadowed.
 >               t -> ap ex t
 >           ap ex (RExpVar f l n)
 >               = case ctxtLookupName ctxt (thisNamespace using) n of
->                   Right (IvorFun _ (Just ty) imp _ _ _ _, fulln) -> RVar f l fulln
+>                   Right (IvorFun _ (Just ty) imp _ _ _ _ _, fulln) -> RVar f l fulln
 >                   Left err@(Ambiguous _ _) -> RError f l (show err)
 >                   Left err@(WrongNamespace _ _) -> RError f l (show err)
 >                   Right (_, fulln) -> RVar f l fulln
@@ -989,7 +994,7 @@ TODO: Get names out of UndoInfo
 
 > dump :: Ctxt IvorFun -> String
 > dump ctxt = concat $ map dumpFn (ctxtAlist ctxt)
->   where dumpFn (_,IvorFun n ty imp def _ _ _) =
+>   where dumpFn (_,IvorFun n ty imp def _ _ _ _) =
 >             show n ++ " : " ++ show ty ++ "\n" ++
 >             "   " ++ show imp ++ " implicit\n" ++
 >             show def ++ "\n\n"
@@ -1034,7 +1039,7 @@ Now built-in operators
 >            _ -> unwind (RVar "[val]" 0 (mkRName v)) args
 >     unI (App f a) args = unI f ((unI a []):args)
 >     unI (Lambda v ty sc) args = unwind (RBind (mkRName v) (Lam (unI ty [])) (unI sc [])) args
->     unI (Forall v ty sc) args = unwind (RBind (mkRName v) (Pi Ex Eager (unI ty [])) (unI sc [])) args
+>     unI (Forall v ty sc) args = unwind (RBind (mkRName v) (Pi Ex [] (unI ty [])) (unI sc [])) args
 >     unI (Let v ty val sc) args = unwind (RBind (mkRName v) 
 >                                          (RLet (unI val []) (unI ty [])) 
 >                                          (unI sc [])) args

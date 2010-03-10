@@ -80,6 +80,7 @@ data Token
       | TokenPartial
       | TokenSyntax
       | TokenLazy
+      | TokenStatic
       | TokenWhere
       | TokenWith
       | TokenType
@@ -289,6 +290,7 @@ lexVar cont cs =
       ("partial",rest) -> cont TokenPartial rest
       ("syntax",rest) -> cont TokenSyntax rest
       ("lazy",rest) -> cont TokenLazy rest
+      ("static",rest) -> cont TokenStatic rest
       ("infix",rest) -> cont TokenInfix rest
       ("infixl",rest) -> cont TokenInfixL rest
       ("infixr",rest) -> cont TokenInfixR rest

@@ -93,7 +93,7 @@ typechecked forms to disk.
 >     get = do t <- get
 >              return (toEnum t)
 
-> instance Binary Laziness where
+> instance Binary ArgOpt where
 >     put x = put (fromEnum x)
 >     get = do t <- get
 >              return (toEnum t)
@@ -215,10 +215,10 @@ typechecked forms to disk.
 >              return (UO ds ts f s)
 
 > instance Binary IvorFun where
->     put (IvorFun a b c d e f g) = 
->         do put a; put b; put c; put d; put e; put f; put g;
->     get = do a <- get; b <- get; c <- get; d <- get; e <- get; f <- get; g <- get
->              return (IvorFun a b c d e f g)
+>     put (IvorFun a b c d e f g h) = 
+>         do put a; put b; put c; put d; put e; put f; put g; put h
+>     get = do a <- get; b <- get; c <- get; d <- get; e <- get; f <- get; g <- get; h <- get
+>              return (IvorFun a b c d e f g h)
 
 > instance Binary CGFlag where
 >     put NoCG = put (0 :: Word8)

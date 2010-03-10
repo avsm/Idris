@@ -49,8 +49,8 @@
 >                    let newname = name (show (MN (show root) i))
 >                    let newfn = (newname, newty, newdef)
 >                    put (i+1, newfn:fns)
->                    trace (show (newname, params, newdef)) $
->                      return (apply (Name Unknown newname) (paramArgs++[scrutinee]))
+>                    -- trace (show (newname, params, newdef)) $
+>                    return (apply (Name Unknown newname) (paramArgs++[scrutinee]))
 >                 else return tm
 >  lc' (App f a) = do f' <- lc' f; a' <- lc' a; return (App f' a')
 >  lc' (Lambda n t sc) 
