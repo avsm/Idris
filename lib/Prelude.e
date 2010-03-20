@@ -28,6 +28,8 @@ __epic_strcons (h:Int, x:String) -> String =
 __epic_streq (x:String, y:String) -> Data =
     foreign Int "streq" (x:String, y:String)
 
+%inline __epic_chareq (x:Int, y:Int) -> Data = x==y
+
 %inline __epic_strlt (x:String, y:String) -> Data =
     foreign Int "strlt" (x:String, y:String)
 

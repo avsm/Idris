@@ -449,6 +449,7 @@ the appropriate thing, after applying the relevant transformations.
 >              c <- addBinOp c (opFn ShL) (shl::Int->Int->Int) "Int->Int->Int"
 >              c <- addBinOp c (opFn ShR) (shr::Int->Int->Int) "Int->Int->Int"
 >              c <- addExternalFn c (opFn OpEq) 2 constEq "Int->Int->Bool"
+>              c <- addExternalFn c (name "__charEq") 2 constEq "Char->Char->Bool"
 >              c <- addExternalFn c (name "__strEq") 2 constEq "String->String->Bool"
 >              c <- addExternalFn c (name "__strLT") 2 constLT "String->String->Bool"
 >              c <- addExternalFn c (opFn OpLT) 2 intlt "Int->Int->Bool"

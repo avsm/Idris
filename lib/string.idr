@@ -18,6 +18,14 @@ strHead s = if (strNull s) then Nothing else (Just (__strHead s));
 strTail: String -> Maybe String inline;
 strTail s = if (strNull s) then Nothing else (Just (__strTail s));
 
+-- Some more, faster, string manipulations
+
+strHead' : (x:String) -> (so (not (strNull x))) -> Char;
+strHead' x p = __strHead x;
+
+strTail' : (x:String) -> (so (not (strNull x))) -> String;
+strTail' x p = __strTail x;
+
 strCons: Char -> String -> String inline;
 strCons c s = __strCons c s;
 
@@ -26,6 +34,31 @@ strUncons s with (strHead s, strTail s) {
   | (Just h,  Just t)  = Just (h, t);
   | (Nothing, Nothing) = Nothing;
 }
+
+{-- A view of strings, for better, faster, pattern matching --}
+
+data StrM : String -> Set where
+   StrNil : StrM ""
+ | StrCons : (x:Char) -> (xs:String) -> StrM (strCons x xs);
+
+strM : (x:String) -> StrM x;
+strM x with choose (strNull x) {
+   | Left p ?= StrCons (strHead' x p) (strTail' x p);     [strMleft]
+   | Right p ?= StrNil;                                   [strMright]
+}
+
+strMright proof {
+  %intro;
+  %believe value; -- it's a primitive operation, we have to believe it!
+  %qed;
+};
+
+strMleft proof {
+  %intro;
+  %believe value; -- it's a primitive operation, we have to believe it!
+  %qed;
+};
+
 
 charAt: Int -> String -> Maybe Char inline;
 charAt x str =

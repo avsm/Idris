@@ -7,6 +7,8 @@ New in 0.1.5
 * %spec works in pattern clauses as well as CAFs
 * Added 'Proof' type for marking computationally irrelevant terms.
 * Added List permutation proofs to the library (perm.idr)
+* Various new functions in the library.
+* Lots of bug fixes
 
 New in 0.1.4
 ------------

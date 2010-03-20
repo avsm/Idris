@@ -226,6 +226,8 @@ HACK for string equality
 >   writeSC' (SApp (SVar n) [arg1, arg2])
 >     | n == name "__strEq" =
 >         "__epic_streq("++writeSC' arg1++", " ++ writeSC' arg2 ++ ")"
+>     | n == name "__charEq" =
+>         "__epic_chareq("++writeSC' arg1++", " ++ writeSC' arg2 ++ ")"
 >     | n == name "__strLT" =
 >         "__epic_strlt("++writeSC' arg1++", " ++ writeSC' arg2 ++ ")"
 

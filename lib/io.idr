@@ -64,8 +64,8 @@ namespace IO {
   Response NewRef = Int;
   Response (ReadRef A i) = A;
   Response (WriteRef i val) = ();
-  Response (While test body) = ();
-  Response (WhileAcc {A} test acc body) = A;
+  Response (While _ body) = ();
+  Response (WhileAcc {A} _ acc body) = A;
   Response (Within {A} time body failure) = A;
   Response (IOLift {A} f) = A;
   Response (Foreign t args) = i_ftype (f_retType t);
@@ -92,7 +92,7 @@ kbind (IOReturn a) k = IOReturn (k a);
 kbind (IODo c p) k = IODo c (\x => (kbind (p x) k));
 
 while : |(test:IO Bool) -> |(body: IO ()) -> IO ();
-while test body = IODo (While test body) (\a => (IOReturn II));
+while t body = IODo (While t body) (\a => (IOReturn II));
 
 while_accTR : Bool -> 
             |(test:IO Bool) -> acc -> |(body: acc -> IO acc) -> IO acc;

@@ -65,10 +65,12 @@ T_return : a -> T a;
 
 {-- For example, we can write a bind operation for "Maybe" as follows: --}
 
+{->
 maybeBind : Maybe a -> (a -> Maybe b) -> Maybe b;
 maybeBind Nothing  mf = Nothing;
 maybeBind (Just x) mf = mf x;
- 
+>-}
+
 {-- For the "return" operation, we can use "Just". We can use these
 inside a "do" block by a "do using" declaration, which takes the
 "bind" and "return" operations as parameters. For example, a function

@@ -1048,6 +1048,8 @@ Now built-in operators
 >                           in  fromJust $ msum [try Num, try Str, try Ch, try Fl]
 >     unI (Annotation _ x) args = unI x args
 >     unI (Metavar n) args = RMetavar (mkRName n)
+>     unI Placeholder args = RPlaceholder
+>     unI x args = error (show x)
 
 >     unwind = mkImpApp "[val]" 0 0 []
 
