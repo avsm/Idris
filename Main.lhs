@@ -59,6 +59,11 @@ Load things in this order:
 >           ctxt <- ioTac $ prims ctxt
 >           (ctxt, defs) <- processInput ctxt defs "prelude.idr"
 >           (ctxt, defs) <- processInput ctxt defs infile
+>           let vars = idris_metavars defs
+>           when (not (null vars)) $
+>               do putStr "Proof obligations:\n\t"
+>                  print (map fst vars)
+>                  putStr "\n"
 >           repl defs ctxt batch
 
 > usage opts@(('-':_):_) = do o <- mkArgs opts
