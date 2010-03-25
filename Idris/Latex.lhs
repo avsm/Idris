@@ -101,9 +101,9 @@ Main bit for terms
 
 > instance LaTeX RawTerm where
 >     latex ctxt defs tm = showP 10 tm where
->        showP p (RVar _ _ (UN "__Unit")) = "()"
->        showP p (RVar _ _ (UN "__Empty")) = "\\bottom"
->        showP p (RVar _ _ i) = latex ctxt defs i
+>        showP p (RVar _ _ (UN "__Unit") _) = "()"
+>        showP p (RVar _ _ (UN "__Empty") _) = "\\bottom"
+>        showP p (RVar _ _ i _) = latex ctxt defs i
 >        showP p RRefl = "\\DC{refl}"
 >        showP p RPlaceholder = "\\_"
 >        showP p (RApp _ _ f a) = bracket p 1 $ showP 1 f ++ "\\:" ++ showP 0 a

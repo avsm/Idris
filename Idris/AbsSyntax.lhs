@@ -109,7 +109,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >   where cds rds fwds ((RealDecl d):ds) = cds (d:rds) fwds ds
 >         cds rds fwds ((FunType n t fl file line):ds) 
 >             = getClauses RPlaceholder rds fwds n (t, file, line) fl [] ds
->         cds rds fwds ((FunClause (RVar f l n) [] ret fl):ds) 
+>         cds rds fwds ((FunClause (RVar f l n _) [] ret fl):ds) 
 >                 = cds ((TermDef n ret fl):rds) fwds ds
 >         cds rds fwds ds@((FunClause app [] ret fl):_) 
 >             = case getFnName app of
@@ -176,7 +176,7 @@ the system to insert a hole for a proof that turns it into the right type.
 >         getClauses parent rds fwds n (t,file,line) fl clauses ds =
 >             cds ((Fun (Function n t (reverse clauses) file line) fl):rds) fwds ds
 
->         isnm n (RVar f l nm) | nm == n = Just (f,l)
+>         isnm n (RVar f l nm _) | nm == n = Just (f,l)
 >         isnm _ _ = Nothing
 
 >         collectWiths parent rds fwds n t fl cs = 
@@ -237,7 +237,7 @@ the system to insert a hole for a proof that turns it into the right type.
 
 Raw terms, as written by the programmer with no implicit arguments added.
 
-> data RawTerm = RVar String Int Id
+> data RawTerm = RVar String Int Id NameType
 >              | RVars String Int [Id]
 >              | RExpVar String Int Id -- variable with all explicit args
 >              | RApp String Int RawTerm RawTerm
@@ -312,7 +312,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > getFileLine :: RawTerm -> (String, Int)
 > getFileLine (RApp f l _ _) = (f, l)
 > getFileLine (RAppImp f l _ _ _) = (f, l)
-> getFileLine (RVar f l _) = (f, l)
+> getFileLine (RVar f l _ _) = (f, l)
 > getFileLine (RExpVar f l _) = (f, l)
 > getFileLine (RInfix f l _ _ _) = (f, l)
 > getFileLine (RUserInfix f l _ _ _ _) = (f, l)
@@ -336,7 +336,7 @@ Raw terms, as written by the programmer with no implicit arguments added.
 > getRetType x = x
 
 > getFnName f = case getFn f of
->                 (RVar f l n) -> Just (n,f,l)
+>                 (RVar f l n _) -> Just (n,f,l)
 >                 _ -> Nothing
 
 > getRawArgs :: RawTerm -> [RawTerm]
@@ -489,6 +489,21 @@ implicit arguments each function has.
 >              | IvorProblem String
 >    deriving Show
 
+> getNameType :: IvorFun -> NameType
+> getNameType i = case rawDecl i of
+>                   Fun _ _ -> Free
+>                   TermDef _ _ _ -> Free
+>                   Prf _ -> Free
+>                   Fwd _ _ _ -> Free
+>                   Constructor -> DataCon
+>                   _ -> Unknown
+
+> mkNameMap :: Ctxt IvorFun -> [(Name, Id)]
+> mkNameMap ctxt = mapMaybe mknm (ctxtAlist ctxt)
+>   where mknm (n, IvorProblem _) = Nothing
+>         mknm (n, i) = do iname <- ivorFName i
+>                          return (iname, n)
+
 Get all the pattern definitions. Get the user specified one, not the
 Ivor expanded one (i.e. with the placeholders as the user specified) so
 that we avoid pattern matching where the programmer didn't ask us to.
@@ -545,6 +560,13 @@ Concrete transformation data, used for rebuilding constructor transforms
 > data Opt = NoErasure | ShowRunTime | NoSpec | Verbose
 >    deriving (Show, Eq, Enum)
 
+> type Statics = [(Name, ([Int], Int, ViewTerm))]
+
+Things we've partially evaluated that transform rules already exist for
+(so don't make another one)
+
+> type StaticUsed = [(Name, [ViewTerm])]
+
 > data IdrisState = IState {
 >       idris_context :: Ctxt IvorFun, -- function definitions
 >       idris_decls :: [Decl], -- all checked declarations
@@ -554,11 +576,13 @@ Concrete transformation data, used for rebuilding constructor transforms
 >       idris_transforms :: [Transform], -- optimisations
 >       idris_syntax :: [Syntax], -- syntax macros
 >       idris_imports :: [FilePath], -- included files
->       idris_names :: [(Name, Id)] -- map ivor names back to idris names
+>       idris_names :: [(Name, Id)], -- map ivor names back to idris names
+>       idris_static :: Statics, -- map from functions to static args
+>       idris_static_used :: StaticUsed
 >     }
 
 > initState :: [Opt] -> IdrisState
-> initState opts = IState newCtxt [] [] opts (UO [] [] [] []) [] [] [] []
+> initState opts = IState newCtxt [] [] opts (UO [] [] [] []) [] [] [] [] [] []
 
 Add implicit arguments to a raw term representing a type for each undefined 
 name in the scope, returning the number of implicit arguments the resulting
@@ -599,7 +623,7 @@ Need to do it twice, in case the first pass added names in the indices
 >                                (added', totimp')
 >                      else (raw, totimp)
 >     where addImplB :: [Id] -> RawTerm -> Bool -> State ([Id], Int) ()
->           addImplB env (RVar f l i) argpos
+>           addImplB env (RVar f l i _) argpos
 >               | i `elem` env = return ()
 >               | Right _ <- ctxtLookup ctxt namespace i = return ()
 
@@ -750,7 +774,7 @@ programmer doesn't have to write them down inside the param block.
 > toIvor uo ui fname tm = evalState (toIvorS tm) (0,1)
 >   where
 >     toIvorS :: RawTerm -> State (Int, Int) ViewTerm
->     toIvorS (RVar f l n) = return $ Annotation (FileLoc f l) (Name Unknown (toIvorName n))
+>     toIvorS (RVar f l n ty) = return $ Annotation (FileLoc f l) (Name ty (toIvorName n))
 >     toIvorS (RVars f l ns) = return $ Annotation (FileLoc f l) (Overloaded (map toIvorName ns))
 >     toIvorS ap@(RApp file line f a)
 >            = do f' <- toIvorS f
@@ -803,7 +827,7 @@ programmer doesn't have to write them down inside the param block.
 >                            toIvorS tm
 >     toIvorS (RReturn f l)
 >       = do let (UI _ _ ret retImpl _ _ _ _) = ui
->            toIvorS $ mkApp f l (RVar f l ret) (take retImpl (repeat RPlaceholder))
+>            toIvorS $ mkApp f l (RVar f l ret Unknown) (take retImpl (repeat RPlaceholder))
 >     toIvorS (RIdiom tm) = do let tm' = unidiom ui tm
 >                              toIvorS tm'
 >     toIvorS (RPure t) = toIvorS t
@@ -841,29 +865,29 @@ FIXME: I think this'll fail if names are shadowed.
 >     -- Count the number of args we've made explicit in an application
 >     -- and don't add placeholders for them. Reset the counter if we get
 >     -- out of an application
->     where ap ex v@(RVar f l n)
+>     where ap ex v@(RVar f l n _)
 >            = case doSynN f l n syns of
->               RVar _ _ n ->
+>               RVar _ _ n _ ->
 >                 case ctxtLookupName ctxt (thisNamespace using) n of
->                   Right (IvorFun _ (Just ty) imp _ _ _ _ _, fulln) -> 
+>                   Right (ifn@(IvorFun _ (Just ty) imp _ _ _ _ _), fulln) -> 
 >                     let pargs = case lookup n pnames of
 >                                   Nothing -> []
->                                   Just ids -> map (RVar f l) ids in
->                     mkApp f l (RVar f l fulln)
+>                                   Just ids -> map (\i -> RVar f l i Bound) ids in
+>                     mkApp f l (RVar f l fulln (getNameType ifn))
 >                               ((mkImplicitArgs 
 >                                (map fst (fst (getBinders ty []))) imp ex) ++ pargs)
 >                   Left err@(Ambiguous _ ns) -> RError f l (show err) -- RVars f l ns
 >                   Left err@(WrongNamespace _ _) -> RError f l (show err)
->                   Right (_, fulln) -> RVar f l fulln
->                   _ -> RVar f l n
+>                   Right (ifn, fulln) -> RVar f l fulln (getNameType ifn)
+>                   _ -> RVar f l n Unknown
 >               t -> ap ex t
 >           ap ex (RExpVar f l n)
 >               = case ctxtLookupName ctxt (thisNamespace using) n of
->                   Right (IvorFun _ (Just ty) imp _ _ _ _ _, fulln) -> RVar f l fulln
+>                   Right (ifn@(IvorFun _ (Just ty) imp _ _ _ _ _), fulln) -> RVar f l fulln (getNameType ifn)
 >                   Left err@(Ambiguous _ _) -> RError f l (show err)
 >                   Left err@(WrongNamespace _ _) -> RError f l (show err)
->                   Right (_, fulln) -> RVar f l fulln
->                   _ -> RVar f l n
+>                   Right (ifn, fulln) -> RVar f l fulln (getNameType ifn)
+>                   _ -> RVar f l n Unknown
 >           ap ex (RAppImp file line n f a) = (ap ((toIvorName n,(ap [] a)):ex) f)
 >           ap ex app@(RApp file line f a) = 
 >               case doSyn app syns f [a] of
@@ -880,7 +904,7 @@ FIXME: I think this'll fail if names are shadowed.
 >               = case fixFix uo fix of
 >                   (RUserInfix file line _ op l r) ->
 >                       ap ex (RApp file line 
->                              (RApp file line (RVar file line (useropFn op)) l) r)
+>                              (RApp file line (RVar file line (useropFn op) Free) l) r)
 >                   (RError f l x) -> RError f l x
 >           ap ex (RDo ds) = RDo (map apdo ds)
 >           ap ex (RIdiom tm) = RIdiom (ap [] tm)
@@ -896,7 +920,7 @@ FIXME: I think this'll fail if names are shadowed.
 >           doSyn o syns (RApp _ _ f a) args = doSyn o syns f (a:args)
 >           doSyn o syns v args 
 >                = case ap [] v of
->                      RVar f l n -> 
+>                      RVar f l n _ -> 
 >                        case findSyn n syns of
 >                          Just (a, rhs) -> replSyn f l rhs (zip a args)
 >                          Nothing -> o
@@ -904,15 +928,15 @@ FIXME: I think this'll fail if names are shadowed.
 
 >           doSynN f l n syns = case findSyn n syns of
 >                             Just ([], rhs) -> replSyn f l rhs []
->                             _ -> RVar f l n
+>                             _ -> RVar f l n Unknown
 
 >           findSyn n [] = Nothing
 >           findSyn n ((Syntax f as rhs):xs) | n == f = Just (as, rhs)
 >                                            | otherwise = findSyn n xs
 
->           replSyn f l t@(RVar _ _ n) as = case lookup n as of
->                                             Just v -> v
->                                             Nothing -> RVar f l n
+>           replSyn f l t@(RVar _ _ n ty) as = case lookup n as of
+>                                                Just v -> v
+>                                                Nothing -> RVar f l n ty
 >           replSyn f l (RApp _ _ fn a) as 
 >                 = RApp f l (replSyn f l fn as) (replSyn f l a as)
 >           replSyn f l (RInfix _ _ op x y) as 
@@ -944,7 +968,7 @@ in our list of explicit names to add, add it.
 >          = -- bind exp (\v' . [[ds]])
 >            do ds' <- undo ui ds
 >               let k = RBind v' (Lam ty) ds'
->               return $ mkApp file line (RVar file line bind) 
+>               return $ mkApp file line (RVar file line bind Unknown) 
 >                          ((take bindimpl (repeat RPlaceholder)) ++ [exp, k])
 > undo ui ((DoLet file line v' ty exp):ds)
 >          = do ds' <- undo ui ds
@@ -955,7 +979,7 @@ in our list of explicit names to add, add it.
 >               (i, h) <- get
 >               put (i+1, h)
 >               let k = RBind (MN "x" i) (Lam RPlaceholder) ds'
->               return $ mkApp file line (RVar file line bind) 
+>               return $ mkApp file line (RVar file line bind Unknown) 
 >                          ((take bindimpl (repeat RPlaceholder)) ++ [exp, k])
 
 -- > unret :: UndoInfo -> RawTerm -> RawTerm
@@ -976,18 +1000,18 @@ TODO: Get names out of UndoInfo
 
 > unidiom :: UndoInfo -> RawTerm -> RawTerm
 > unidiom ui@(UI _ _ _ _ pure pureImpl _ _) (RApp file line f (RPure x)) 
->         = mkApp file line (RVar file line pure)
+>         = mkApp file line (RVar file line pure Unknown)
 >                ((take pureImpl (repeat RPlaceholder)) ++ [mkApp file line f [x]])
 > unidiom ui@(UI _ _ _ _ pure pureImpl _ _) (RApp file line f RPlaceholder) 
->         = mkApp file line (RVar file line pure)
+>         = mkApp file line (RVar file line pure Unknown)
 >                ((take pureImpl (repeat RPlaceholder)) ++ [mkApp file line f [RPlaceholder]])
 > unidiom ui@(UI _ _ _ _ _ _ ap apImpl) (RApp file line f x) 
->              = mkApp file line (RVar file line ap)
+>              = mkApp file line (RVar file line ap Unknown)
 >                     ((take apImpl (repeat RPlaceholder)) ++
 >                     [unidiom ui f, x])
 > unidiom ui@(UI _ _ _ _ pure pureImpl _ _) x 
 >              = let (file, line) = getFileLine x in
->               mkApp file line (RVar file line pure)
+>               mkApp file line (RVar file line pure Unknown)
 >                     ((take pureImpl (repeat RPlaceholder)) ++ [x])
 
 > testCtxt = addEntry newCtxt [] (UN "Vect") undefined
@@ -1035,8 +1059,8 @@ Now built-in operators
 >     unI (Name _ v) args 
 >        = case ctxtLookup ctxt [] (mkRName v) of
 >            Right fdata -> mkImpApp "[val]" 0 (implicitArgs fdata) 
->                                   (argNames (ivorFType fdata)) (RVar "[val]" 0 (mkRName v)) args
->            _ -> unwind (RVar "[val]" 0 (mkRName v)) args
+>                                   (argNames (ivorFType fdata)) (RVar "[val]" 0 (mkRName v) Unknown) args
+>            _ -> unwind (RVar "[val]" 0 (mkRName v) Unknown) args
 >     unI (App f a) args = unI f ((unI a []):args)
 >     unI (Lambda v ty sc) args = unwind (RBind (mkRName v) (Lam (unI ty [])) (unI sc [])) args
 >     unI (Forall v ty sc) args = unwind (RBind (mkRName v) (Pi Ex [] (unI ty [])) (unI sc [])) args
@@ -1073,11 +1097,11 @@ boolean flag (true for showing them)
 
 > showImp :: Bool -> RawTerm -> String
 > showImp imp tm = showP 10 tm where
->     showP p (RVar _ _ (UN "__Unit")) = "()"
->     showP p (RVar _ _ (UN "__Empty")) = "_|_"
->     showP p (RVar _ _ i) = case (getOpName i) of
->                              (True, o) -> "(" ++ o ++ ")"
->                              (False, o) -> o
+>     showP p (RVar _ _ (UN "__Unit") _) = "()"
+>     showP p (RVar _ _ (UN "__Empty") _) = "_|_"
+>     showP p (RVar _ _ i _) = case (getOpName i) of
+>                                (True, o) -> "(" ++ o ++ ")"
+>                                (False, o) -> o
 >     showP p RRefl = "refl"
 >     showP p (RApp _ _ f a) = bracket p 1 $ showP 1 f ++ " " ++ showP 0 a
 >     showP p (RAppImp _ _ n f a)

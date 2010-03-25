@@ -244,7 +244,7 @@ WithTerm :: { RawTerm }
 WithTerm : SimpleAppTerm { $1 }
          | SigmaTerm { $1 }
          | '(' Term ')' { $2 }
-         | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair")) $2 }
+         | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair") Unknown) $2 }
 
 Functions :: { [ParseDecl] }
 Functions : Function Functions { $1:$2 }
@@ -308,7 +308,7 @@ DefTerm : Name ArgTerms { ($1, $2) }
 ArgTerms :: { [(RawTerm,Maybe Id)] }
 ArgTerms : { [] }
       | NoAppTerm ArgTerms { ($1,Nothing):$2 }
-      | brackname '}' ArgTerms File Line { (RVar $4 $5 $1, Just $1):$3 }
+      | brackname '}' ArgTerms File Line { (RVar $4 $5 $1 Unknown, Just $1):$3 }
       | brackname '=' Term '}' ArgTerms { ($3, Just $1):$5 }
 
 Datatype :: { Datatype }
@@ -343,11 +343,11 @@ SimpleAppTerm :: { RawTerm }
 SimpleAppTerm : SimpleAppTerm File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
               | SimpleAppTerm ImplicitTerm '}' File Line %prec APP 
                    { RAppImp $4 $5 (fst $2) $1 (snd $2) }
-              | Name File Line { RVar $2 $3 $1 }
+              | Name File Line { RVar $2 $3 $1 Unknown }
               | Constant File Line { RConst $2 $3 $1 }
               | '_' { RPlaceholder }
-              | empty File Line { RVar $2 $3 (UN "__Empty") }
-              | unit File Line { RVar $2 $3 (UN "__Unit") }
+              | empty File Line { RVar $2 $3 (UN "__Empty") TypeCon }
+              | unit File Line { RVar $2 $3 (UN "__Unit") TypeCon }
 
 Term :: { RawTerm }
 Term : NoAppTerm { $1 }
@@ -355,14 +355,14 @@ Term : NoAppTerm { $1 }
      | Term File Line NoAppTerm  %prec APP { RApp $2 $3 $1 $4 }
      | Term ImplicitTerm '}' File Line %prec APP 
                    { RAppImp $4 $5 (fst $2) $1 (snd $2) }
-     | lazy Term File Line { RApp $3 $4 (RApp $3 $4 (RVar $3 $4 (UN "__lazy")) RPlaceholder) $2 }
+     | lazy Term File Line { RApp $3 $4 (RApp $3 $4 (RVar $3 $4 (UN "__lazy") Free) RPlaceholder) $2 }
      | '\\' Binds fatarrow Term %prec LAM
                 { doBind Lam $2 $4 }
      | let LetBinds in Term
                 { doLetBind $2 $4 }
      | InfixTerm { $1 }
      | if Term then Term else Term File Line
-       { mkApp $7 $8 (RVar $7 $8 (UN "if_then_else")) [$2,$4,$6] }
+       { mkApp $7 $8 (RVar $7 $8 (UN "if_then_else") Free) [$2,$4,$6] }
 
 Binds :: { [(Id, RawTerm)] }
 Binds : Name MaybeType { [($1,$2)] }
@@ -398,7 +398,7 @@ LetBinds : Name MaybeType '=' Term { [($1,$2,$4)] }
          | Name MaybeType '=' Term ',' LetBinds { ($1,$2,$4):$6 }
 
 ImplicitTerm :: { (Id, RawTerm) }
-ImplicitTerm : brackname File Line { ($1, RVar $2 $3 $1) }
+ImplicitTerm : brackname File Line { ($1, RVar $2 $3 $1 Unknown) }
              | brackname '=' Term { ($1, $3) }
 
 InfixTerm :: { RawTerm }
@@ -408,7 +408,7 @@ InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst $3 $4 (Num
 --          | Term '*' Term File Line { RInfix $4 $5  Times $1 $3 }
 --          | Term '/' Term File Line { RInfix $4 $5  Divide $1 $3 }
 --          | Term and Term File Line { RInfix $4 $5  OpAnd $1 $3 }
-          | Term '&' Term File Line { mkApp $4 $5 (RVar $4 $5 (UN "Pair")) [$1, $3] }
+          | Term '&' Term File Line { mkApp $4 $5 (RVar $4 $5 (UN "Pair") TypeCon) [$1, $3] }
 --          | Term or Term File Line { RInfix $4 $5  OpOr $1 $3 }
 --          | Term concat Term File Line { RInfix $4 $5  Concat $1 $3 }
 --          | Term eq Term File Line { RInfix $4 $5  OpEq $1 $3 }
@@ -426,51 +426,51 @@ UserInfixTerm : Term userinfix Term File Line { RUserInfix $4 $5 False $2 $1 $3 
 Section :: { RawTerm }
 Section : '(' userinfix Term File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder) 
-                       (RUserInfix $4 $5 False $2 (RVar $4 $5 (MN "X" 0)) $3) }
+                       (RUserInfix $4 $5 False $2 (RVar $4 $5 (MN "X" 0) Unknown) $3) }
         | '(' Term userinfix File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder) 
-                       (RUserInfix $4 $5 False $3 $2 (RVar $4 $5 (MN "X" 0))) }
+                       (RUserInfix $4 $5 False $3 $2 (RVar $4 $5 (MN "X" 0) Unknown)) }
         | '(' BuiltinOp Term File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder) 
-                       (RUserInfix $4 $5 False $2 (RVar $4 $5 (MN "X" 0)) $3) }
+                       (RUserInfix $4 $5 False $2 (RVar $4 $5 (MN "X" 0) Unknown) $3) }
         | '(' Term BuiltinOp File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder) 
-                       (RUserInfix $4 $5 False $3 $2 (RVar $4 $5 (MN "X" 0))) }
+                       (RUserInfix $4 $5 False $3 $2 (RVar $4 $5 (MN "X" 0) Unknown)) }
         | '(' Term '-' File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder) 
-                       (RUserInfix $4 $5 False "-" $2 (RVar $4 $5 (MN "X" 0))) }
+                       (RUserInfix $4 $5 False "-" $2 (RVar $4 $5 (MN "X" 0) Unknown)) }
 
 -- Special cases for ->
 
         | '(' Term arrow File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder) 
-                       (RBind (MN "X" 1) (Pi Ex [] $2) (RVar $4 $5 (MN "X" 0))) }
+                       (RBind (MN "X" 1) (Pi Ex [] $2) (RVar $4 $5 (MN "X" 0) Unknown)) }
         | '(' arrow Term File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder) 
-                       (RBind (MN "X" 1) (Pi Ex [] (RVar $4 $5 (MN "X" 0))) $3) }       
+                       (RBind (MN "X" 1) (Pi Ex [] (RVar $4 $5 (MN "X" 0) Unknown)) $3) }       
         | '(' arrow File Line ')'
                { RBind (MN "X" 0) (Lam RPlaceholder)
                        (RBind (MN "X" 1) (Lam RPlaceholder)
-                    (RBind (MN "X" 2) (Pi Ex [] (RVar $3 $4 (MN "X" 0)))
-                       (RVar $3 $4 (MN "X" 1)))) }
+                    (RBind (MN "X" 2) (Pi Ex [] (RVar $3 $4 (MN "X" 0) Unknown))
+                       (RVar $3 $4 (MN "X" 1) Unknown))) }
 
  -- Special cases for pairing
 
         | '(' ',' File Line ')' 
               {  RBind (MN "X" 0) (Lam RPlaceholder)
                    (RBind (MN "X" 1) (Lam RPlaceholder)
-                       (pairDesugar $3 $4 (RVar $3 $4 (UN "mkPair"))
-                                    [RVar $3 $4 (MN "X" 0),
-                                     RVar $3 $4 (MN "X" 1)])) }
+                       (pairDesugar $3 $4 (RVar $3 $4 (UN "mkPair") DataCon)
+                                    [RVar $3 $4 (MN "X" 0) Unknown,
+                                     RVar $3 $4 (MN "X" 1) Unknown])) }
         | '(' Term ',' File Line ')' 
               {  RBind (MN "X" 0) (Lam RPlaceholder)
-                       (pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair"))
+                       (pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair") DataCon)
                                     [$2,
-                                     RVar $4 $5 (MN "X" 0)]) }
+                                     RVar $4 $5 (MN "X" 0) Unknown]) }
         | '(' ',' Term File Line ')' 
               {  RBind (MN "X" 0) (Lam RPlaceholder)
-                       (pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair"))
-                                    [RVar $4 $5 (MN "X" 0), $3]) }
+                       (pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair") DataCon)
+                                    [RVar $4 $5 (MN "X" 0) Unknown, $3]) }
 
 
 BuiltinOp :: { String }
@@ -503,7 +503,7 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex [] $1) $3 }
          | SimpleAppTerm { $1 }
          | hashbrack Term ')' { $2 }
          | TypeTerm userinfix TypeTerm File Line { RUserInfix $4 $5 False $2 $1 $3 }
-         | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
+         | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair") TypeCon) $2 }
          | SigmaType { $1 }
 
 ArgOpt :: { ArgOpt }
@@ -529,7 +529,7 @@ TypeList :: { [RawTerm] }
          | TypeTerm '&' TypeList { $1:$3 }
 
 NoAppTerm :: { RawTerm }
-NoAppTerm : Name File Line { RVar $2 $3 $1 }
+NoAppTerm : Name File Line { RVar $2 $3 $1 Unknown }
           | return File Line { RReturn $2 $3 }
           | '(' Term ')' { bracket $2 }
           | '~' NoAppTerm { RPure $2 }
@@ -539,12 +539,12 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
 --                { doBind (Pi Im) $2 $5 }
           | Constant File Line { RConst $2 $3 $1 }
           | refl { RRefl }
-          | empty File Line { RVar $2 $3 (UN "__Empty") }
-          | unit File Line { RVar $2 $3 (UN "__Unit") }
+          | empty File Line { RVar $2 $3 (UN "__Empty") TypeCon }
+          | unit File Line { RVar $2 $3 (UN "__Unit") TypeCon }
           | '_' { RPlaceholder }
           | DoBlock { RDo $1 }
           | oid Term cid { RIdiom $2 }
-          | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair")) $2 }
+          | '(' TermList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "mkPair") DataCon) $2 }
 --          | '[' TermList ']' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Exists")) $2 }
 --          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair")) $2 }
           | SigmaType { $1 } 
@@ -553,9 +553,9 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 }
 
 SigmaTerm :: { RawTerm }
 SigmaTerm : lpair Term ',' Term rpair File Line %prec PAIR
-                { RApp $6 $7 (RApp $6 $7 (RVar $6 $7 (UN "Exists")) $2) $4 }
+                { RApp $6 $7 (RApp $6 $7 (RVar $6 $7 (UN "Exists") DataCon) $2) $4 }
           | lpair Term rpair File Line %prec PAIR
-                { RApp $4 $5 (RApp $4 $5 (RVar $4 $5 (UN "Exists")) RPlaceholder) $2 }
+                { RApp $4 $5 (RApp $4 $5 (RVar $4 $5 (UN "Exists") DataCon) RPlaceholder) $2 }
 
 TermList :: { [RawTerm] }
          : Term ',' Term { $1:$3:[] }
@@ -741,7 +741,7 @@ mkCon ty (Simple n args) = (n, mkConTy args ty)
    where mkConTy [] ty = ty
          mkConTy (a:as) ty = RBind (MN "X" 0) (Pi Ex [] a) (mkConTy as ty)
 
-mkDef file line (n, tms) = mkImpApp (RVar file line n) tms
+mkDef file line (n, tms) = mkImpApp (RVar file line n Unknown) tms
    where mkImpApp f [] = f
          mkImpApp f ((tm,Just n):ts) = mkImpApp (RAppImp file line n f tm) ts
          mkImpApp f ((tm, Nothing):ts) = mkImpApp (RApp file line f tm) ts
@@ -755,8 +755,8 @@ doLetBind [] t = t
 doLetBind ((x,ty,val):ts) tm = RBind x (RLet val ty) (doLetBind ts tm)
 
 mkTyApp :: String -> Int -> Id -> RawTerm -> RawTerm
-mkTyApp file line n ty = mkApp file line (RVar file line n) (getTyArgs ty)
-   where getTyArgs (RBind n _ t) = (RVar file line n):(getTyArgs t)
+mkTyApp file line n ty = mkApp file line (RVar file line n Unknown) (getTyArgs ty)
+   where getTyArgs (RBind n _ t) = (RVar file line n Unknown):(getTyArgs t)
          getTyArgs x = []
 
 mkTyParams :: String -> Int -> [Id] -> RawTerm
@@ -781,7 +781,7 @@ pairDesugar file line pair (x:y:xs)
 
 sigDesugar :: String -> Int -> (Id, RawTerm) -> RawTerm -> RawTerm
 sigDesugar file line (n, tm) sc
-    = mkApp file line (RVar file line (UN "Sigma")) [tm, lam]
+    = mkApp file line (RVar file line (UN "Sigma") TypeCon) [tm, lam]
    where lam = RBind n (Lam tm) sc
 
 }

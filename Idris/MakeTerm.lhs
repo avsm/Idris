@@ -3,6 +3,7 @@
 > import Idris.AbsSyntax
 > import Idris.Prover
 > import Idris.SimpleCase
+> import Idris.PartialEval
 
 > import Ivor.TT as TT
 > import Debug.Trace
@@ -283,49 +284,56 @@ n is a parameter
 Add definitions to the Ivor Context. Return the new context and a list
 of things we need to define to complete the program (i.e. metavariables)
 
-> data TryAdd = OK (Context, [(Name, ViewTerm)]) UserOps
->             | Err (Context, [(Name, ViewTerm)]) UserOps String -- record how far we got
+> data TryAdd = OK (Context, [(Name, ViewTerm)]) UserOps StaticUsed
+>             | Err (Context, [(Name, ViewTerm)]) UserOps StaticUsed String -- record how far we got
 
-> addIvor :: [Opt] ->
+> addIvor :: [Opt] -> IdrisState ->
 >            Ctxt IvorFun -> -- all definitions, including prelude
 >            Ctxt IvorFun -> -- just the ones we haven't added to Ivor yet
->            Context -> UserOps -> TryAdd
-> addIvor opts all defs ctxt uo = addivs (ctxt, []) uo (ctxtAlist defs)
->    where addivs acc fixes [] = OK acc fixes
->          addivs acc fixes ((n, IvorProblem err):ds) = Err acc fixes err
->          addivs acc fixes (def@(_,ifn):ds) = 
->              case addIvorDef opts all fixes acc def of
->                 Right (ok, fixes) -> addivs ok fixes ds
->                 Left err -> Err acc fixes (idrisError all (guessContext ifn err))
+>            Context -> UserOps -> Statics -> StaticUsed -> TryAdd
+> addIvor opts ist all defs ctxt uo sts stu 
+>             = addivs (ctxt, []) uo stu (ctxtAlist defs)
+>    where addivs acc fixes stu [] = OK acc fixes stu
+>          addivs acc fixes stu ((n, IvorProblem err):ds) 
+>                                  = Err acc fixes stu err
+>          addivs acc fixes stu (def@(_,ifn):ds) = 
+>              case addIvorDef opts ist all fixes acc def sts stu of
+>                 Right (ok, fixes, stu') -> addivs ok fixes stu' ds
+>                 Left err -> Err acc fixes stu (idrisError all (guessContext ifn err))
 
 Add a definition to Ivor. UserOps have been finalised already, by makeIvorFuns,
 except frozen things, which need to be added as we go, in order.
 
-> addIvorDef :: [Opt] ->
+> addIvorDef :: [Opt] -> IdrisState ->
 >               Ctxt IvorFun -> UserOps -> (Context, [(Name, ViewTerm)]) -> 
->                (Id, IvorFun) -> 
->               TTM ((Context, [(Name, ViewTerm)]), UserOps)
-> addIvorDef opt raw uo (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _ _ _) 
->                = return ((ctxt, metas), uo)
-> addIvorDef opt raw (UO fix trans fr syns) (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _ _) 
->                = return ((ctxt, metas), UO fix trans fr syns)
-> addIvorDef opt raw (UO fix trans fr syns) (ctxt, metas) (n,IvorFun name tyin _ def f@(SynDef _ _ _) _ _ _) 
->                = return ((ctxt, metas), UO fix trans fr syns)
-> addIvorDef opt raw (UO fix trans fr syns) (ctxt, metas) (n,IvorFun name tyin _ def f@(Transform lhs rhs) _ _ _)
->                = return ((ctxt, metas), UO fix trans fr syns)
-> addIvorDef opt raw (UO fix trans fr syns) (ctxt, metas) (n,IvorFun name tyin _ def f@(Freeze file line ns frfn) _ _ _)
+>               (Id, IvorFun) -> Statics -> StaticUsed -> 
+>               TTM ((Context, [(Name, ViewTerm)]), UserOps, StaticUsed)
+> addIvorDef opt ist raw uo (ctxt, metas) (n,IvorFun name tyin _ def (LatexDefs _) _ _ _) sts stu
+>                = return ((ctxt, metas), uo, stu)
+> addIvorDef opt ist raw (UO fix trans fr syns) (ctxt, metas) (n,IvorFun name tyin _ def f@(Fixity op assoc prec) _ _ _) sts stu
+>                = return ((ctxt, metas), UO fix trans fr syns, stu)
+> addIvorDef opt ist raw (UO fix trans fr syns) (ctxt, metas) (n,IvorFun name tyin _ def f@(SynDef _ _ _) _ _ _) sts stu
+>                = return ((ctxt, metas), UO fix trans fr syns, stu)
+> addIvorDef opt ist raw (UO fix trans fr syns) (ctxt, metas) (n,IvorFun name tyin _ def f@(Transform lhs rhs) _ _ _) sts stu
+>                = return ((ctxt, metas), UO fix trans fr syns, stu)
+> addIvorDef opt ist raw (UO fix trans fr syns) (ctxt, metas) (n,IvorFun name tyin _ def f@(Freeze file line ns frfn) _ _ _) sts stu
 >        = case ctxtLookupName raw ns frfn of
->            Right (_,fn') -> return ((ctxt, metas), UO fix trans (fn':fr) syns)
+>            Right (_,fn') -> return ((ctxt, metas), UO fix trans (fn':fr) syns, stu)
 >            Left err -> Left (ErrContext (file ++ ":" ++ show line ++ ":") (Message (show err)))
-> addIvorDef opt raw uo@(UO fix trans fr syns) (ctxt, metas) (n,IvorFun (Just name) tyin _ (Just def') _ flags lazy static) 
+> addIvorDef opt ist raw uo@(UO fix trans fr syns) (ctxt, metas) (n,IvorFun (Just name) tyin _ (Just def') _ flags lazy static) sts stu
 >   = let def = if (Verbose `elem` opt) 
 >                  then trace ("Processing " ++ show n) def' else def' in
 >       case def of
 >         PattDef ps -> -- trace (show (ps, getSpec flags fr)) $
->                       do (ctxt, newdefs) <- addPatternDefSC ctxt name (unjust tyin) ps (getSpec flags fr)
->                          if (null newdefs) then return ((ctxt, metas), uo)
->                            else do r <- addMeta (Verbose `elem` opt) raw ctxt metas newdefs
->                                    return (r, uo)
+>                 do (ctxt, newdefs) <- addPatternDefSC ctxt name (unjust tyin) ps (getSpec flags fr)
+>                    -- Get the type checked version
+>                    (_, pdef) <- getPatternDef ctxt name
+>                    -- Generate some PE data from it
+>                    let (_, nds, stu', newts, newfs) = getNewDefs n sts ist raw stu (PattDef pdef)
+>                    (ctxt, uo, freeze) <- addPEdefs raw ctxt uo nds
+>                    if (null newdefs) then return ((ctxt, metas), uo, stu')
+>                      else do r <- addMeta (Verbose `elem` opt) raw ctxt metas newdefs
+>                              return (r, uo, stu')
 >
 >         SimpleDef tm -> 
 >                         do tm' <- case (getSpec flags fr) of
@@ -339,10 +347,15 @@ except frozen things, which need to be added as we go, in order.
 >                            ctxt <- case tyin of
 >                                 Nothing -> addDef ctxt name tm'
 >                                 Just ty -> addTypedDef ctxt name tm' ty
->                            return ((ctxt, metas), uo)
+>                            -- Get the type checked version
+>                            (_, pdef) <- getPatternDef ctxt name
+>                            -- Generate some PE data from it
+>                            let (_, nds, stu', newts, newfs) = getNewDefs n sts ist raw stu (PattDef pdef)
+>                            (ctxt, uo, freeze) <- addPEdefs raw ctxt uo nds
+>                            return ((ctxt, metas), uo, stu)
 >         LataDef -> case tyin of
 >                       Just ty -> do ctxt <- declareData ctxt name ty
->                                     return ((ctxt, metas), uo)
+>                                     return ((ctxt, metas), uo, stu)
 >         DataDef ind e -> -- trace (show ind) $
 >                          do c <- addDataNoElim ctxt ind
 >                           -- add once to fill in placeholders
@@ -351,17 +364,17 @@ except frozen things, which need to be added as we go, in order.
 >                           -- add again after we work out the parameters
 >                                     addData ctxt (mkParams d)
 >                                  else return c
->                             return ((ctxt, metas), uo)
+>                             return ((ctxt, metas), uo, stu)
 >                           -- addDataNoElim ctxt (mkParams d)
 >                           -- trace (show (mkParams d)) $ return c
 >         IProof scr -> do ctxt <- runScript raw ctxt uo n scr
 >                          return ((ctxt, filter (\ (x,y) -> x /= toIvorName n)
->                                         metas), uo)
+>                                         metas), uo, stu)
 >         Later -> case tyin of
 >                    Just ty -> do ctxt <- declare ctxt name ty
->                                  return ((ctxt, metas), uo)
+>                                  return ((ctxt, metas), uo, stu)
 >                    Nothing -> fail $ "No type given for forward declared " ++ show n
->         _ -> return ((ctxt, metas), uo)
+>         _ -> return ((ctxt, metas), uo, stu)
 >    where unjust (Just x) = x
 >          getSpec [] fr
 >             = Nothing

@@ -31,6 +31,7 @@
 > import Idris.Fontlock
 > import Idris.Serialise
 > import Idris.RunIO
+> import Idris.PartialEval
 
 > import Paths_idris
 
@@ -140,23 +141,21 @@ these days instead...
 >     let decls = idris_decls ist
 >     let opts = idris_options ist
 >     let fixes = idris_fixities ist
+>     let static = idris_static ist
+>     let sts = idris_static_used ist
 >     content <- readLibFile defaultLibPath file
 >     (ptree, imps) <- processImports opts (idris_imports ist) (parse content file)
->     let (defs', ops) = makeIvorFuns opts defs ptree fixes
+>     let (defsin, ops) = makeIvorFuns opts defs ptree fixes
+>     let static' = staticDecls defsin ++ static
+>     let defs' = defsin -- addPEdefs static' defsin
 >     let alldefs = appCtxt defs defs'
->     ((ctxt, metas), fixes') <- 
->         case (addIvor opts alldefs defs' ctxt ops) of
->             OK x fixes' -> return (x, fixes')
->             Err x fixes' err -> do putStrLn err 
->                                    return (x, fixes')
->     let ist = addTransforms (IState alldefs (decls++ptree) metas opts ops [] [] imps (mkNameMap alldefs)) ctxt 
+>     ((ctxt, metas), fixes', sts') <- 
+>         case (addIvor opts ist alldefs defs' ctxt ops static' sts) of
+>             OK x fixes' sts' -> return (x, fixes', sts')
+>             Err x fixes' sts' err -> do putStrLn err 
+>                                         return (x, fixes', sts')
+>     let ist = addTransforms (IState alldefs (decls ++ ptree) metas opts ops [] [] imps (mkNameMap alldefs) static' sts') ctxt 
 >     return (ctxt, ist { idris_fixities = fixes' })
-
-> mkNameMap :: Ctxt IvorFun -> [(Name, Id)]
-> mkNameMap ctxt = mapMaybe mknm (ctxtAlist ctxt)
->   where mknm (n, IvorProblem _) = Nothing
->         mknm (n, i) = do iname <- ivorFName i
->                          return (iname, n)
 
 > data REPLRes = Quit | Continue | NewCtxt IdrisState Context
 
@@ -188,7 +187,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 > debug, norm, help, options, showdef, html, ssave :: Command
 
 > quit _ _ _ = do return Quit
-> tmtype (IState raw _ _ _ uo _ _ _ _) ctxt tms 
+> tmtype (IState raw _ _ _ uo _ _ _ _ _ _) ctxt tms 
 >            = do icheckType raw uo ctxt (unwords tms)
 >                 return Continue
 > prove ist ctxt (nm:[]) 
@@ -244,7 +243,11 @@ Command; minimal abbreviation; function to run it; description; visibility
 >           = do putStrLn "Please give input and output files"
 >                return Continue
 > debug ist ctxt []
->           = do print (idris_fixities ist)
+>           = do putStrLn "Fixities/transforms\n"
+>                print (idris_fixities ist)
+>                putStrLn "\nStatic args:\n"
+>                print (idris_static ist)
+>                print (idris_static_used ist)
 >                return Continue
 > tcomp ist ctxt [] 
 >           = do putStrLn "Please give an output filename"
@@ -297,7 +300,7 @@ Command; minimal abbreviation; function to run it; description; visibility
 
 > repl :: IdrisState -> Context -> Args -> IO ()
 > repl ist ctxt (Batch []) = return () 
-> repl ist@(IState raw decls metas opts fixes trans syns imps nms) ctxt inp' 
+> repl ist@(IState raw decls metas opts fixes trans syns imps nms st stu) ctxt inp' 
 >          = do (inp, next) <- case inp' of 
 >                        Batch (b:bs) -> return (Just b, Batch bs)
 >                        _ -> do x <- readline ("Idris> ")

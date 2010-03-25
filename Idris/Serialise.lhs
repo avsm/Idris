@@ -112,7 +112,7 @@ typechecked forms to disk.
 >                2 -> liftM3 DoExp get get get
 
 > instance Binary RawTerm where
->     put (RVar a b c) = do put (0 :: Word8); put a; put b; put c
+>     put (RVar a b c d) = do put (0 :: Word8); put a; put b; put c; put d
 >     put (RExpVar a b c) = do put (1 :: Word8); put a; put b; put c
 >     put (RApp a b c d) = do put (2 :: Word8); put a; put b; put c; put d
 >     put (RAppImp a b c d e) 
@@ -134,7 +134,7 @@ typechecked forms to disk.
 
 >     get = do tag <- getWord8
 >              case tag of
->                0 -> liftM3 RVar get get get
+>                0 -> liftM4 RVar get get get get
 >                1 -> liftM3 RExpVar get get get
 >                2 -> liftM4 RApp get get get get
 >                3 -> liftM5 RAppImp get get get get get
@@ -378,9 +378,11 @@ typechecked forms to disk.
 >                7 -> return LataDef
 
 > instance Binary IdrisState where
->     put (IState a b c d e f g h i) 
->        = do put a; put b; put c; put d; put e; put f; put g; put h; put i
+>     put (IState a b c d e f g h i j k) 
+>        = do put a; put b; put c; put d; put e; put f; put g; put h; 
+>             put i; put j; put k
 >     get = do a <- get; b <- get; c <- get;
 >              d <- get; e <- get; f <- get; g <- get; h <- get; i <- get
->              return (IState a b c d e f g h i)
+>              j <- get; k <- get
+>              return (IState a b c d e f g h i j k)
 
