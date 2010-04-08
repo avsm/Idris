@@ -12,7 +12,7 @@ natString : Nat -> String;
 natString O = "O";
 natString (S k) = "s" ++ natString k;
 
-data Vn : # -> # where
+data Vn : Set -> Set where
   mkV : (Vect A n) -> (Vn A);
 
 vfilter : (f:A -> Bool) -> (Vect A n) -> (Vn A);

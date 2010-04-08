@@ -1,7 +1,7 @@
 -- Membership predicate for vectors, and means to compute one.
 
 {-
-data ElemIs : (Fin n) -> A -> (Vect A n) -> # where
+data ElemIs : (Fin n) -> A -> (Vect A n) -> Set where
    first : {x:A} -> {xs:Vect A n} -> 
 	   (ElemIs fO x (VCons x xs))
  | later : {x:A} -> {ys:Vect A n} -> 
@@ -31,7 +31,7 @@ eqNat _ _ = Nothing;
 
 -- Membership predicate for lists
 
-data Elem : A -> (List A) -> # where
+data Elem : A -> (List A) -> Set where
    lfirst : {x:A} -> {xs:List A} -> (Elem x (Cons x xs))
  | llater : {x,y:A} -> {xs:List A} -> (Elem x xs) -> (Elem x (Cons y xs));
 

@@ -2,19 +2,19 @@
 -- Bit, like all of our binary representations, is
 -- indexed over its meaning as a Nat.
 
-data Bit : Nat -> # where
+data Bit : Nat -> Set where
     _O_ : Bit O -- A bit representing the number zero
   | _I_ : Bit (S O); -- A bit representing the number one
 
 {- BitPair is a pair of a value bit and a carry bit (c and v) -}
 
-data BitPair : Nat -> # where
+data BitPair : Nat -> Set where
     bitPair : (Bit c) -> (Bit v) -> (BitPair (plus v (mult (S (S O)) c)));
 
 {- Numbers are then sequences of bits, or zero bits. We index over
 the number of bits, as well as the value -}
 
-data Number : Nat -> Nat -> # where
+data Number : Nat -> Nat -> Set where
    none : Number O O
  | bit : (Bit b) -> (Number n val) -> 
 	 (Number (S n) (plus (mult (power (S (S O)) n) b) val));
@@ -38,7 +38,7 @@ renderNum (bit _O_ v) = "0" ++ renderNum v;
 {- We'll also need to pair numbers with a carry bit for the result of
 an addition. -}
 
-data NumCarry : Nat -> Nat -> # where
+data NumCarry : Nat -> Nat -> Set where
    numCarry : (Bit c) -> (Number n val) -> 
 	      (NumCarry n (plus (mult (power (S (S O)) n) c) val));
 

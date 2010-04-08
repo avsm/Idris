@@ -1,4 +1,4 @@
-ADDER : Nat -> #;
+ADDER : Nat -> Set;
 ADDER O = Nat;
 ADDER (S k) = Nat -> (ADDER k);
 

@@ -56,32 +56,32 @@ reqPerm : Purpose -> Perm;
 reqPerm Reading = Read;
 reqPerm Writing = Write;
 
-data FileHandle : FileState -> # where
+data FileHandle : FileState -> Set where
    OpenFile : (h:File) -> -- actual file
 	      (FileHandle (Open p))
  | ClosedFile : FileHandle Closed;
 
 
-data FH : # where mkFH : (FileHandle f) -> FH;
+data FH : Set where mkFH : (FileHandle f) -> FH;
 
 getFileState : FH -> FileState;
 getFileState (mkFH {f} fh) = f;
 
-HEnv : (Vect FileState n) -> #;
+HEnv : (Vect FileState n) -> Set;
 HEnv xs = Env FileState FileHandle xs;
 
 using (ts:Vect FileState n, ts':Vect FileState n', tI:Vect FileState nI)
 {
 
-data OpenH : (Fin n) -> Purpose -> (Vect FileState n) -> # where
+data OpenH : (Fin n) -> Purpose -> (Vect FileState n) -> Set where
    openFirst : OpenH fO p (Open p :: ts)
  | openLater : (OpenH i p ts) -> (OpenH (fS i) p (x :: ts));
 
-data ClosedH : (Fin n) -> (Vect FileState n) -> # where
+data ClosedH : (Fin n) -> (Vect FileState n) -> Set where
    closedFirst : ClosedH fO (Closed :: ts)
  | closedLater : (ClosedH i ts) -> (ClosedH (fS i) (x :: ts));
 
-data AllClosed : (Vect FileState n) -> # where
+data AllClosed : (Vect FileState n) -> Set where
    acNil : AllClosed VNil
  | acCons : AllClosed ts -> AllClosed (Closed :: ts);
 
@@ -93,22 +93,22 @@ getPurpose : (i:Fin n) -> (Vect FileState n) -> Purpose;
 getPurpose fO (Open p :: _) = p;
 getPurpose (fS i) (x :: xs) = getPurpose i xs;
 
-data Ty = TyNat | TyHandle Nat | TyUnit | TyLift #;
+data Ty = TyNat | TyHandle Nat | TyUnit | TyLift Set;
 
-interpTy : Ty -> #;
+interpTy : Ty -> Set;
 interpTy TyNat = Nat;
 interpTy (TyHandle n) = Fin n;
 interpTy TyUnit = ();
 interpTy (TyLift A) = A;
 
 data [noElim] 
-     Lang : (Vect FileState n) -> (Vect FileState n') -> Ty -># where
+     Lang : (Vect FileState n) -> (Vect FileState n') -> Ty ->Set where
    ACTION : |(act:IO A) -> (Lang ts ts (TyLift A))
  | RETURN : (val:interpTy A) -> (Lang ts ts A)
  | FORGET : (Lang ts (snoc ts' Closed) t) -> (Lang ts ts' t)
 -- | ZAPENV : (AllClosed ts') -> (Lang ts ts' t) -> (Lang ts VNil t)
  | CALL : (Lang VNil VNil t) -> (Lang ts ts t)
- | K : (val:(c:#) -> (Lang ts ts a -> c) -> c) ->  (Lang ts ts a)
+ | K : (val:(c:Set) -> (Lang ts ts a -> c) -> c) ->  (Lang ts ts a)
  | WHILE : (Lang ts ts (TyLift Bool)) -> (Lang ts ts TyUnit) -> 
 	   (Lang ts ts TyUnit)
  | WHILE_ACC : (Lang ts ts (TyLift Bool)) -> 
@@ -134,26 +134,26 @@ data [noElim]
  | PUTLINE : (i:Fin n) -> (str:String) -> (p:OpenH i Writing ts) ->
              (Lang ts ts (TyUnit));
 
-cont : (v:a->b) -> (x:a) -> (c:#) -> (k:b->c) -> c;
+cont : (v:a->b) -> (x:a) -> (c:Set) -> (k:b->c) -> c;
 cont v a c k = k (v a);
 
-maybeK' : (x:Maybe a) -> |(default:b) -> (a->b) -> (c:#) -> (k:b->c) ->  c;
+maybeK' : (x:Maybe a) -> |(default:b) -> (a->b) -> (c:Set) -> (k:b->c) ->  c;
 maybeK' v def f c k = maybe v (k def) (\x => k (f x));
 
 maybeK : (x:Maybe a) -> |(default:Lang ts ts b) -> (a -> Lang ts ts b) -> 
          Lang ts ts b;
 maybeK x def f = K (maybeK' x def f);
 
-ifk : (x:Bool) -> |(t:a) -> |(f:a) -> (c:#) -> (k:a->c) -> c;
+ifk : (x:Bool) -> |(t:a) -> |(f:a) -> (c:Set) -> (k:a->c) -> c;
 ifk v t f c k = if v then (k t) else (k f);
 
 k_if : (x:Bool) -> |(t:Lang ts ts a) -> |(f:Lang ts ts a) -> Lang ts ts a;
 k_if x t f = K (ifk x t f);
 
-sndK : (a & b) -> (c:#) -> (k:b->c) -> c;
+sndK : (a & b) -> (c:Set) -> (k:b->c) -> c;
 sndK p c k = k (snd p);
 
-fstK : (a & b) -> (c:#) -> (k:a->c) -> c;
+fstK : (a & b) -> (c:Set) -> (k:a->c) -> c;
 fstK p c k = k (fst p);
 
 nClosed : (n:Nat) -> (Vect FileState n);
@@ -266,7 +266,7 @@ interp env (PUTLINE i str p)
      	  fwrite (getFile p env) "\n";
 	  return (env, II); };
 
-Uses : Nat -> Ty -> #;
+Uses : Nat -> Ty -> Set;
 Uses n t = Lang noFiles (nClosed n) t; 
 
 freedSnoc : (Closed :: (nClosed n) = (snoc (nClosed n) Closed));
@@ -291,7 +291,7 @@ handles x p = handlesA {n=intToNat x} p;
 call : (Uses O t) -> (Lang ts' ts' t);
 call prog = handlesA {n=O} prog;
 
-FileSafe : Ty -> #;
+FileSafe : Ty -> Set;
 FileSafe T = Lang noFiles noFiles T;
 
 }

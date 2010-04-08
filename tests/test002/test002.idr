@@ -12,7 +12,7 @@ using (G:Vect Ty n) {
 
   -- Translate a representation of a type into an Idris type.
 
-  interpTy : Ty -> #;
+  interpTy : Ty -> Set;
   interpTy TyInt = Int;
   interpTy TyBool = Bool;
   interpTy TyList = List Int;
@@ -24,7 +24,7 @@ using (G:Vect Ty n) {
 
   -- Expr can be read as a description of the typing rules for the language.
 
-  data Expr : (Vect Ty n) -> Ty -> # where
+  data Expr : (Vect Ty n) -> Ty -> Set where
      Var : (i:Fin n) -> Expr G (vlookup i G)
    | Val : (x:Int) -> Expr G TyInt
    | Lam : Expr (A::G) T -> Expr G (TyFun A T)
@@ -42,7 +42,7 @@ using (G:Vect Ty n) {
   -- well as their types. Env is an environment, indexed over the
   -- types in scope.
 
-  data Env : (Vect Ty n) -> # where
+  data Env : (Vect Ty n) -> Set where
      Empty : (Env VNil)
    | Extend : (res:interpTy T) -> (Env G) -> 
 	      (Env (T :: G));

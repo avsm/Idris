@@ -7,9 +7,9 @@ bound {n=S k} = fS bound;
 -- Generic environments, with R giving the type and iR giving the 
 -- interpretation of the type.
 
-using (R:#, r:R, ty:R, iR:R->#, xs:Vect R n) {
+using (R:Set, r:R, ty:R, iR:R->Set, xs:Vect R n) {
 
-  data Env : (R:#) -> (iR:R->#) -> (xs:Vect R n) -> # where
+  data Env : (R:Set) -> (iR:R->Set) -> (xs:Vect R n) -> Set where
      Empty : (Env R iR VNil)
    | Extend : (res:(iR r)) -> (Env R iR xs) -> 
 	      (Env R iR (r :: xs));
