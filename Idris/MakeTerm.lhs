@@ -330,7 +330,7 @@ except frozen things, which need to be added as we go, in order.
 >                    (_, pdef) <- getPatternDef ctxt name
 >                    -- Generate some PE data from it
 >                    let (_, nds, stu', newts, newfs) = getNewDefs n sts ist raw stu (PattDef pdef)
->                    (ctxt, uo, freeze) <- addPEdefs raw ctxt uo nds
+>                    (ctxt, uo, freeze) <- addPEdefs raw ctxt sts uo nds
 >                    if (null newdefs) then return ((ctxt, metas), uo, stu')
 >                      else do r <- addMeta (Verbose `elem` opt) raw ctxt metas newdefs
 >                              return (r, uo, stu')
@@ -351,7 +351,7 @@ except frozen things, which need to be added as we go, in order.
 >                            (_, pdef) <- getPatternDef ctxt name
 >                            -- Generate some PE data from it
 >                            let (_, nds, stu', newts, newfs) = getNewDefs n sts ist raw stu (PattDef pdef)
->                            (ctxt, uo, freeze) <- addPEdefs raw ctxt uo nds
+>                            (ctxt, uo, freeze) <- addPEdefs raw ctxt sts uo nds
 >                            return ((ctxt, metas), uo, stu)
 >         LataDef -> case tyin of
 >                       Just ty -> do ctxt <- declareData ctxt name ty
