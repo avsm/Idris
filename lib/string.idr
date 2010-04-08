@@ -97,9 +97,9 @@ listToStr = foldr strCons "";
 strToVect: String -> (n ** Vect Char n);
 strToVect s with strUncons s {
     | Just (c, cs) with strToVect cs {
-    | <<cs'>> = <<c :: cs'>>;
+    | <| cs' |> = <| c :: cs' |>;
   }
-  | Nothing      = <<VNil>>;
+  | Nothing      = <| VNil |>;
 }
 
 vectToStr: Vect Char n -> String;

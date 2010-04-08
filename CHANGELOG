@@ -1,7 +1,8 @@
 New in 0.1.6
 ------------
 
-
+* Changed dependent pair syntax to <| x, y |> so that << and >> can be
+  integer shift operators.
 
 New in 0.1.5
 ------------

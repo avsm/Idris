@@ -331,8 +331,8 @@ lexOp cont cs = case span isOpChar cs of
 --                   ("<=",rest) -> cont TokenLE rest
 --                   ("++",rest) -> cont TokenConcat rest
 --                   ("&&",rest) -> cont TokenAnd rest
-                   ("<<",rest) -> cont TokenLPair rest
-                   (">>",rest) -> cont TokenRPair rest
+                   ("<|",rest) -> cont TokenLPair rest
+                   ("|>",rest) -> cont TokenRPair rest
                    ("&",rest) -> cont TokenTuple rest
 --                   ("||",rest) -> cont TokenOr rest
                    ("...",rest) -> cont TokenEllipsis rest

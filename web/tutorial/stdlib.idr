@@ -141,11 +141,11 @@ data Sigma : (A:Set)->(P:A->Set)->Set where
 
 {-- Again, there is syntactic sugar for this. "(a : A \\*\\* P)" is the
 type of a pair of "A" and "P", where the name "a" can occur inside
-"P". "<< a, p >>" constructs a value of this type. For example, we can
+"P". "<| a, p |>" constructs a value of this type. For example, we can
 pair a number with a "Vect" of a particular length. --}
 
 vec : (n : Nat ** Vect Int n);
-vec = << S (S O), 3 :: 4 :: VNil >>;
+vec = <| S (S O), 3 :: 4 :: VNil |>;
 
 {-- The type checker could of course infer the value of the first
 element from the length of the vector. We can write an underscore "_"
@@ -154,7 +154,7 @@ above definition could also be written as: --}
 
 {->
 vec : (n : Nat ** Vect Int n);
-vec = << _, 3 :: 4 :: VNil >>;
+vec = <| _, 3 :: 4 :: VNil |>;
 >-}
 
 {-- We might also prefer to omit the type of the first element of the
@@ -162,7 +162,7 @@ pair, since, again, it can be inferred: --}
 
 {->
 vec : (n ** Vect Int n);
-vec = << _, 3 :: 4 :: VNil >>;
+vec = <| _, 3 :: 4 :: VNil |>;
 >-}
 
 {-- One use for dependent pairs is to return values of dependent types
@@ -175,7 +175,7 @@ vfilter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
 
 {-- If the "Vect" is empty, the result is easy: --}
 
-vfilter p VNil = << _ , VNil >>;
+vfilter p VNil = <| _ , VNil |>;
 
 {-- In the "::" case, we need to inspect the result of a recursive
 call to "vfilter" to extract the length and the vector from the
@@ -183,7 +183,7 @@ result. To do this, we use "with" notation. "with" allows pattern
 matching on intermediate values: --}
 
 vfilter p (x :: xs) with vfilter p xs {
-   | << _ , xs' >> = if (p x) then << _ , x :: xs' >> else << _ , xs' >>;
+   | <| _ , xs' |> = if (p x) then <| _ , x :: xs' |> else <| _ , xs' |>;
 }
 
 {-- We will see more on "with" notation later. --}

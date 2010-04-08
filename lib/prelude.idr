@@ -40,11 +40,11 @@ infixl 9 *,/;
 (/=) : Int -> Int -> Bool inline;
 (/=) x y = not (__eq x y);
 
-(<=<) : Int -> Int -> Int inline;
-(<=<) x y = __shl x y;
+(<<) : Int -> Int -> Int inline;
+(<<) x y = __shl x y;
 
-(>=>) : Int -> Int -> Int inline;
-(>=>) x y = __shr x y;
+(>>) : Int -> Int -> Int inline;
+(>>) x y = __shr x y;
  
 include "nat.idr";
 include "maybe.idr";

@@ -30,9 +30,9 @@ case, the definition would not be well typed.
     already seen a vector filter function, defined as follows: --}
 
 vfilter : (a -> Bool) -> Vect a n -> (p ** Vect a p);
-vfilter p VNil = << _ , VNil >>;
+vfilter p VNil = <| _ , VNil |>;
 vfilter p (x :: xs) with vfilter p xs {
-   | << _ , xs' >> = if (p x) then << _ , x :: xs' >> else << _ , xs' >>;
+   | <| _ , xs' |> = if (p x) then <| _ , x :: xs' |> else <| _ , xs' |>;
 }
 
 {-- Here, the "with" clause allows us to deconstruct the result of
