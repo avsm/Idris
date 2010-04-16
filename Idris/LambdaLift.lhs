@@ -234,18 +234,19 @@ IO operations and do notation as we go. Pass relevant function flags through
 
 > instance ToSC ViewTerm where
 >     toSC ctxt ist t = sc' t [] where
->        sc' (Name _ n) args 
+>        sc' (Name ty n) args 
 >          | n == toIvorName (UN "__Prove_Anything")
 >            -- we can't actually use this value!
 >             = SCon (toIvorName (UN "__FAKE")) 0 
 >          | n == toIvorName (UN "__Suspend_Disbelief") -- arbitrary refl
 >             = scapply ist (SCon (toIvorName (UN "refl")) 0) args -- can't actually use this either
->          | otherwise
+>          | ty == DataCon
 >             = case getConstructorTag ctxt n of
 >                   Right i -> scapply ist (SCon n i) args
->                   _ -> case nameType ctxt n of
->                                  Right TypeCon -> SUnit
->                                  _ -> scapply ist (SVar n) args
+>          | otherwise
+>             = case nameType ctxt n of
+>                   Right TypeCon -> SUnit
+>                   _ -> scapply ist (SVar n) args
 >        sc' (App f a) args = sc' f ((sc' a []):args)
 >        sc' (Let n ty val x) args 
 >                = scapply ist (SLet n (sc' val []) (sc' x [])) args

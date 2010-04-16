@@ -67,10 +67,11 @@ and if we don't matching can get confused).
 
 > toPat :: Context -> ViewTerm -> Pat
 > toPat ctxt tm = toPat' tm [] where
->     toPat' (Name _ n) []
+>     toPat' (Name ty n) []
+>         | ty /= DataCon = PVar n
 >         | isVar n = PVar n
 >         | not (isCon n) = PAny
->     toPat' (Name _ n) args 
+>     toPat' (Name DataCon n) args 
 >         | isCon n = case getConstructorTag ctxt n of
 >                       Right i -> PCon n i args
 >                       Left _ -> error "Can't happen: no tag"
