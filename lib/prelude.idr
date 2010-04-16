@@ -3,7 +3,7 @@ flip f x y = f y x;
 
 infixl 5 ==, /=;
 infixl 6 <, <=, >, >=;
-infixl 7 <=<, >=>;
+infixl 7 <<, >>;
 infixl 8 +,-,++;
 infixl 9 *,/;
 

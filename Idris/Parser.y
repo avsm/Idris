@@ -152,6 +152,7 @@ import Debug.Trace
 %nonassoc LAM
 %nonassoc let in
 %nonassoc '!' '@'
+%nonassoc NEG
 %left or
 %left and '&'
 %left '=' -- eq
@@ -159,7 +160,6 @@ import Debug.Trace
 %left '<' le '>' ge
 %left '+' '-'
 %left '*' '/'
-%left NEG
 %left concat
 %left '\\'
 %right arrow
@@ -404,7 +404,7 @@ ImplicitTerm : brackname File Line { ($1, RVar $2 $3 $1 Unknown) }
 InfixTerm :: { RawTerm }
 InfixTerm : '-' Term File Line %prec NEG { RInfix $3 $4 Minus (RConst $3 $4 (Num 0)) $2 }
 --          | Term '+' Term File Line { RInfix $4 $5  Plus $1 $3 }
-          | Term '-' Term File Line { RUserInfix $4 $5 False "-" $1 $3 }
+          | Term '-' Term File Line %prec userinfix { RUserInfix $4 $5 False "-" $1 $3 }
 --          | Term '*' Term File Line { RInfix $4 $5  Times $1 $3 }
 --          | Term '/' Term File Line { RInfix $4 $5  Divide $1 $3 }
 --          | Term and Term File Line { RInfix $4 $5  OpAnd $1 $3 }
@@ -503,6 +503,7 @@ TypeTerm : TypeTerm arrow TypeTerm { RBind (MN "X" 0) (Pi Ex [] $1) $3 }
          | SimpleAppTerm { $1 }
          | hashbrack Term ')' { $2 }
          | TypeTerm userinfix TypeTerm File Line { RUserInfix $4 $5 False $2 $1 $3 }
+         | TypeTerm '-' TypeTerm File Line { RUserInfix $4 $5 False "-" $1 $3 }
          | '(' TypeList ')' File Line { pairDesugar $4 $5 (RVar $4 $5 (UN "Pair") TypeCon) $2 }
          | SigmaType { $1 }
 

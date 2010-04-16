@@ -941,6 +941,8 @@ FIXME: I think this'll fail if names are shadowed.
 >                 = RApp f l (replSyn f l fn as) (replSyn f l a as)
 >           replSyn f l (RInfix _ _ op x y) as 
 >                 = RInfix f l op (replSyn f l x as) (replSyn f l y as)
+>           replSyn f l (RUserInfix _ _ b op x y) as 
+>                 = RUserInfix f l b op (replSyn f l x as) (replSyn f l y as)
 >           replSyn f l (RAppImp _ _ x fn a) as
 >                 = RAppImp f l x (replSyn f l fn as) (replSyn f l a as)
 >           replSyn _ _ x _ = x
