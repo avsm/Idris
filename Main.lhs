@@ -472,6 +472,7 @@ the appropriate thing, after applying the relevant transformations.
 >              c <- addExternalFn c (opFn StringHead) 1 stringHead "String->Char"
 >              c <- addExternalFn c (opFn StringTail) 1 stringTail "String->String"
 >              c <- addExternalFn c (opFn StringCons) 2 stringCons "Char->String->String"
+>              c <- addExternalFn c (opFn StringRev) 1 stringRev "String->String"
 >              c <- addExternalFn c (name "__lazy") 1 runLazy "(A:*)A->A"
 >              c <- addExternalFn c (name "__effect") 1 runEffect "(A:*)A->A"
 >              return c
@@ -598,6 +599,11 @@ the appropriate thing, after applying the relevant transformations.
 >                   (Just s, Just ss) -> Just (Constant ((s:ss) :: String))
 >                   _ -> Nothing
 > stringCons _ = Nothing
+
+> stringRev :: [ViewTerm] -> Maybe ViewTerm
+> stringRev [Constant x] = case cast x :: Maybe String of
+>                            Just s -> Just (Constant (reverse s))
+>                            _ -> Nothing
 
 > runLazy :: [ViewTerm] -> Maybe ViewTerm
 > runLazy [_,x] = Just x

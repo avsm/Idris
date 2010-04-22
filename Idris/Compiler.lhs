@@ -239,6 +239,8 @@ HACK for string equality
 >         "__epic_strhead("++writeSC' arg1++ ")"
 >     | n == name "__strTail" =
 >         "__epic_strtail("++writeSC' arg1++ ")"
+>     | n == name "__strRev" =
+>         "__epic_strrev("++writeSC' arg1++ ")"
 
 >   writeSC' (SApp b args) = "(" ++ writeSC' b ++")(" ++ list args ++ ")"
 >       where list [] = ""

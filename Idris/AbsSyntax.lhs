@@ -403,7 +403,7 @@ Then built-in functions for coercing between types
 Finally some primitive operations on primitive types.
 
 >         | StringLength | StringGetIndex | StringSubstr
->         | StringHead | StringTail | StringCons
+>         | StringHead | StringTail | StringCons | StringRev
 >    deriving (Eq, Enum)
 
 > allOps = [Plus,Minus,Times,Divide,Concat,ShL,ShR,
@@ -452,6 +452,7 @@ Finally some primitive operations on primitive types.
 > opFn StringSubstr = (name "__substr")
 > opFn StringHead = (name "__strHead")
 > opFn StringTail = (name "__strTail")
+> opFn StringRev = (name "__strRev")
 > opFn StringCons = (name "__strCons")
 
 > useropFn fn = UN $ "__op_" ++ concat (map opC fn) where

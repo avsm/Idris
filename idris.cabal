@@ -65,6 +65,6 @@ Executable     idris
 
                Build-depends:   base>=4 && <5, containers, array, parsec, mtl,
                                 readline, ivor>=0.1.13, directory, haskell98,
-                                old-time, old-locale, binary, epic>=0.1.4, Cabal
+                                old-time, old-locale, binary, epic>=0.1.6, Cabal
                                 
                Extensions:      MagicHash, UndecidableInstances, OverlappingInstances, PatternGuards

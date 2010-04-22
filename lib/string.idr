@@ -18,6 +18,9 @@ strHead s = if (strNull s) then Nothing else (Just (__strHead s));
 strTail: String -> Maybe String inline;
 strTail s = if (strNull s) then Nothing else (Just (__strTail s));
 
+strRev : String -> String inline;
+strRev s = __strRev s;
+
 -- Some more, faster, string manipulations
 
 strHead' : (x:String) -> (so (not (strNull x))) -> Char;
