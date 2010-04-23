@@ -72,13 +72,12 @@ copyLine_2 proof {
         %qed;
 };
 
-copyLineInt = \inf, outf => ioSnd (interp Empty (copyLine inf outf))
-  %spec;
+copyLineInt = \inf, outf => ioSnd (interp Empty (copyLine inf outf));
+  [%spec]
   %freeze copyLine;
   %transform runInterp (interp Empty (copyLine ?inf ?outf)) => copyLineInt ?inf ?outf;
 
-copyInt = \inf, outf => ioSnd (interp Empty (copy inf outf))
-  %spec;
+copyInt = \inf, outf => ioSnd (interp Empty (copy inf outf)); [%spec]
   %freeze copy;
   %transform runInterp (interp Empty (copy ?inf ?outf)) => copyInt ?inf ?outf;
 
@@ -102,8 +101,8 @@ do using (BIND, RETURN) {
 
 
 
-copyLotsS = \df => ioSnd (interp Empty (copyLots df))
-  %spec;
+copyLotsS = \df => ioSnd (interp Empty (copyLots df));
+  [%spec]
   %freeze copyLots;
   %transform runInterp (interp Empty (copyLots ?df)) => copyLotsS ?df;
 

@@ -1,24 +1,24 @@
 include "list.idr";
 
-strLen: String -> Int inline;
+strLen: String -> Int; [inline]
 strLen str = __strlen str;
 
-strEq: String -> String -> Bool inline;
+strEq: String -> String -> Bool; [inline]
 strEq s1 s2 = __strEq s1 s2;
 
-concat: String -> String -> String inline;
+concat: String -> String -> String; [inline]
 concat s1 s2 = __concat s1 s2;
 
-strNull: String -> Bool inline;
+strNull: String -> Bool; [inline]
 strNull s = strEq s "";
 
-strHead: String -> Maybe Char inline;
+strHead: String -> Maybe Char; [inline]
 strHead s = if (strNull s) then Nothing else (Just (__strHead s));
 
-strTail: String -> Maybe String inline;
+strTail: String -> Maybe String; [inline]
 strTail s = if (strNull s) then Nothing else (Just (__strTail s));
 
-strRev : String -> String inline;
+strRev : String -> String; [inline]
 strRev s = __strRev s;
 
 -- Some more, faster, string manipulations
@@ -29,10 +29,10 @@ strHead' x p = __strHead x;
 strTail' : (x:String) -> (so (not (strNull x))) -> String;
 strTail' x p = __strTail x;
 
-strCons: Char -> String -> String inline;
+strCons: Char -> String -> String; [inline]
 strCons c s = __strCons c s;
 
-strUncons: String -> Maybe (Char & String) inline;
+strUncons: String -> Maybe (Char & String); [inline]
 strUncons s with (strHead s, strTail s) {
   | (Just h,  Just t)  = Just (h, t);
   | (Nothing, Nothing) = Nothing;
@@ -63,12 +63,12 @@ strMleft proof {
 };
 
 
-charAt: Int -> String -> Maybe Char inline;
+charAt: Int -> String -> Maybe Char; [inline]
 charAt x str =
   if (strLen str > x && x >= 0) then (Just (__strgetIdx str x))
                                 else Nothing;
 
-showInt: Int -> String inline;
+showInt: Int -> String; [inline]
 showInt x = __toString x;
 
 readInt: String -> Maybe Int;

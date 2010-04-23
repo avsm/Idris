@@ -138,7 +138,7 @@ runDouble = App double (Val 21);
 
 -- Specialise test and double:
 
-testS = \x => interp Empty test x %spec;
+testS = \x => interp Empty test x; [%spec]
   %freeze test; 
   %transform interp ?G test => testS;
 
@@ -147,28 +147,28 @@ testS = \x => interp Empty test x %spec;
 -- testS. So we're controlling inlining (i.e., stopping it where we
 -- don't want it).
 
-doubleS = \x => interp Empty double x %spec;
+doubleS = \x => interp Empty double x; [%spec]
   %freeze double; 
   %transform interp ?G double => doubleS;
 
-factS = \x => interp Empty fact x %spec(fact 1);
+factS = \x => interp Empty fact x; [%spec(fact 1)]
   %freeze fact;
   %transform interp ?G fact => factS;
   %transform interp ?G fact' => factS;
 
-factauxS = \acc, n => interp Empty factaux acc n %spec(factaux 1);
+factauxS = \acc, n => interp Empty factaux acc n; [%spec(factaux 1)]
   %freeze factaux;
   %transform interp ?G factaux => factauxS;
 
-facttrS = \x => interp Empty facttr x %spec(facttr 1);
+facttrS = \x => interp Empty facttr x; [%spec(facttr 1)]
   %freeze facttr;
   %transform interp ?G facttr => facttrS;
 
-sumaS = \acc, xs => interp Empty suma acc xs %spec(suma 1);
+sumaS = \acc, xs => interp Empty suma acc xs; [%spec(suma 1)]
   %freeze suma;
   %transform interp ?G suma => sumaS;
 
-sumS = \x => interp Empty sum x %spec(sum 1);
+sumS = \x => interp Empty sum x; [%spec(sum 1)]
   %freeze sum;
   %transform interp ?G sum => sumS;
 

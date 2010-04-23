@@ -211,15 +211,15 @@ Transform :: { Decl }
 Transform : transform Term fatarrow Term ';' { Transform $2 $4 }
 
 Function :: { ParseDecl }
-Function : Name ':' Type Flags File Line ';' { FunType $1 $3 (nub $4) $5 $6 }
+Function : Name ':' Type ';' Flags File Line { FunType $1 $3 (nub $5) $6 $7 }
          | Name ProofScript ';' { ProofScript $1 $2 }
 --         | DefTerm '=' Term Flags ';' { FunClause (mkDef $1) [] $3 $4 }
          | DefTerm WithTerms WithP Term '{' Functions '}' File Line
               { WithClause (mkDef $8 $9 $1) $2 $3 $4 $6 }
          | DefTerm WithTerms mightbe Term ';' '[' Name ']' File Line
               { FunClauseP (mkDef $9 $10 $1) $2 $4 $7 }
-         | DefTerm WithTerms '=' Term Flags ';' File Line 
-              { FunClause (mkDef $7 $8 $1) $2 $4 (nub $5) }
+         | DefTerm WithTerms '=' Term ';' Flags File Line 
+              { FunClause (mkDef $7 $8 $1) $2 $4 (nub $6) }
          | '|' WithTerm '=' Term ';' { FunClause RPlaceholder [$2] $4 [] }
          | '|' WithTerm mightbe Term ';' '[' Name ']' 
               { FunClauseP RPlaceholder [$2] $4 $7 }
@@ -251,8 +251,8 @@ Functions : Function Functions { $1:$2 }
           | Function { [$1] }
 
 Flags :: { [CGFlag] }
-Flags : FlagList { $1 }
-      | '[' FlagList ']' { $2 }
+Flags : '[' FlagList ']' { $2 }
+      | { [] }
 
 FlagList :: { [CGFlag] }
 FlagList : { [] }

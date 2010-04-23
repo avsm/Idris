@@ -192,16 +192,16 @@ readIORef (MkIORef i) = readIORefPrim i;
 writeIORef : (IORef A) -> A -> (IO ());
 writeIORef (MkIORef i) val = writeIORefPrim i val;
 
-mkFType' : (List FType) -> FType -> Set   %nocg;
+mkFType' : (List FType) -> FType -> Set  ; [%nocg]
 
 mkFType' Nil rt = IO (i_ftype rt);
 mkFType' (Cons t ts) rt = (i_ftype t) -> (mkFType' ts rt);
 
-mkFType : ForeignFun -> Set    %nocg;
+mkFType : ForeignFun -> Set   ; [%nocg]
 mkFType (FFun fn args rt) = mkFType' args rt;
 
 mkFDef : String -> (ts:List FType) -> (xs:List FType) -> (FArgList xs) ->
-	 (rt:FType) -> (mkFType' ts rt)   %nocg;
+	 (rt:FType) -> (mkFType' ts rt)  ; [%nocg]
 mkFDef nm Nil accA fs rt 
    = IODo (Foreign (FFun nm accA rt) fs)
 				 (\a => (IOReturn a));
@@ -209,10 +209,10 @@ mkFDef nm (Cons t ts) accA fs rt
    = \x:i_ftype t => mkFDef nm ts (app accA (Cons t Nil)) 
 				   (fapp fs (fCons x fNil)) rt;
 
-mkForeign : (f:ForeignFun) -> (mkFType f)   %nocg;
+mkForeign : (f:ForeignFun) -> (mkFType f)  ; [%nocg]
 mkForeign (FFun fn args rt) = mkFDef fn args Nil fNil rt;
 
-_isNull = mkForeign (FFun "isNull" (Cons FPtr Nil) FInt) %eval;
+_isNull = mkForeign (FFun "isNull" (Cons FPtr Nil) FInt); [%eval]
 
 isNull : Ptr -> Bool;
 isNull ptr = if_then_else ((unsafePerformIO (_isNull ptr))==0) False True;
@@ -220,21 +220,21 @@ isNull ptr = if_then_else ((unsafePerformIO (_isNull ptr))==0) False True;
 data File = FHandle Ptr;
 
 _fopen
-  = mkForeign (FFun "fileOpen" (Cons FStr (Cons FStr Nil)) FPtr) %eval;
+  = mkForeign (FFun "fileOpen" (Cons FStr (Cons FStr Nil)) FPtr); [%eval]
 _fclose 
-  = mkForeign (FFun "fileClose" (Cons FPtr Nil) FUnit) %eval;
+  = mkForeign (FFun "fileClose" (Cons FPtr Nil) FUnit); [%eval]
 _fread
-  = mkForeign (FFun "freadStr" (Cons FPtr Nil) (FAny String)) %eval;
+  = mkForeign (FFun "freadStr" (Cons FPtr Nil) (FAny String)); [%eval]
 _fwrite
-  = mkForeign (FFun "fputStr" (Cons FPtr (Cons FStr Nil)) FUnit) %eval;
+  = mkForeign (FFun "fputStr" (Cons FPtr (Cons FStr Nil)) FUnit); [%eval]
 _feof
-  = mkForeign (FFun "feof" (Cons FPtr Nil) FInt) %eval;
+  = mkForeign (FFun "feof" (Cons FPtr Nil) FInt); [%eval]
 
 gc_details
-  = mkForeign (FFun "epicMemInfo" Nil FUnit) %eval;
+  = mkForeign (FFun "epicMemInfo" Nil FUnit); [%eval]
 
 gc_collect
-  = mkForeign (FFun "epicGC" Nil FUnit) %eval;
+  = mkForeign (FFun "epicGC" Nil FUnit); [%eval]
 
 fopen : String -> String -> IO File;
 fopen str mode = do { h <- _fopen str mode;
@@ -259,8 +259,8 @@ sequence (Cons x xs) = do { a <- x;
 			    as <- sequence xs;
 			    return (Cons a as); };
 
-sleep = mkForeign (FFun "sleep" (Cons FInt Nil) FUnit) %eval;
+sleep = mkForeign (FFun "sleep" (Cons FInt Nil) FUnit); [%eval]
 
 -- Return time in microseconds since some unspecified starting point
 
-utime = mkForeign (FFun "do_utime" Nil FInt) %eval;
+utime = mkForeign (FFun "do_utime" Nil FInt); [%eval]
