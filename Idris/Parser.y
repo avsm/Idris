@@ -551,6 +551,7 @@ NoAppTerm : Name File Line { RVar $2 $3 $1 Unknown }
           | SigmaType { $1 } 
           | Section { $1 }
           | SigmaTerm { $1 }
+          | '[' File Line TermListZ ']' { mkConsList $2 $3 $4 }
 
 SigmaTerm :: { RawTerm }
 SigmaTerm : lpair Term ',' Term rpair File Line %prec PAIR
@@ -561,6 +562,11 @@ SigmaTerm : lpair Term ',' Term rpair File Line %prec PAIR
 TermList :: { [RawTerm] }
          : Term ',' Term { $1:$3:[] }
          | Term ',' TermList { $1:$3 }
+
+TermListZ :: { [RawTerm] }
+         : { [] }
+         | Term { [$1] }
+         | Term ',' TermListZ { $1:$3 }
 
 
 DoBlock :: { [Do] }
@@ -784,6 +790,11 @@ sigDesugar :: String -> Int -> (Id, RawTerm) -> RawTerm -> RawTerm
 sigDesugar file line (n, tm) sc
     = mkApp file line (RVar file line (UN "Sigma") TypeCon) [tm, lam]
    where lam = RBind n (Lam tm) sc
+
+mkConsList :: String -> Int -> [RawTerm] -> RawTerm
+mkConsList f l [] = RVar f l (UN "Nil") Unknown
+mkConsList f l (x:xs) = RApp f l (RApp f l (RVar f l (UN "Cons") Unknown) x)
+                                 (mkConsList f l xs)
 
 }
 

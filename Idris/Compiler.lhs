@@ -138,7 +138,7 @@ that we avoid pattern matching where the programmer didn't ask us to.
 >      mapM_ (hPutStrLn eH) outputs
 >      mapM_ (writeDef eH erasure) scs
 >      hClose eH
->      let cmd = "epic " ++ efile ++ " -o " ++ ofile ++ " " ++
+>      let cmd = "epic -g " ++ efile ++ " -o " ++ ofile ++ " " ++
 >                concat (map (' ':) clink)
 >      exit <- system cmd
 >      -- removeFile efile
